@@ -38,25 +38,26 @@ export const AppSidebar = ({ onOpenSobre }: { onOpenSobre: () => void }) => {
       title: 'Institucional',
       icon: Building2,
       items: [
-        { title: 'Projeto SACRE', url: '/institucional/projeto' },
-        { title: 'Cidade Bauru', url: '/institucional/bauru' },
-        { title: 'Desafios', url: '/institucional/desafios' },
-        { title: 'Equipe', url: '/institucional/equipe' },
+        { title: '1.1. Projeto SACRE', url: '/institucional/projeto' },
+        { title: '1.2. Work Package', url: '/resultados/1' },
+        { title: '1.3. Cidade Bauru', url: '/institucional/bauru' },
+        { title: '1.4. Desafios', url: '/institucional/desafios' },
+        { title: '1.5. Equipe', url: '/institucional/equipe' },
       ],
     },
     {
-      title: 'Suporte a Decisão',
+      title: 'Sistema de Suporte a Decisão',
       icon: Activity,
       items: [
-        { title: 'Cenários', url: '/ssd/cenarios' },
-        { title: 'Configurações', url: '/ssd/configuracoes' },
+        { title: '2.1. Cenários', url: '/ssd/cenarios' },
+        { title: '2.2. Configurações', url: '/ssd/configuracoes' },
       ],
     },
     {
-      title: 'Resultados',
+      title: 'Resultados dos projetos',
       icon: BarChart2,
       items: Array.from({ length: 6 }).map((_, i) => ({
-        title: `Work Package ${i + 1}`,
+        title: `3.${i + 1}. Work Package ${i + 1}`,
         url: `/resultados/${i + 1}`,
       })),
     },
@@ -64,24 +65,30 @@ export const AppSidebar = ({ onOpenSobre }: { onOpenSobre: () => void }) => {
       title: 'Divulgação',
       icon: Megaphone,
       items: [
-        { title: 'Publicações', url: '/divulgacao/publicacoes' },
-        { title: 'Mídia', url: '/divulgacao/midia' },
-        { title: 'Congressos', url: '/divulgacao/congressos' },
+        { title: '4.1. Publicações', url: '/divulgacao/publicacoes' },
+        { title: '4.2. Mídia', url: '/divulgacao/midia' },
+        { title: '4.3. Congressos', url: '/divulgacao/congressos' },
       ],
     },
   ]
 
   return (
-    <Sidebar variant="sidebar" collapsible="icon">
-      <SidebarContent>
+    <Sidebar
+      variant="sidebar"
+      collapsible="icon"
+      className="top-16 h-[calc(100svh-4rem)] z-40 border-r-border/50 shadow-sm"
+    >
+      <SidebarContent className="pt-4">
         {navGroups.map((group) => (
-          <Collapsible key={group.title} defaultOpen className="group/collapsible">
+          <Collapsible key={group.title} defaultOpen={false} className="group/collapsible">
             <SidebarGroup>
               <SidebarGroupLabel asChild>
                 <CollapsibleTrigger className="flex items-center w-full hover:bg-sidebar-accent hover:text-sidebar-accent-foreground rounded-md p-2 cursor-pointer transition-colors">
-                  <group.icon className="h-4 w-4 mr-2" />
-                  <span className="font-medium">{group.title}</span>
-                  <ChevronRight className="ml-auto h-4 w-4 transition-transform group-data-[state=open]/collapsible:rotate-90" />
+                  <group.icon className="h-4 w-4 mr-2 shrink-0 text-primary/80" />
+                  <span className="font-medium text-sidebar-foreground truncate">
+                    {group.title}
+                  </span>
+                  <ChevronRight className="ml-auto h-4 w-4 shrink-0 transition-transform group-data-[state=open]/collapsible:rotate-90 text-muted-foreground" />
                 </CollapsibleTrigger>
               </SidebarGroupLabel>
               <CollapsibleContent>
@@ -89,7 +96,9 @@ export const AppSidebar = ({ onOpenSobre }: { onOpenSobre: () => void }) => {
                   {group.items.map((item) => (
                     <SidebarMenuSubItem key={item.title}>
                       <SidebarMenuSubButton asChild isActive={isActive(item.url)}>
-                        <Link to={item.url}>{item.title}</Link>
+                        <Link to={item.url} className="truncate">
+                          {item.title}
+                        </Link>
                       </SidebarMenuSubButton>
                     </SidebarMenuSubItem>
                   ))}
@@ -102,43 +111,45 @@ export const AppSidebar = ({ onOpenSobre }: { onOpenSobre: () => void }) => {
         <SidebarGroup>
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton onClick={onOpenSobre}>
-                <Info className="h-4 w-4" />
-                <span>Sobre o Projeto</span>
+              <SidebarMenuButton onClick={onOpenSobre} tooltip="Sobre o Projeto">
+                <Info className="h-4 w-4 shrink-0 text-secondary" />
+                <span className="truncate font-medium text-sidebar-foreground">Sobre</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="border-t border-sidebar-border p-4">
+      <SidebarFooter className="border-t border-sidebar-border/60 p-4 space-y-2 bg-sidebar/50">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton asChild isActive={isActive('/restrito')} tooltip="Acesso Restrito">
               <Link
                 to="/restrito"
-                className={cn('font-medium', isAuthenticated && 'text-secondary')}
+                className={cn('font-medium transition-colors', isAuthenticated && 'text-secondary')}
               >
-                <Lock className="h-4 w-4" />
-                <span>Acesso Restrito</span>
+                <Lock className="h-4 w-4 shrink-0" />
+                <span className="truncate">Acesso Restrito</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
 
           <SidebarMenuItem>
             {isAuthenticated ? (
-              <SidebarMenuButton onClick={logout} tooltip="Sair">
-                <LogOut className="h-4 w-4" />
-                <span className="flex flex-col items-start leading-none">
+              <SidebarMenuButton onClick={logout} tooltip="Sair" className="text-destructive">
+                <LogOut className="h-4 w-4 shrink-0" />
+                <span className="flex flex-col items-start leading-none truncate">
                   <span>Sair</span>
-                  <span className="text-[10px] text-muted-foreground">{user?.name}</span>
+                  <span className="text-[10px] text-muted-foreground truncate w-full mt-1">
+                    {user?.name}
+                  </span>
                 </span>
               </SidebarMenuButton>
             ) : (
-              <SidebarMenuButton asChild isActive={isActive('/auth')} tooltip="Entrar">
+              <SidebarMenuButton asChild isActive={isActive('/auth')} tooltip="Login">
                 <Link to="/auth">
-                  <LogIn className="h-4 w-4" />
-                  <span>Entrar</span>
+                  <LogIn className="h-4 w-4 shrink-0" />
+                  <span className="truncate">Login</span>
                 </Link>
               </SidebarMenuButton>
             )}
