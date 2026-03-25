@@ -16,9 +16,9 @@ export const Header = () => {
       </div>
 
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none px-4">
-        <h0 className="hidden md:block font-medium text-sm lg:text-base tracking-tight text-primary/90 pointer-events-auto text-center truncate max-w-[30%]">
+        <h1 className="hidden md:block font-semibold text-lg lg:text-xl xl:text-2xl tracking-tight text-primary/90 pointer-events-auto text-center truncate max-w-[80%] leading-tight line-clamp-1">
           Soluções Integradas de Água para Cidades Resilientes
-        </h0>
+        </h1>
       </div>
 
       <div className="w-10 z-10">{/* Spacer to balance the flex layout */}</div>
