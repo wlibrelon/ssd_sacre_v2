@@ -57,7 +57,7 @@ export const AppSidebar = ({ onOpenSobre }: { onOpenSobre: () => void }) => {
       title: 'Resultados dos projetos',
       icon: BarChart2,
       items: Array.from({ length: 6 }).map((_, i) => ({
-        title: `3.${i + 1}. Work Package ${i + 1}`,
+        title: `Work Package ${i + 1}`,
         url: `/resultados/${i + 1}`,
       })),
     },
