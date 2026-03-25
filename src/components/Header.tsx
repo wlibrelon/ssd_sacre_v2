@@ -17,7 +17,7 @@ export const Header = () => {
 
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none px-4">
         <h0 className="hidden md:block font-medium text-sm lg:text-base tracking-tight text-primary/90 pointer-events-auto text-center truncate max-w-[80%]">
-          Soluções Integradas de Água para Cidades Resilientes
+          Soluções Integradas de Água para Cidades Resilientes...
         </h0>
       </div>
 
