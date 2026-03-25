@@ -38,19 +38,19 @@ export const AppSidebar = ({ onOpenSobre }: { onOpenSobre: () => void }) => {
       title: 'Institucional',
       icon: Building2,
       items: [
-        { title: '1.1. Projeto SACRE', url: '/institucional/projeto' },
-        { title: '1.2. Work Package', url: '/resultados/1' },
-        { title: '1.3. Cidade Bauru', url: '/institucional/bauru' },
-        { title: '1.4. Desafios', url: '/institucional/desafios' },
-        { title: '1.5. Equipe', url: '/institucional/equipe' },
+        { title: 'Projeto SACRE', url: '/institucional/projeto' },
+        { title: 'Work Package', url: '/resultados/1' },
+        { title: 'Cidade Bauru', url: '/institucional/bauru' },
+        { title: 'Desafios', url: '/institucional/desafios' },
+        { title: 'Equipe', url: '/institucional/equipe' },
       ],
     },
     {
       title: 'Sistema de Suporte a Decisão',
       icon: Activity,
       items: [
-        { title: '2.1. Cenários', url: '/ssd/cenarios' },
-        { title: '2.2. Configurações', url: '/ssd/configuracoes' },
+        { title: 'Cenários', url: '/ssd/cenarios' },
+        { title: 'Configurações', url: '/ssd/configuracoes' },
       ],
     },
     {
@@ -65,9 +65,9 @@ export const AppSidebar = ({ onOpenSobre }: { onOpenSobre: () => void }) => {
       title: 'Divulgação',
       icon: Megaphone,
       items: [
-        { title: '4.1. Publicações', url: '/divulgacao/publicacoes' },
-        { title: '4.2. Mídia', url: '/divulgacao/midia' },
-        { title: '4.3. Congressos', url: '/divulgacao/congressos' },
+        { title: 'Publicações', url: '/divulgacao/publicacoes' },
+        { title: 'Mídia', url: '/divulgacao/midia' },
+        { title: 'Congressos', url: '/divulgacao/congressos' },
       ],
     },
   ]
