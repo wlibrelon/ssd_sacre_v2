@@ -1,4 +1,4 @@
-import { Logo } from './logo_sacre.jpg'
+import { Logo } from './Logo'
 import { Link } from 'react-router-dom'
 import { SidebarTrigger } from '@/components/ui/sidebar'
 
