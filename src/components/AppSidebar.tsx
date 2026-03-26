@@ -96,7 +96,10 @@ export const AppSidebar = ({ onOpenSobre }: { onOpenSobre: () => void }) => {
                   {group.items.map((item) => (
                     <SidebarMenuSubItem key={item.title}>
                       <SidebarMenuSubButton asChild isActive={isActive(item.url)}>
-                        <Link to={item.url} className="truncate">
+                        <Link
+                          to={item.url}
+                          className="truncate font-medium text-sidebar-foreground"
+                        >
                           {item.title}
                         </Link>
                       </SidebarMenuSubButton>
