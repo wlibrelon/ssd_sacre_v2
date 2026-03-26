@@ -84,7 +84,7 @@ export const AppSidebar = ({ onOpenSobre }: { onOpenSobre: () => void }) => {
             <SidebarGroup>
               <SidebarGroupLabel asChild>
                 <CollapsibleTrigger className="flex items-center w-full hover:bg-sidebar-accent hover:text-sidebar-accent-foreground rounded-md p-2 cursor-pointer transition-colors">
-                  <group.icon className="h-4 w-4 mr-2 shrink-0 text-foreground" />
+                  <group.icon className="h-4 w-4 mr-2 shrink-0 text-white" />
                   <span className="truncate font-medium text-sidebar-foreground text-base">
                     {group.title}
                   </span>
@@ -115,7 +115,7 @@ export const AppSidebar = ({ onOpenSobre }: { onOpenSobre: () => void }) => {
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton onClick={onOpenSobre} tooltip="Sobre o Projeto">
-                <Info className="h-4 w-4 shrink-0 text-foreground" />
+                <Info className="h-4 w-4 shrink-0 text-white" />
                 <span className="truncate font-medium text-sidebar-foreground">Fale Conosco</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
