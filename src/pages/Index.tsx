@@ -10,7 +10,7 @@ const Index = () => {
       <section className="relative rounded-2xl overflow-hidden min-h-[400px] flex items-center justify-center p-8 text-center text-white">
         <div
           className="absolute inset-0 z-0 bg-cover bg-center"
-          style={{ backgroundImage: 'url(https://img.usecurling.com/p/1200/600?q=water%20city)' }}
+          style={{ backgroundImage: 'url(/image_abertura.png)' }}
         />
         <div className="absolute inset-0 z-10 bg-primary/70 mix-blend-multiply" />
         <div className="absolute inset-0 z-10 bg-gradient-to-t from-primary/90 to-transparent" />
@@ -23,19 +23,7 @@ const Index = () => {
             Conectando pesquisa científica avançada à tomada de decisão pública para construir
             cidades mais resilientes e sustentáveis.
           </p>
-          <div className="flex justify-center gap-4 pt-4">
-            <Button size="lg" className="bg-secondary hover:bg-secondary/90 text-white" asChild>
-              <Link to="/ssd/cenarios">Acessar Simulador</Link>
-            </Button>
-            <Button
-              size="lg"
-              variant="outline"
-              className="bg-transparent border-white text-white hover:bg-white/10"
-              asChild
-            >
-              <Link to="/institucional/projeto">Conheça o Projeto</Link>
-            </Button>
-          </div>
+          {/* Botões removidos conforme solicitado */}
         </div>
       </section>
 
