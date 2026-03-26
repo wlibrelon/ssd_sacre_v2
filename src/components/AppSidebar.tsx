@@ -111,9 +111,9 @@ export const AppSidebar = ({ onOpenSobre }: { onOpenSobre: () => void }) => {
         <SidebarGroup>
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton onClick={onOpenSobre} tooltip="Mensagem Sobre o Projeto">
+              <SidebarMenuButton onClick={onOpenSobre} tooltip="Sobre o Projeto">
                 <Info className="h-4 w-4 shrink-0 text-secondary" />
-                <span className="truncate font-medium text-sidebar-foreground">Sobre</span>
+                <span className="truncate font-medium text-sidebar-foreground">Fale Conosco</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
