@@ -11,8 +11,8 @@ export const Header = () => {
           className="flex items-center transition-transform hover:scale-105 active:scale-95"
         >
           <img
-            src="/logo.png"
-            alt="Logo SACRE - Soluções Integradas de Água para Cidades Resilientes"
+            src="/logo.jpg"
+            //            alt="Logo SACRE - Soluções Integradas de Água para Cidades Resilientes"
             className="h-10 sm:h-12 w-auto drop-shadow-sm"
           />
         </Link>
