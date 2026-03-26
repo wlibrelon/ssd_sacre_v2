@@ -27,7 +27,8 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Quick Links */}
+      {/* Quick Links - COMENTADO conforme solicitado */}
+      {/*
       <section className="grid md:grid-cols-3 gap-6">
         <Card className="hover:shadow-md transition-shadow group">
           <CardHeader>
@@ -74,6 +75,7 @@ const Index = () => {
           </CardContent>
         </Card>
       </section>
+      */}
 
       {/* Latest Updates */}
       <section className="bg-slate-50 p-8 rounded-xl border border-slate-100">
