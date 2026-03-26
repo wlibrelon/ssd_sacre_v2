@@ -83,11 +83,11 @@ export const AppSidebar = ({ onOpenSobre }: { onOpenSobre: () => void }) => {
           <Collapsible key={group.title} defaultOpen={false} className="group/collapsible">
             <SidebarGroup>
               <SidebarGroupLabel asChild>
-                <CollapsibleTrigger className="flex items-center w-full hover:bg-sidebar-accent hover:text-sidebar-accent-foreground rounded-md p-2 cursor-pointer transition-colors text-sm font-medium tracking-normal">
-                  {' '}
-                  {/* Adicione: text-sm font-medium tracking-normal */}
+                <CollapsibleTrigger className="flex items-center w-full hover:bg-sidebar-accent hover:text-sidebar-accent-foreground rounded-md p-2 cursor-pointer transition-colors">
                   <group.icon className="h-4 w-4 mr-2 shrink-0 text-primary/80" />
-                  <span className="truncate">{group.title}</span>
+                  <span className="truncate font-medium text-sidebar-foreground text-base">
+                    {group.title}
+                  </span>
                   <ChevronRight className="ml-auto h-4 w-4 shrink-0 transition-transform group-data-[state=open]/collapsible:rotate-90 text-muted-foreground" />
                 </CollapsibleTrigger>
               </SidebarGroupLabel>
