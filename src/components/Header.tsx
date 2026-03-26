@@ -1,4 +1,3 @@
-import { Logo } from './Logo'
 import { Link } from 'react-router-dom'
 import { SidebarTrigger } from '@/components/ui/sidebar'
 
@@ -11,7 +10,11 @@ export const Header = () => {
           to="/"
           className="flex items-center transition-transform hover:scale-105 active:scale-95"
         >
-          <Logo className="h-10 sm:h-12 w-auto" />
+          <img
+            src="/logo.png"
+            alt="Logo SACRE - Soluções Integradas de Água para Cidades Resilientes"
+            className="h-10 sm:h-12 w-auto drop-shadow-sm"
+          />
         </Link>
       </div>
 
