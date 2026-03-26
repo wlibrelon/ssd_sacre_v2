@@ -10,12 +10,7 @@ export const Header = () => {
           to="/"
           className="flex items-center transition-transform hover:scale-105 active:scale-95"
         >
-          <img
-            src="/logo.jpg"
-            alt="Logo SACRE - Soluções Integradas de Água para Cidades Resilientes"
-            className="h-10 sm:h-12 w-auto drop-shadow-sm"
-            loading="lazy"
-          />
+          <img src="/logo.jpg" alt="" className="h-10 sm:h-12 w-auto drop-shadow-sm" />
         </Link>
       </div>
 
