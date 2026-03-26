@@ -49,7 +49,7 @@ export const SobreModal = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle className="text-2xl text-primary">Sobre o Projeto SACRE</DialogTitle>
+          <DialogTitle className="text-2xl text-primary">Fale Conosco</DialogTitle>
           <DialogDescription>
             Soluções Integradas de Água para Cidades Resilientes. Preencha o formulário abaixo para
             entrar em contato com nossa equipe.
