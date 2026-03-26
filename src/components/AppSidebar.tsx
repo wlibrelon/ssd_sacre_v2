@@ -46,7 +46,7 @@ export const AppSidebar = ({ onOpenSobre }: { onOpenSobre: () => void }) => {
       ],
     },
     {
-      title: 'Sistema de Suporte a Decisão',
+      title: 'SSD',
       icon: Activity,
       items: [
         { title: 'Cenários', url: '/ssd/cenarios' },
@@ -54,7 +54,7 @@ export const AppSidebar = ({ onOpenSobre }: { onOpenSobre: () => void }) => {
       ],
     },
     {
-      title: 'Resultados dos projetos',
+      title: 'Resultados',
       icon: BarChart2,
       items: Array.from({ length: 6 }).map((_, i) => ({
         title: `Work Package ${i + 1}`,
@@ -84,7 +84,7 @@ export const AppSidebar = ({ onOpenSobre }: { onOpenSobre: () => void }) => {
             <SidebarGroup>
               <SidebarGroupLabel asChild>
                 <CollapsibleTrigger className="flex items-center w-full hover:bg-sidebar-accent hover:text-sidebar-accent-foreground rounded-md p-2 cursor-pointer transition-colors">
-                  <group.icon className="h-4 w-4 mr-2 shrink-0 text-primary/80" />
+                  <group.icon className="h-4 w-4 mr-2 shrink-0 text-foreground" />
                   <span className="truncate font-medium text-sidebar-foreground text-base">
                     {group.title}
                   </span>
