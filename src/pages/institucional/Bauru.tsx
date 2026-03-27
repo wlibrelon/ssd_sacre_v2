@@ -32,7 +32,7 @@ export default function Bauru() {
       <div className="grid grid-cols-3 gap-4 text-center">
         <Card className="bg-primary/5 border-none shadow-none">
           <CardContent className="pt-6">
-            <h4 className="text-4xl font-bold text-primary">Quantidade de água</h4>
+            <h2 className="text-4xl font-bold text-primary">Quantidade de água</h2>
             <p className="text-sm text-muted-foreground mt-1">
               •Redução de vazões na captação no Rio Batalha em estiagens;
             </p>
@@ -51,14 +51,29 @@ export default function Bauru() {
         </Card>
         <Card className="bg-primary/5 border-none shadow-none">
           <CardContent className="pt-6">
-            <h4 className="text-4xl font-bold text-primary">Qualidade de água</h4>
-            <p className="text-sm text-muted-foreground mt-1">Perdas Físicas</p>
+            <h3 className="text-4xl font-bold text-primary">Qualidade de água</h3>
+            <p className="text-sm text-muted-foreground mt-1">
+              •Contaminação do Sistema Aquífero Bauru por nitrato, metais pesados, hidrocarbonetos e
+              solventes clorados, devido a vazamentos na rede de esgoto e outras fontes poluidoras;
+            </p>
+            <p className="text-sm text-muted-foreground mt-1">
+              •Lançamento de esgotos domésticos in natura em rios na área urbana de Bauru;
+            </p>
+            <p className="text-sm text-muted-foreground mt-1">
+              •Assoreamento e eutrofização na parte alta do Rio Batalha
+            </p>
           </CardContent>
         </Card>
         <Card className="bg-primary/5 border-none shadow-none">
           <CardContent className="pt-6">
-            <h4 className="text-4xl font-bold text-primary">Gerenciamento e demais questões</h4>
-            <p className="text-sm text-muted-foreground mt-1">Fontes Principais</p>
+            <h2 className="text-4xl font-bold text-primary">Gerenciamento e demais questões</h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              •Irregularidade na perfuração de poços particulares: boa parte sem outorga, embora
+              haja cadastro do DAE;
+            </p>
+            <p className="text-sm text-muted-foreground mt-1">
+              •Construção de condomínios em loteamentos na região da APA do Rio Batalha.
+            </p>
           </CardContent>
         </Card>
       </div>
