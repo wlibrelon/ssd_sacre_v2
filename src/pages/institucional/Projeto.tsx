@@ -38,14 +38,16 @@ export default function Projeto() {
           captação aquífero-rio (riverbank filtration).
         </p>
       </div>
-      <section className="relative rounded-2xl overflow-hidden h-screen flex items-center justify-center p-8 text-center text-white w-full">
+
+      <section className="relative rounded-2xl overflow-hidden h-[50vh] md:h-[60vh] max-w-4xl mx-auto flex items-center justify-center p-8 text-center text-white">
         <div
-          className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat brightness-110"
+          className="absolute inset-0 z-0 bg-center bg-no-repeat brightness-110"
           style={{
             backgroundImage: 'url(/imagem_1_projeto.png)',
+            backgroundSize: '70% 70%', // Tamanho fixo %: ajusta sem cortar, centraliza. Teste 60%-80%.
           }}
         />
-        {/* Seu conteúdo aqui */}
+        {/* Conteúdo sobreposto */}
       </section>
 
       <div className="grid md:grid-cols-2 gap-6">
@@ -71,14 +73,15 @@ export default function Projeto() {
         </Card>
       </div>
 
-      <section className="relative rounded-2xl overflow-hidden h-screen flex items-center justify-center p-8 text-center text-white w-full">
+      <section className="relative rounded-2xl overflow-hidden h-[50vh] md:h-[60vh] max-w-4xl mx-auto flex items-center justify-center p-8 text-center text-white">
         <div
-          className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat brightness-110"
+          className="absolute inset-0 z-0 bg-center bg-no-repeat brightness-110"
           style={{
-            backgroundImage: 'url(/imagem_2_projeto.png)',
+            backgroundImage: 'url(/imagem_1_projeto.png)',
+            backgroundSize: '70% 70%', // Tamanho fixo %: ajusta sem cortar, centraliza. Teste 60%-80%.
           }}
         />
-        {/* Seu conteúdo aqui */}
+        {/* Conteúdo sobreposto */}
       </section>
 
       <div className="w-20 h-1.5 bg-secondary mb-6 rounded-full" />
