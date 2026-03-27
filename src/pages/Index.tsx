@@ -7,23 +7,25 @@ const Index = () => {
   return (
     <div className="space-y-12">
       {/* Hero Section */}
+
       <section className="relative rounded-2xl overflow-hidden min-h-[400px] flex items-center justify-center p-8 text-center text-white">
         <div
-          className="absolute inset-0 z-0 bg-cover bg-center"
+          className="absolute inset-0 z-0 bg-cover bg-center object-cover brightness-110" // +brightness pra realçar
           style={{ backgroundImage: 'url(/image_abertura.png)' }}
         />
-        <div className="absolute inset-0 z-10 bg-primary/70 mix-blend-multiply" />
-        <div className="absolute inset-0 z-10 bg-gradient-to-t from-primary/90 to-transparent" />
-
+        <div className="absolute inset-0 z-10 bg-primary/40 mix-blend-overlay" /> // Opacidade 40%,
+        overlay luminoso
+        <div className="absolute inset-0 z-10 bg-gradient-to-t from-primary/60 via-transparent to-transparent" />{' '}
+        // Gradiente 60% mais claro
         <div className="relative z-20 max-w-3xl space-y-6 animate-fade-in-up">
-          {' '}
+          {/* Conteúdo texto mantido */}
           {/*<h1 className="text-4xl md:text-6xl font-bold tracking-tight">
-             Gestão Hídrica Baseada em Dados //{' '}
-          </h1>*/}
+            Gestão Hídrica Baseada em Dados //{' '}
+          </h1>
           <p className="text-lg md:text-xl text-blue-100 font-light">
             Conectando pesquisa científica avançada à tomada de decisão pública para construir
             cidades mais resilientes e sustentáveis.
-          </p>
+          </p>*/}
           {/* Botões removidos conforme solicitado */}
         </div>
       </section>
