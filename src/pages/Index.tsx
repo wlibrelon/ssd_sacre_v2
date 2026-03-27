@@ -16,10 +16,10 @@ const Index = () => {
         <div className="absolute inset-0 z-10 bg-gradient-to-t from-primary/90 to-transparent" />
 
         <div className="relative z-20 max-w-3xl space-y-6 animate-fade-in-up">
-          //{' '}
-          <h1 className="text-4xl md:text-6xl font-bold tracking-tight">
-            // Gestão Hídrica Baseada em Dados //{' '}
-          </h1>
+          {' '}
+          {/*<h1 className="text-4xl md:text-6xl font-bold tracking-tight">
+             Gestão Hídrica Baseada em Dados //{' '}
+          </h1>*/}
           <p className="text-lg md:text-xl text-blue-100 font-light">
             Conectando pesquisa científica avançada à tomada de decisão pública para construir
             cidades mais resilientes e sustentáveis.
