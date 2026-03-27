@@ -15,12 +15,13 @@ export default function Projeto() {
           “híbridas hidroeconômicas”, ou seja, aquelas que reduzam a vulnerabilidade no
           abastecimento urbano e rural e tratem as águas contaminadas, a partir do uso integrado de
           métodos clássicos e inovadores de engenharia, gestão e técnicas baseadas na natureza
-          (NE&MS: Nature, Engineering and Management based Solutions). O SACRE é um multiprojeto que
-          tratará do desenvolvimento de pesquisas e tecnologias originais por meio de trabalhos
+          (NE&MS: Nature, Engineering and Management based Solutions). 
+          <br O SACRE é um multiprojeto que tratará do desenvolvimento de pesquisas e tecnologias originais por meio de trabalhos
           direto no campo, formação de recursos humanos de alto nível e comunicação social, cujos
           resultados ao final permitirão subsidiar e criar políticas públicas voltadas à gestão de
           recursos hídricos. O projeto é apoiado em quatro pilares: desenvolvimento tecnológico e
-          científico; políticas públicas; formação de recursos humanos de alto nível; e comunicação.
+          científico; políticas públicas; formação de recursos humanos de alto nível; e comunicação./>
+          <br
           A ideia central é que a ciência deva embasar as políticas, a partir do treinamento e
           formação de novos profissionais e da comunicação científica e do ouvir a sociedade e os
           governantes. O trabalho está fundamentado na modelagem de fluxo de água e transporte
@@ -28,7 +29,7 @@ export default function Projeto() {
           alocação de recursos hídricos e uso conjuntivo³ ⁴ de águas superficiais e subterrâneas;
           soluções de tratamento de águas subterrâneas de baixo custo (barreiras reativas, com foco
           no nitrato e contaminantes emergentes); recarga gerenciada de aquíferos (MAR)⁵; e sistemas
-          híbridos de captação aquífero-rio (riverbank filtration).
+          híbridos de captação aquífero-rio (riverbank filtration)./>
         </p>
       </div>
 
