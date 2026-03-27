@@ -34,10 +34,16 @@ export default function Bauru() {
           <CardContent className="pt-6">
             <h4 className="text-4xl font-bold text-primary">Quantidade de água</h4>
             <p className="text-sm text-muted-foreground mt-1">
-              •Redução de vazões na captação no Rio Batalha em estiagens; •Alto nível de perdas de
-              água no abastecimento de Bauru; •Regiões em Bauru afetadas por falhas de abastecimento
-              (rodízio e solicitações de caminhão-pipa); •Aumento das retiradas no Sistema Aquífero
-              Guarani (águas não-renováveis, recarga leva mais de 30 mil anos)
+              •Redução de vazões na captação no Rio Batalha em estiagens; 
+            </p)
+            <p className="text-sm text-muted-foreground mt-1">
+              •Alto nível de perdas de água no abastecimento de Bauru; 
+            </p>
+            <p className="text-sm text-muted-foreground mt-1">
+              •Regiões em Bauru afetadas por falhas de abastecimento (rodízio e solicitações de caminhão-pipa); 
+            </p>
+            <p className="text-sm text-muted-foreground mt-1">
+              •Aumento das retiradas no Sistema Aquífero Guarani (águas não-renováveis, recarga leva mais de 30 mil anos)
             </p>
           </CardContent>
         </Card>
