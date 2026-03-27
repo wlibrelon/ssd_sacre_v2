@@ -5,7 +5,7 @@ import { Activity, Building2, BarChart2, ArrowRight } from 'lucide-react'
 
 const Index = () => {
   return (
-    <div className="space-y-8">
+    <div className="space-y-4">
       {/* Hero Section */}
       <section className="relative rounded-2xl overflow-hidden min-h-[400px] flex items-center justify-center p-8 text-center text-white">
         {/* Imagem de fundo com overlays */}
