@@ -7,45 +7,6 @@ const Index = () => {
   return (
     <div className="space-y-12">
       {/* Hero Section */}
-      {/*
-        <h1 className="text-4xl md:text-6xl font-bold tracking-tight z-20">
-          Gestão Hídrica Baseada em Dados
-        </h1>
-
-        <div className="w-full max-w-4xl h-[400px] md:h-[500px] relative rounded-2xl overflow-hidden shadow-2xl z-10">
-          <img
-            src="/image_abertura.png"
-            alt="Bauru com rio e logo SACRE"
-            className="absolute inset-0 w-full h-full object-cover brightness-110"
-          />
-          <div className="absolute inset-0 bg-primary/40 mix-blend-overlay" />
-          <div className="absolute inset-0 bg-gradient-to-t from-primary/60 via-transparent to-transparent" />
-        </div>
-
-        <p className="text-lg md:text-xl text-blue-100 font-light max-w-2xl z-20 leading-relaxed">
-          Conectando pesquisa científica avançada à tomada de decisão pública para construir cidades
-          mais resilientes e sustentáveis.
-        </p>
-      </section>
-
-
-      <section className="relative rounded-2xl overflow-hidden min-h-[500px] flex items-center justify-center p-8 text-center text-white">
-        <div
-          className="absolute inset-0 z-0 bg-cover bg-center object-cover brightness-110"
-          style={{ backgroundImage: 'url(/image_abertura.png)' }}
-        />
-        <div className="absolute inset-0 z-10 bg-primary/40 mix-blend-overlay" />
-        <div className="absolute inset-0 z-10 bg-gradient-to-t from-primary/60 via-transparent to-transparent" />
-
-        <h1 className="absolute top-4 left-1/2 transform -translate-x-1/2 z-20 text-4xl md:text-6xl font-bold tracking-tight text-white drop-shadow-2xl">
-          Gestão Hídrica Baseada em Dados
-        </h1>
-
-        <p className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-20 text-lg md:text-xl text-blue-100 font-light max-w-2xl mx-auto px-4 text-center drop-shadow-xl leading-relaxed">
-          Conectando pesquisa científica avançada à tomada de decisão pública para construir cidades mais resilientes e sustentáveis.
-        </p>
-      </section>
-*/}
       <section className="relative rounded-2xl overflow-hidden min-h-[500px] flex items-center justify-center p-8 text-center text-white">
         {/* Imagem de fundo com overlays */}
         <div
@@ -61,7 +22,7 @@ const Index = () => {
         </h1>
 
         {/* Legenda no RODAPÉ (duas linhas) */}
-        <p className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-20 text-base md:text-lg text-blue-100 font-light max-w-xl mx-auto px-4 text-center drop-shadow-xl leading-snug">
+        <p className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-20 text-sm md:text-base text-blue-100 font-light max-w-lg mx-auto px-4 text-center drop-shadow-xl leading-tight hyphens-none">
           Conectando pesquisa científica avançada à tomada de decisão pública
           <br className="hidden md:block" />
           para construir cidades mais resilientes e sustentáveis.
