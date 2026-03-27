@@ -66,6 +66,12 @@ export default function Projeto() {
           </CardContent>
         </Card>
       </div>
+
+      <div
+        className="absolute inset-0 z-0 bg-cover bg-center object-cover brightness-110"
+        style={{ backgroundImage: 'url(/imagem_2_projeto.png)' }}
+      />
+
       <div className="w-20 h-1.5 bg-secondary mb-6 rounded-full" />
       <p className="text-lg text-muted-foreground leading-relaxed text-justify mb-6">
         O desenvolvimento de métodos de monitoramento e de remediação de aquíferos contaminados por
