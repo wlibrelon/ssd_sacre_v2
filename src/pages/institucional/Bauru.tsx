@@ -25,12 +25,14 @@ export default function Bauru() {
           </div>
 
           {/* COLUNA DIREITA: IMAGEM LIMPA */}
-          <div className="min-h-[250px] md:min-h-[350px] relative rounded-xl overflow-hidden">
+          <div className="min-h-[250px] md:min-h-[350px] relative rounded-xl overflow-hidden bg-gray-50">
+            {' '}
+            {/* bg-gray-50 fallback */}
             <div
-              className="absolute inset-0 z-0 bg-center bg-no-repeat brightness-110"
+              className="absolute inset-0 z-0 bg-center bg-no-repeat brightness-110 w-full h-full"
               style={{
-                backgroundImage: 'url(/imagem_1_bauru.png)',
-                backgroundSize: '80% auto', // Mantém sem corte
+                backgroundImage: `url('/imagem_1_bauru.png')`, // Aspas + / explícito
+                backgroundSize: '80% auto',
               }}
             />
           </div>
