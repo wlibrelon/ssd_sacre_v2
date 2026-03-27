@@ -20,13 +20,16 @@ export default function Bauru() {
             centro é Piratininga, com uma população de 12 mil habitantes e um PIB de R$ 260 milhões.
           </p>
         </div>
-        <img
-          className="absolute inset-0 z-0 bg-center bg-no-repeat brightness-110"
-          style={{
-            backgroundImage: 'url(/imagem_1_bauru.png)',
-            backgroundSize: '70% 70%', // Tamanho fixo %: ajusta sem cortar, centraliza. Teste 60%-80%.
-          }}
-        />
+        <section className="relative rounded-2xl overflow-hidden h-[50vh] md:h-[60vh] max-w-4xl mx-auto flex items-center justify-center p-8 text-center text-white">
+          <div
+            className="absolute inset-0 z-0 bg-center bg-no-repeat brightness-110"
+            style={{
+              backgroundImage: 'url(/imagem_2_bauru.png)',
+              backgroundSize: '70% 70%', // Tamanho fixo %: ajusta sem cortar, centraliza. Teste 60%-80%.
+            }}
+          />
+          {/* Conteúdo sobreposto */}
+        </section>
       </div>
       <p className="text-muted-foreground text-lg mb-8">O problema hídrico da região</p>
       <p>
