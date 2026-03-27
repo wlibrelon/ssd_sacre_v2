@@ -2,7 +2,7 @@ import { Card, CardContent } from '@/components/ui/card'
 
 export default function Projeto() {
   return (
-    <div className="max-w-4xl space-y-8 animate-fade-in">
+    <div className="max-w-4xl space-y-4 animate-fade-in">
       <div>
         <h1 className="text-4xl font-bold text-primary mb-4">Projeto SACRE</h1>
         <div className="w-20 h-1.5 bg-secondary mb-6 rounded-full" />
