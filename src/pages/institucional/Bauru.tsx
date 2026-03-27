@@ -6,22 +6,10 @@ export default function Bauru() {
       <h1 className="text-3xl font-bold text-primary mb-2">Estudo de Caso: Cidade de Bauru</h1>
       <p className="text-muted-foreground text-lg mb-8">A área de estudo</p>
 
-      <div className="relative rounded-2xl overflow-hidden h-[50vh] md:h-[60vh] bg-gray-100">
-        {' '}
-        {/* Container relative + altura */}
-        <div
-          className="absolute inset-0 z-0 bg-center bg-no-repeat brightness-110"
-          style={{
-            backgroundImage: 'url(/imagem_1_bauru.png)',
-            backgroundSize: '70% 70%', // Mantém seu controle de tamanho
-          }}
-        />
-        <div className="grid md:grid-cols-2 gap-8 items-center relative z-10 h-full p-8">
-          {' '}
-          {/* Conteúdo sobreposto, z-10 */}
-          <div className="space-y-4 text-white drop-shadow-lg">
-            {' '}
-            {/* drop-shadow para legibilidade */}
+      <div className="relative rounded-2xl overflow-hidden min-h-[300px] md:min-h-[400px] bg-gray-100">
+        <div className="grid md:grid-cols-2 gap-8 items-center h-full p-6 md:p-8 relative z-10">
+          {/* COLUNA ESQUERDA: TEXTO */}
+          <div className="space-y-4 text-gray-800 md:text-white md:drop-shadow-lg">
             <p>
               Localizada nas porções altas das bacias dos rios Batalha e Bauru, compreende parte dos
               municípios de Bauru, Piratininga e Agudos. Esta região está localizada no centro do
@@ -35,8 +23,17 @@ export default function Bauru() {
               milhões.
             </p>
           </div>
-          {/* Segunda coluna vazia ou com call-to-action */}
-          <div className="hidden md:block" /> {/* Placeholder para balancear grid */}
+
+          {/* COLUNA DIREITA: IMAGEM */}
+          <div className="min-h-[250px] md:min-h-[350px] relative rounded-xl overflow-hidden bg-gray-200">
+            <div
+              className="absolute inset-0 z-0 bg-center bg-no-repeat brightness-110"
+              style={{
+                backgroundImage: 'url(/imagem_1_bauru.png)',
+                backgroundSize: '80% auto', // Ajuste fino: 80% largura, altura proporcional (sem corte)
+              }}
+            />
+          </div>
         </div>
       </div>
 
