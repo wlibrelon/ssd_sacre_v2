@@ -84,7 +84,7 @@ export default function Bauru() {
         </Card>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-8 items-center">
+      <div className="grid md:grid-cols-1 gap-8 items-center">
         <div className="space-y-4">
           <p>
             O município de Bauru oferece “outras águas” ainda pouco exploradas para o abastecimento
