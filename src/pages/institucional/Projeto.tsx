@@ -39,7 +39,7 @@ export default function Projeto() {
         </p>
       </div>
 
-      <section className="relative rounded-2xl overflow-hidden min-h-[500px] flex items-center justify-center p-8 text-center text-white">
+      <section className="relative rounded-2xl overflow-hidden min-h-[400px] flex items-center justify-center p-8 text-center text-white">
         <div
           className="absolute inset-0 z-0 bg-cover bg-center object-cover brightness-110"
           style={{ backgroundImage: 'url(/imagem_1_projeto.png)' }}
@@ -69,7 +69,7 @@ export default function Projeto() {
         </Card>
       </div>
 
-      <section className="relative rounded-2xl overflow-hidden min-h-[500px] flex items-center justify-center p-8 text-center text-white">
+      <section className="relative rounded-2xl overflow-hidden min-h-[400px] flex items-center justify-center p-8 text-center text-white">
         <div
           className="absolute inset-0 z-0 bg-cover bg-center object-cover brightness-110"
           style={{ backgroundImage: 'url(/imagem_2_projeto.png)' }}
