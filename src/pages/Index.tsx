@@ -21,9 +21,8 @@ const Index = () => {
           Gestão Hídrica Baseada em Dados
         </h1>
 
-        {/* Legenda no RODAPÉ (duas linhas) */}
-        <p className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-20 text-sm md:text-base text-blue-100 font-light max-w-lg mx-auto px-4 text-center drop-shadow-xl leading-tight hyphens-none">
-          Conectando pesquisa científica avançada à tomada de decisão
+        <p className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-20 text-xs md:text-sm text-blue-100 font-light max-w-md mx-auto px-2 text-center drop-shadow-xl leading-tight hyphens-none word-break-keep-all overflow-hidden">
+          Conectando pesquisa científica avançada à tomada de decisão pública
           <br className="hidden md:block" />
           para construir cidades mais resilientes e sustentáveis.
         </p>
