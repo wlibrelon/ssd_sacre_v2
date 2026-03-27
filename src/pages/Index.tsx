@@ -61,9 +61,10 @@ const Index = () => {
         </h1>
 
         {/* Legenda no RODAPÉ (duas linhas) */}
-        <p className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-20 text-lg md:text-xl text-blue-100 font-light max-w-2xl mx-auto px-4 text-center drop-shadow-xl leading-relaxed">
-          Conectando pesquisa científica avançada à tomada de decisão pública para construir cidades
-          mais resilientes e sustentáveis.
+        <p className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-20 text-base md:text-lg text-blue-100 font-light max-w-xl mx-auto px-4 text-center drop-shadow-xl leading-snug">
+          Conectando pesquisa científica avançada à tomada de decisão pública
+          <br className="hidden md:block" />
+          para construir cidades mais resilientes e sustentáveis.
         </p>
       </section>
 
