@@ -80,7 +80,7 @@ const Index = () => {
       */}
 
       {/* Latest Updates */}
-      <section className="bg-slate-50 p-8 rounded-xl border border-slate-100">
+      <section className="bg-slate-50 p-6 rounded-xl border border-slate-100">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-semibold text-primary">Últimas Atualizações</h2>
           <Button variant="link" asChild>
