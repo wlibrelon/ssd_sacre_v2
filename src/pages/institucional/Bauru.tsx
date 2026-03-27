@@ -28,32 +28,31 @@ export default function Bauru() {
           }}
         />
       </div>
+      <p className="text-muted-foreground text-lg mb-8">O problema hídrico da região</p>
+      <p>
+        Embora o abastecimento público de Bauru venha de uma captação no rio Batalha (13,2 Mm³/ano)
+        e de 39 poços tubulares profundos no Sistema Aquífero Guarani (34,6 Mm³/ano) (dados de
+        2021), a cidade é uma das mais vulneráveis às estiagens do Estado de São Paulo, com um
+        histórico de seguidas crises hídricas. Tal problema provocou a perfuração de mais de 400
+        poços tubulares privados no Sistema Aquífero Bauru, que extraem 2,34 Mm³/ano, totalizando
+        uma produção de água de 50,14 Mm³/ano para essa cidade. Essa vazão, ainda que fosse
+        suficiente para o atendimento de toda a sua demanda, não o é devido a alguns fatores: 50% da
+        água distribuída é perdida por fugas da rede e na própria estação de tratamento de água; há
+        limitações na operação da rede que não é interligada; a captação do Batalha se faz em uma
+        bacia pequena, com alta competição pela água (uso rural) e com sérios problemas no seu
+        reservatório; e há regiões onde o Sistema Aquífero Guarani apresenta baixa produção. Assim,
+        as razões que explicam as crises hídricas vão além da simples falha no suprimento das fontes
+        de água.
+      </p>
+      <img
+        className="absolute inset-0 z-0 bg-center bg-no-repeat brightness-110"
+        style={{
+          backgroundImage: 'url(/imagem_2_bauru.png)',
+          backgroundSize: '70% 70%', // Tamanho fixo %: ajusta sem cortar, centraliza. Teste 60%-80%.
+        }}
+      />
 
       <div className="grid grid-cols-3 gap-4 text-center">
-        <p className="text-muted-foreground text-lg mb-8">O problema hídrico da região</p>
-        <p>
-          Embora o abastecimento público de Bauru venha de uma captação no rio Batalha (13,2
-          Mm³/ano) e de 39 poços tubulares profundos no Sistema Aquífero Guarani (34,6 Mm³/ano)
-          (dados de 2021), a cidade é uma das mais vulneráveis às estiagens do Estado de São Paulo,
-          com um histórico de seguidas crises hídricas. Tal problema provocou a perfuração de mais
-          de 400 poços tubulares privados no Sistema Aquífero Bauru, que extraem 2,34 Mm³/ano,
-          totalizando uma produção de água de 50,14 Mm³/ano para essa cidade. Essa vazão, ainda que
-          fosse suficiente para o atendimento de toda a sua demanda, não o é devido a alguns
-          fatores: 50% da água distribuída é perdida por fugas da rede e na própria estação de
-          tratamento de água; há limitações na operação da rede que não é interligada; a captação do
-          Batalha se faz em uma bacia pequena, com alta competição pela água (uso rural) e com
-          sérios problemas no seu reservatório; e há regiões onde o Sistema Aquífero Guarani
-          apresenta baixa produção. Assim, as razões que explicam as crises hídricas vão além da
-          simples falha no suprimento das fontes de água.
-        </p>
-        <img
-          className="absolute inset-0 z-0 bg-center bg-no-repeat brightness-110"
-          style={{
-            backgroundImage: 'url(/imagem_2_bauru.png)',
-            backgroundSize: '70% 70%', // Tamanho fixo %: ajusta sem cortar, centraliza. Teste 60%-80%.
-          }}
-        />
-
         <Card className="bg-primary/5 border-none shadow-none">
           <CardContent className="pt-6">
             <h3 className="text-lg md:text-xl lg:text-2xl font-bold text-primary leading-tight">
