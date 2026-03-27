@@ -42,8 +42,7 @@ const Index = () => {
         </h1>
 
         <p className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-20 text-lg md:text-xl text-blue-100 font-light max-w-2xl mx-auto px-4 text-center drop-shadow-xl leading-relaxed">
-          Conectando pesquisa científica avançada à tomada de decisão pública para construir cidades
-          mais resilientes e sustentáveis.
+          Conectando pesquisa científica avançada à tomada de decisão pública para construir cidades mais resilientes e sustentáveis.
         </p>
       </section>
 */}
@@ -63,9 +62,8 @@ const Index = () => {
 
         {/* Legenda no RODAPÉ (duas linhas) */}
         <p className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-20 text-lg md:text-xl text-blue-100 font-light max-w-2xl mx-auto px-4 text-center drop-shadow-xl leading-relaxed">
-          Conectando pesquisa científica avançada à tomada de decisão pública
-          <br />
-          para construir cidades mais resilientes e sustentáveis.
+          Conectando pesquisa científica avançada à tomada de decisão pública para construir cidades
+          mais resilientes e sustentáveis.
         </p>
       </section>
 
