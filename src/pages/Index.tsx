@@ -8,26 +8,28 @@ const Index = () => {
     <div className="space-y-12">
       {/* Hero Section */}
 
-      <section className="relative rounded-2xl overflow-hidden min-h-[400px] flex items-center justify-center p-8 text-center text-white">
-        <div
-          className="absolute inset-0 z-0 bg-cover bg-center object-cover brightness-110" // +brightness pra realçar
-          style={{ backgroundImage: 'url(/image_abertura.png)' }}
-        />
-        <div className="absolute inset-0 z-10 bg-primary/40 mix-blend-overlay" /> // Opacidade 40%,
-        overlay luminoso
-        <div className="absolute inset-0 z-10 bg-gradient-to-t from-primary/60 via-transparent to-transparent" />{' '}
-        // Gradiente 60% mais claro
-        <div className="relative z-20 max-w-3xl space-y-6 animate-fade-in-up">
-          {/* Conteúdo texto mantido */}
-          {/*<h1 className="text-4xl md:text-6xl font-bold tracking-tight">
-            Gestão Hídrica Baseada em Dados //{' '}
-          </h1>
-          <p className="text-lg md:text-xl text-blue-100 font-light">
-            Conectando pesquisa científica avançada à tomada de decisão pública para construir
-            cidades mais resilientes e sustentáveis.
-          </p>*/}
-          {/* Botões removidos conforme solicitado */}
+      <section className="relative rounded-2xl overflow-hidden min-h-[500px] flex flex-col items-center justify-center p-8 text-center text-white space-y-8">
+        {/* Texto ANTES da imagem */}
+        <h1 className="text-4xl md:text-6xl font-bold tracking-tight z-20">
+          Gestão Hídrica Baseada em Dados
+        </h1>
+
+        {/* Imagem CENTRAL com overlays */}
+        <div className="w-full max-w-4xl h-[400px] md:h-[500px] relative rounded-2xl overflow-hidden shadow-2xl z-10">
+          <img
+            src="/image_abertura.png"
+            alt="Bauru com rio e logo SACRE"
+            className="absolute inset-0 w-full h-full object-cover brightness-110"
+          />
+          <div className="absolute inset-0 bg-primary/40 mix-blend-overlay" />
+          <div className="absolute inset-0 bg-gradient-to-t from-primary/60 via-transparent to-transparent" />
         </div>
+
+        {/* Texto APÓS da imagem */}
+        <p className="text-lg md:text-xl text-blue-100 font-light max-w-2xl z-20 leading-relaxed">
+          Conectando pesquisa científica avançada à tomada de decisão pública para construir cidades
+          mais resilientes e sustentáveis.
+        </p>
       </section>
 
       {/* Quick Links - COMENTADO conforme solicitado */}
