@@ -28,6 +28,24 @@ const Index = () => {
         </p>
       </section>
 
+
+      <section className="relative rounded-2xl overflow-hidden min-h-[500px] flex items-center justify-center p-8 text-center text-white">
+        <div
+          className="absolute inset-0 z-0 bg-cover bg-center object-cover brightness-110"
+          style={{ backgroundImage: 'url(/image_abertura.png)' }}
+        />
+        <div className="absolute inset-0 z-10 bg-primary/40 mix-blend-overlay" />
+        <div className="absolute inset-0 z-10 bg-gradient-to-t from-primary/60 via-transparent to-transparent" />
+
+        <h1 className="absolute top-4 left-1/2 transform -translate-x-1/2 z-20 text-4xl md:text-6xl font-bold tracking-tight text-white drop-shadow-2xl">
+          Gestão Hídrica Baseada em Dados
+        </h1>
+
+        <p className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-20 text-lg md:text-xl text-blue-100 font-light max-w-2xl mx-auto px-4 text-center drop-shadow-xl leading-relaxed">
+          Conectando pesquisa científica avançada à tomada de decisão pública para construir cidades
+          mais resilientes e sustentáveis.
+        </p>
+      </section>
 */}
       <section className="relative rounded-2xl overflow-hidden min-h-[500px] flex items-center justify-center p-8 text-center text-white">
         {/* Imagem de fundo com overlays */}
@@ -38,15 +56,16 @@ const Index = () => {
         <div className="absolute inset-0 z-10 bg-primary/40 mix-blend-overlay" />
         <div className="absolute inset-0 z-10 bg-gradient-to-t from-primary/60 via-transparent to-transparent" />
 
-        {/* Título NO TOPO da imagem */}
-        <h1 className="absolute top-4 left-1/2 transform -translate-x-1/2 z-20 text-4xl md:text-6xl font-bold tracking-tight text-white drop-shadow-2xl">
+        {/* Título MENOR no TOPO (uma linha) */}
+        <h1 className="absolute top-4 left-1/2 transform -translate-x-1/2 z-20 text-3xl md:text-5xl font-bold tracking-tight text-white drop-shadow-2xl whitespace-nowrap">
           Gestão Hídrica Baseada em Dados
         </h1>
 
-        {/* Legenda NO RODAPÉ da imagem */}
+        {/* Legenda no RODAPÉ (duas linhas) */}
         <p className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-20 text-lg md:text-xl text-blue-100 font-light max-w-2xl mx-auto px-4 text-center drop-shadow-xl leading-relaxed">
-          Conectando pesquisa científica avançada à tomada de decisão pública para construir cidades
-          mais resilientes e sustentáveis.
+          Conectando pesquisa científica avançada à tomada de decisão pública
+          <br />
+          para construir cidades mais resilientes e sustentáveis.
         </p>
       </section>
 
