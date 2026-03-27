@@ -7,7 +7,7 @@ const Index = () => {
   return (
     <div className="space-y-12">
       {/* Hero Section */}
-      <section className="relative rounded-2xl overflow-hidden min-h-[500px] flex items-center justify-center p-8 text-center text-white">
+      <section className="relative rounded-2xl overflow-hidden min-h-[400px] flex items-center justify-center p-8 text-center text-white">
         {/* Imagem de fundo com overlays */}
         <div
           className="absolute inset-0 z-0 bg-cover bg-center object-cover brightness-110"
@@ -20,12 +20,13 @@ const Index = () => {
         <h1 className="absolute top-4 left-1/2 transform -translate-x-1/2 z-20 text-3xl md:text-5xl font-bold tracking-tight text-white drop-shadow-2xl whitespace-nowrap">
           Gestão Hídrica Baseada em Dados
         </h1>
-
+        {/*
         <p className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-20 text-xs md:text-sm text-blue-100 font-light max-w-md mx-auto px-2 text-center drop-shadow-xl leading-tight hyphens-none word-break-keep-all overflow-hidden">
-          Conectando pesquisa científica avançada à tomada de decisão pública
+          Conectando pesquisa científica avançada à tomada de decisão
           <br className="hidden md:block" />
           para construir cidades mais resilientes e sustentáveis.
         </p>
+*/}
       </section>
 
       {/* Quick Links - COMENTADO conforme solicitado */}
