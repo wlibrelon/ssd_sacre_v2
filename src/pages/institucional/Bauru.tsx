@@ -70,7 +70,7 @@ export default function Bauru() {
         </Card>
         <Card className="bg-primary/5 border-none shadow-none">
           <CardContent className="pt-6">
-            <h3 className="text-2xl md:text-3xl lg:text-4xl font-bold text-primary">
+            <h3 className="text-lg md:text-xl lg:text-2xl font-bold text-primary leading-tight">
               Gerenciamento e demais questões
             </h3>
             <p className="text-sm text-muted-foreground mt-1">
@@ -82,6 +82,44 @@ export default function Bauru() {
             </p>
           </CardContent>
         </Card>
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-8 items-center">
+        <div className="space-y-4">
+          <p>
+            O município de Bauru oferece “outras águas” ainda pouco exploradas para o abastecimento
+            público e privado, que são aquelas que o SACRE está estudando para serem incorporadas ao
+            sistema público e privado. No leque de alternativas estão:
+          </p>
+          <p>• Sistemas de uso do binômio rio-aquífero;</p>
+          <p>• Recarga gerenciada de aquíferos;</p>
+          <p>
+            • Tratamento de águas subterrâneas poluídas com soluções baseadas na natureza e de
+            engenharia;{' '}
+          </p>
+          <p>
+            • Instrumentos de melhora da gestão e governança do recurso hídrico, com processos de
+            alocação dos recursos hídricos.{' '}
+          </p>
+
+          <p>
+            Muitos dos problemas de Bauru são também encontrados em outras cidades brasileiras,
+            permitindo que as soluções desenvolvidas pelo projeto possam ser transferidas e
+            adaptadas a essas localidades. Soluções novas em ciência estão sendo pensadas como
+            políticas públicas, aproximando tecnologias à sociedade de forma bastante orgânica. O
+            SACRE também avalia os trade-offs, a partir de um profundo entendimento dos vários
+            ecossistemas e interesses sociais e econômicos, que mais tragam benefícios ao meio
+            ambiente e à sociedade, sobretudo em cenários de limitação dos recursos hídricos e
+            pressionados pelas mudanças climáticas globais.
+          </p>
+        </div>
+        <img
+          className="absolute inset-0 z-0 bg-center bg-no-repeat brightness-110"
+          style={{
+            backgroundImage: 'url(/imagem_3_bauru.png)',
+            backgroundSize: '70% 70%', // Tamanho fixo %: ajusta sem cortar, centraliza. Teste 60%-80%.
+          }}
+        />
       </div>
     </div>
   )
