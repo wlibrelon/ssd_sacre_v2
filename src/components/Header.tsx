@@ -10,7 +10,7 @@ export const Header = () => {
           to="/"
           className="flex items-center transition-transform hover:scale-105 active:scale-95"
         >
-          <img src="/logo.pmg" alt="" className="h-10 sm:h-12 w-auto drop-shadow-sm" />
+          <img src="/logo.png" alt="" className="h-10 sm:h-12 w-auto drop-shadow-sm" />
         </Link>
       </div>
 
