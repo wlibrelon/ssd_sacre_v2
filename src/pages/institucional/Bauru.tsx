@@ -6,18 +6,6 @@ export default function Bauru() {
       <h1 className="text-3xl font-bold text-primary mb-2">Estudo de Caso: Cidade de Bauru</h1>
       <p className="text-muted-foreground text-lg mb-8">A área de estudo</p>
 
-      <div className="min-h-[250px] md:min-h-[350px] relative rounded-xl overflow-hidden bg-gray-50">
-        {' '}
-        {/* bg-gray-50 fallback */}
-        <div
-          className="absolute inset-0 z-0 bg-center bg-no-repeat brightness-110 w-full h-full"
-          style={{
-            backgroundImage: `url('/imagem_1_bauru.png')`, // Aspas + / explícito
-            backgroundSize: '80% auto',
-          }}
-        />
-      </div>
-
       <div className="relative rounded-2xl overflow-hidden min-h-[300px] md:min-h-[400px]">
         <div className="grid md:grid-cols-2 gap-8 items-center h-full p-6 md:p-8">
           {/* COLUNA ESQUERDA: TEXTO EM PRETO */}
@@ -43,7 +31,7 @@ export default function Bauru() {
             <div
               className="absolute inset-0 z-0 bg-center bg-no-repeat brightness-110 w-full h-full"
               style={{
-                backgroundImage: `url('/imagem_1_bauru.png')`, // Aspas + / explícito
+                backgroundImage: `url('/imagem_1_projeto.png')`, // Aspas + / explícito
                 backgroundSize: '80% auto',
               }}
             />
