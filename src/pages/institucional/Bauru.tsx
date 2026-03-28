@@ -31,7 +31,7 @@ export default function Bauru() {
             <div
               className="absolute inset-0 z-0 bg-center bg-no-repeat brightness-110 w-full h-full"
               style={{
-                backgroundImage: `url('/imagem_1_projeto.png')`, // Aspas + / explícito
+                backgroundImage: `url('/imagem_1_bauru.png')`, // Aspas + / explícito
                 backgroundSize: '80% auto',
               }}
             />
