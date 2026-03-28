@@ -13,14 +13,8 @@ export default function Bauru() {
           {/* COLUNA ESQUERDA: TEXTO COM ESPAÇOS MÍNIMOS */}
           <div className="space-y-1.5 md:space-y-2 text-gray-900">
             {' '}
-            {/* Espaçamento ultra-compacto */}
-            {/* TÍTULO 1: Margin-bottom mínimo ao texto */}
-            <h3 className="text-lg md:text-xl font-bold text-gray-900 mb-1.5 md:mb-2 leading-tight">
-              A área de estudo
-            </h3>
             <div className="space-y-1.5 md:space-y-2 leading-relaxed">
               {' '}
-              {/* Inner space para parágrafos */}
               <p>
                 Localizada nas porções altas das bacias dos rios Batalha e Bauru, compreende parte
                 dos municípios de Bauru, Piratininga e Agudos. Esta região está localizada no centro
@@ -34,17 +28,8 @@ export default function Bauru() {
                 milhões.
               </p>
             </div>
-            {/* TÍTULO 2: Margin-top mínimo após texto, mb colado ao conteúdo futuro */}
-            <h3 className="text-lg md:text-xl font-bold text-gray-900 mt-3 md:mt-4 mb-1.5 md:mb-2 leading-tight">
-              O problema hídrico da região
-            </h3>
-            {/* Placeholder para texto do problema - ADICIONE AQUI o conteúdo específico */}
-            <p className="text-gray-700 italic">
-              /* Insira aqui o texto sobre o problema hídrico */
-            </p>
           </div>
-          {/* COLUNA DIREITA: IMAGEM QUADRADA MAIOR E OTIMIZADA */}
-          <div className="aspect-square md:min-h-[420px] relative rounded-xl overflow-hidden bg-gradient-to-br from-gray-100 via-gray-50 to-white shadow-inner">
+          <div className="aspect-square md:min-h-[400px] relative rounded-xl overflow-hidden bg-gradient-to-br from-gray-100 via-gray-50 to-white shadow-inner">
             {' '}
             {/* Altura maior, fallback melhor */}
             <img
@@ -194,7 +179,7 @@ export default function Bauru() {
             <div
               className="absolute inset-0 z-0 bg-cover bg-center object-cover brightness-110"
               style={{
-                backgroundImage: `url('/imagem_4_bauru.png')`, // Aspas + / explícito
+                backgroundImage: `url('/imagem_3_bauru.png')`, // Aspas + / explícito
                 backgroundSize: '80% auto',
               }}
             />
