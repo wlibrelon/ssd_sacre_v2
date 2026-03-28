@@ -7,14 +7,13 @@ export default function Bauru() {
       <p className="text-muted-foreground text-lg mb-8">A área de estudo</p>
 
       <div className="relative rounded-2xl overflow-hidden min-h-[280px] md:min-h-[380px]">
-        <div className="grid grid-cols-1 md:grid-cols-[2fr_3fr] gap-4 md:gap-6 items-start p-4 md:p-6 h-auto">
-          {' '}
-          {/* Gap/margins reduzidos, cols mais desbalanceadas */}
-          {/* COLUNA ESQUERDA: TEXTO COM ESPAÇOS MÍNIMOS */}
+        <div className="grid grid-cols-1 md:grid-cols-[1.4fr_2fr] gap-4 md:gap-6 items-start p-4 md:p-6 h-auto">
+          {/* COLUNA ESQUERDA: TEXTO COM ESPAÇOS MÍNIMOS (mantido) */}
           <div className="space-y-1.5 md:space-y-2 text-gray-900">
-            {' '}
+            <h3 className="text-lg md:text-xl font-bold text-gray-900 mb-1.5 md:mb-2 leading-tight">
+              A área de estudo
+            </h3>
             <div className="space-y-1.5 md:space-y-2 leading-relaxed">
-              {' '}
               <p>
                 Localizada nas porções altas das bacias dos rios Batalha e Bauru, compreende parte
                 dos municípios de Bauru, Piratininga e Agudos. Esta região está localizada no centro
@@ -28,14 +27,21 @@ export default function Bauru() {
                 milhões.
               </p>
             </div>
+            <h3 className="text-lg md:text-xl font-bold text-gray-900 mt-3 md:mt-4 mb-1.5 md:mb-2 leading-tight">
+              O problema hídrico da região
+            </h3>
+            <p className="text-gray-700 italic">
+              /* Insira aqui o texto sobre o problema hídrico */
+            </p>
           </div>
-          <div className="aspect-square md:min-h-[400px] relative rounded-xl overflow-hidden bg-gradient-to-br from-gray-100 via-gray-50 to-white shadow-inner">
-            {' '}
-            {/* Altura maior, fallback melhor */}
+
+          {/* COLUNA DIREITA: IMAGEM RETANGULAR 300x238 COMPLETA, SEM CORTE */}
+          <div className="aspect-[300/238] w-full md:h-[360px] relative rounded-xl overflow-hidden bg-gradient-to-br from-gray-100 via-gray-50 to-white shadow-inner">
             <img
               src="/imagem_1_bauru.png"
-              alt="Mapa da área de estudo: bacias Batalha e Bauru (Bauru-SP)"
-              className="absolute inset-0 w-full h-full object-cover brightness-105 rounded-xl" /* IMG nativa > background para perf/acessibilidade */
+              alt="Mapa da área de estudo: bacias Batalha e Bauru (Bauru-SP) – dimensões nativas 300x238px"
+              className="absolute inset-0 w-full h-full object-contain brightness-105 rounded-xl" /* object-contain = 100% visível, centralizado */
+              sizes="(max-width: 768px) 100vw, 50vw" /* Responsivo otimizado */
               loading="lazy"
             />
           </div>
