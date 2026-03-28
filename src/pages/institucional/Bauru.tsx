@@ -4,7 +4,9 @@ export default function Bauru() {
   return (
     <div className="max-w-4xl space-y-8 animate-fade-in">
       <h1 className="text-3xl font-bold text-primary mb-2">Estudo de Caso: Cidade de Bauru</h1>
-      <p className="text-muted-foreground text-justify mb-6">A área de estudo</p>
+      <p className="text-lg text-muted-foreground leading-relaxed text-justify mb-6">
+        A área de estudo
+      </p>
 
       <div className="relative rounded-2xl overflow-hidden min-h-[280px] md:min-h-[380px]">
         <div className="grid grid-cols-1 md:grid-cols-[1.4fr_2fr] gap-4 md:gap-6 items-start p-4 md:p-6 h-auto">
