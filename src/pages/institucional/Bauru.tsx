@@ -25,7 +25,7 @@ export default function Bauru() {
           </div>
 
           {/* COLUNA DIREITA: IMAGEM LIMPA */}
-          <div className="min-h-[250px] md:min-h-[350px] relative rounded-xl overflow-hidden bg-gray-50">
+          <div className="min-h-[250px] md:min-h-[450px] relative rounded-xl overflow-hidden bg-gray-50">
             {' '}
             {/* bg-gray-50 fallback */}
             <div
@@ -39,21 +39,6 @@ export default function Bauru() {
         </div>
       </div>
 
-      {/* Hero Section */}
-      <section className="relative rounded-2xl overflow-hidden min-h-[400px] flex items-center justify-center p-8 text-center text-white">
-        {/* Imagem de fundo com overlays */}
-        <div
-          className="absolute inset-0 z-0 bg-cover bg-center object-cover brightness-110"
-          style={{
-            backgroundImage: `url('/imagem_2_bauru.png')`, // Aspas + / explícito
-            backgroundSize: '80% auto',
-          }}
-        />
-        <div className="absolute inset-0 z-10 bg-primary/40 mix-blend-overlay" />
-        <div className="absolute inset-0 z-10 bg-gradient-to-t from-primary/60 via-transparent to-transparent" />
-      </section>
-
-      {/*}
       <p className="text-muted-foreground text-lg mb-8">O problema hídrico da região</p>
       <p>
         Embora o abastecimento público de Bauru venha de uma captação no rio Batalha (13,2 Mm³/ano)
@@ -70,14 +55,35 @@ export default function Bauru() {
         as razões que explicam as crises hídricas vão além da simples falha no suprimento das fontes
         de água.
       </p>
-      <img
-        className="absolute inset-0 z-0 bg-center bg-no-repeat brightness-110"
-        style={{
-          backgroundImage: 'url(/imagem_2_bauru.png)',
-          backgroundSize: '70% 70%', // Tamanho fixo %: ajusta sem cortar, centraliza. Teste 60%-80%.
-        }}
-      />
-*/}
+
+      <section className="relative rounded-2xl overflow-hidden min-h-[400px] flex items-center justify-center p-8 text-center text-white">
+        {/* Imagem de fundo com overlays */}
+        <div
+          className="absolute inset-0 z-0 bg-cover bg-center object-cover brightness-110"
+          style={{
+            backgroundImage: `url('/imagem_2_bauru.png')`, // Aspas + / explícito
+            backgroundSize: '80% auto',
+          }}
+        />
+        <div className="absolute inset-0 z-10 bg-primary/40 mix-blend-overlay" />
+        <div className="absolute inset-0 z-10 bg-gradient-to-t from-primary/60 via-transparent to-transparent" />
+      </section>
+
+      <p className="text-muted-foreground text-lg mb-8">
+        Problemas na sustentabilidade do abastecimento
+      </p>
+      <p>
+        No Sistema Aquífero Guarani: águas subterrâneas de reposição muito lenta (mais de 100 mil
+        anos), o que as classificam como fósseis, ou seja, a extração continuada e sem planejamento
+        dessas águas poderá levar à exaustão do aquífero, com constante aumento dos custos para sua
+        captação.
+      </p>
+      <p>
+        No Sistema Aquífero Bauru, que ocorre sob a cidade e apresenta uma extensa pluma
+        contaminante constituída por nitrato e outros compostos até 60 m de profundidade, gerada
+        pela fuga da rede de esgoto, o que restringe o uso das águas subterrâneas e coloca em risco
+        o usuário privado.
+      </p>
 
       <div className="grid grid-cols-3 gap-4 text-center">
         <Card className="bg-primary/5 border-none shadow-none">
@@ -136,6 +142,7 @@ export default function Bauru() {
 
       <div className="grid md:grid-cols-1 gap-8 items-center">
         <div className="space-y-4">
+          <p className="text-muted-foreground text-lg mb-8">As soluções do SACRE</p>
           <p>
             O município de Bauru oferece “outras águas” ainda pouco exploradas para o abastecimento
             público e privado, que são aquelas que o SACRE está estudando para serem incorporadas ao
@@ -152,6 +159,7 @@ export default function Bauru() {
             alocação dos recursos hídricos.{' '}
           </p>
 
+          <p className="text-muted-foreground text-lg mb-8">Soluções não apenas para Bauru</p>
           <p>
             Muitos dos problemas de Bauru são também encontrados em outras cidades brasileiras,
             permitindo que as soluções desenvolvidas pelo projeto possam ser transferidas e
@@ -162,14 +170,20 @@ export default function Bauru() {
             ambiente e à sociedade, sobretudo em cenários de limitação dos recursos hídricos e
             pressionados pelas mudanças climáticas globais.
           </p>
+
+          <section className="relative rounded-2xl overflow-hidden min-h-[400px] flex items-center justify-center p-8 text-center text-white">
+            {/* Imagem de fundo com overlays */}
+            <div
+              className="absolute inset-0 z-0 bg-cover bg-center object-cover brightness-110"
+              style={{
+                backgroundImage: `url('/imagem_4_bauru.png')`, // Aspas + / explícito
+                backgroundSize: '80% auto',
+              }}
+            />
+            <div className="absolute inset-0 z-10 bg-primary/40 mix-blend-overlay" />
+            <div className="absolute inset-0 z-10 bg-gradient-to-t from-primary/60 via-transparent to-transparent" />
+          </section>
         </div>
-        <img
-          className="absolute inset-0 z-0 bg-center bg-no-repeat brightness-110"
-          style={{
-            backgroundImage: 'url(/imagem_4_bauru.png)',
-            backgroundSize: '70% 70%', // Tamanho fixo %: ajusta sem cortar, centraliza. Teste 60%-80%.
-          }}
-        />
       </div>
     </div>
   )
