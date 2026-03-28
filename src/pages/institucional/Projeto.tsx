@@ -6,25 +6,25 @@ export default function Projeto() {
       {/* TÍTULO E INTRO - FULL WIDTH RESPONSIVO */}
       <section className="w-full">
         <div className="max-w-7xl mx-auto">
-          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-primary mb-4 sm:mb-6 md:mb-8 leading-tight tracking-tight">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-4 sm:mb-6 md:mb-8 leading-tight tracking-tight">
             Projeto SACRE
           </h1>
           <div className="w-20 sm:w-24 md:w-28 lg:w-32 h-1.5 sm:h-2 md:h-2.5 bg-secondary mb-6 sm:mb-8 md:mb-10 rounded-full mx-auto sm:mx-0" />
-          <div className="prose prose-lg sm:prose-xl md:prose-2xl max-w-none text-muted-foreground leading-relaxed md:leading-8 lg:leading-9 text-justify md:text-left hyphens-auto">
-            <p className="mb-6 sm:mb-8 md:mb-10">
+          <div className="max-w-none text-gray-900 leading-relaxed md:leading-7 lg:leading-8 text-justify md:text-left hyphens-auto space-y-4 sm:space-y-5 md:space-y-6">
+            <p className="text-sm sm:text-base md:text-lg mb-6 sm:mb-8 md:mb-10">
               Entre 2013 e 2017, longos períodos de estiagem criaram uma crise no abastecimento de
               água¹ para 48% dos municípios brasileiros², causando graves problemas para a saúde
               pública, economia e ambiente. Soluções tradicionais, baseadas em sistemas
               centralizados de fonte-única de abastecimento de água, têm-se mostrado ineficazes no
               Brasil e em países em desenvolvimento. Assim, o objetivo central do Projeto SACRE é o
-              de criar soluções “híbridas hidroeconômicas”, ou seja, aquelas que reduzam a
+              de criar soluções "híbridas hidroeconômicas", ou seja, aquelas que reduzam a
               vulnerabilidade no abastecimento urbano e rural e tratem as águas contaminadas, a
               partir do uso integrado de métodos clássicos e inovadores de engenharia, gestão e
               técnicas baseadas na natureza (NE&MS: Nature, Engineering and Management based
               Solutions).
             </p>
 
-            <p className="mb-6 sm:mb-8 md:mb-10">
+            <p className="text-sm sm:text-base md:text-lg mb-6 sm:mb-8 md:mb-10">
               O SACRE é um multiprojeto que tratará do desenvolvimento de pesquisas e tecnologias
               originais por meio de trabalhos direto no campo, formação de recursos humanos de alto
               nível e comunicação social, cujos resultados ao final permitirão subsidiar e criar
@@ -35,7 +35,7 @@ export default function Projeto() {
               comunicação científica e do ouvir a sociedade e os governantes.
             </p>
 
-            <p className="mb-6 sm:mb-8 md:mb-10">
+            <p className="text-sm sm:text-base md:text-lg mb-6 sm:mb-8 md:mb-10">
               O trabalho está fundamentado na modelagem de fluxo de água e transporte reativo de
               contaminantes, acoplando aquíferos e corpos hídricos superficiais; conceitos de
               alocação de recursos hídricos e uso conjuntivo³ ⁴ de águas superficiais e
@@ -68,10 +68,10 @@ export default function Projeto() {
         <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 md:gap-8 lg:gap-10 px-4 sm:px-0">
           <Card className="hover:shadow-2xl hover:scale-[1.02] transition-all duration-500 border-0 bg-gradient-to-br from-white/80 to-gray-50/80 backdrop-blur-sm">
             <CardContent className="pt-6 sm:pt-8 pb-8 px-6 sm:px-8">
-              <h3 className="text-xl sm:text-2xl md:text-3xl font-semibold mb-4 sm:mb-6 text-primary leading-tight">
+              <h3 className="text-lg sm:text-xl md:text-2xl font-semibold mb-4 sm:mb-6 text-gray-900 leading-tight">
                 Nossa Missão
               </h3>
-              <p className="text-muted-foreground leading-relaxed text-balance text-sm sm:text-base md:text-lg">
+              <p className="text-gray-900 leading-relaxed text-balance text-xs sm:text-sm md:text-base">
                 Fornecer dados precisos e modelos de simulação robustos que capacitem gestores
                 públicos e companhias de saneamento a antecipar crises hídricas e planejar
                 infraestruturas resilientes.
@@ -80,10 +80,10 @@ export default function Projeto() {
           </Card>
           <Card className="hover:shadow-2xl hover:scale-[1.02] transition-all duration-500 border-0 bg-gradient-to-br from-white/80 to-gray-50/80 backdrop-blur-sm">
             <CardContent className="pt-6 sm:pt-8 pb-8 px-6 sm:px-8">
-              <h3 className="text-xl sm:text-2xl md:text-3xl font-semibold mb-4 sm:mb-6 text-primary leading-tight">
+              <h3 className="text-lg sm:text-xl md:text-2xl font-semibold mb-4 sm:mb-6 text-gray-900 leading-tight">
                 Abordagem
               </h3>
-              <p className="text-muted-foreground leading-relaxed text-balance text-sm sm:text-base md:text-lg">
+              <p className="text-gray-900 leading-relaxed text-balance text-xs sm:text-sm md:text-base">
                 Utilizamos a bacia hidrográfica do município de Bauru como um "Living Lab"
                 (laboratório vivo), aplicando conceitos de economia circular e Soluções Baseadas na
                 Natureza (SbN).
@@ -111,22 +111,22 @@ export default function Projeto() {
 
       {/* CONTEÚDO FINAL - FULL WIDTH RESPONSIVO */}
       <section className="w-full">
-        <div className="max-w-7xl mx-auto prose prose-lg sm:prose-xl md:prose-2xl max-w-none text-muted-foreground leading-relaxed md:leading-8 lg:leading-9 text-justify md:text-left hyphens-auto space-y-6 sm:space-y-8 md:space-y-10 px-4 sm:px-0">
+        <div className="max-w-7xl mx-auto max-w-none text-gray-900 leading-relaxed md:leading-7 lg:leading-8 text-justify md:text-left hyphens-auto space-y-6 sm:space-y-8 md:space-y-10 px-4 sm:px-0">
           <div className="w-20 sm:w-24 md:w-28 lg:w-32 h-1.5 sm:h-2 md:h-2.5 bg-secondary mb-6 sm:mb-8 md:mb-10 mx-auto sm:mx-0 rounded-full" />
-          <p className="mb-6 sm:mb-8 md:mb-10">
+          <p className="text-sm sm:text-base md:text-lg mb-6 sm:mb-8 md:mb-10">
             O desenvolvimento de métodos de monitoramento e de remediação de aquíferos contaminados
             por fontes multipontuais e dispersas, com base em NE&MS, proporcionará avanços
             científicos inéditos ao país e poderá gerar tecnologias patenteáveis. Todas as soluções
             de aumento de oferta, tratamento e alocação de águas rurais e urbanas serão avaliadas
             dentro de um novo arranjo administrativo de gestão de recurso hídrico, que levará em
-            conta aspectos socioeconômicos, hábitos sociais dos usuários (“produtores públicos e
-            privados de água⁶”) e as políticas de uso da terra. As soluções técnicas e de
+            conta aspectos socioeconômicos, hábitos sociais dos usuários ("produtores públicos e
+            privados de água⁶") e as políticas de uso da terra. As soluções técnicas e de
             envolvimento institucional serão testadas de forma pioneira em um estudo nas cabeceiras
             das bacias hidrográficas dos rios Bauru-Batalha, onde se localizam parte dos municípios
             de Bauru, Piratininga e Agudos (SP).
           </p>
 
-          <p className="mb-6 sm:mb-8 md:mb-10">
+          <p className="text-sm sm:text-base md:text-lg mb-6 sm:mb-8 md:mb-10">
             Toda a experiência científica interdisciplinar de ponta nas áreas de hidrogeologia,
             engenharia hidrológica, socioeconomia e governança hídrica, baseada no desenvolvimento e
             adaptação de NE&MS, permitirá criar uma plataforma digital hidroeconômica de múltiplas
@@ -141,7 +141,7 @@ export default function Projeto() {
             maioria com título superior a doutor.
           </p>
 
-          <p className="mb-6 sm:mb-8 md:mb-10">
+          <p className="text-sm sm:text-base md:text-lg mb-6 sm:mb-8 md:mb-10">
             A formação de recursos humanos é outro ponto de destaque do SACRE. Hoje o projeto conta
             com 26 alunos e pesquisadores bolsistas e outros 4 não bolsistas, incluindo 1 Jovem
             Pesquisador; 2 Pós-Doutorados (PD); 5 Doutorados Direto; 3 Doutorados; 5 Mestrados; 4
@@ -151,7 +151,7 @@ export default function Projeto() {
             stakeholders locais e estaduais, como de Comitês de Bacia e de organismos nacionais.
           </p>
 
-          <p className="mb-6 sm:mb-8 md:mb-10">
+          <p className="text-sm sm:text-base md:text-lg mb-6 sm:mb-8 md:mb-10">
             A comunicação científica tem papel decisivo no SACRE, pois entende-se que políticas
             públicas são efetivas se construídas em acordo com a sociedade e os seus stakeholders.
             Como um projeto científico, o letramento científico⁷ é fundamental para a sociedade
@@ -161,7 +161,7 @@ export default function Projeto() {
             Águas⁸, HidroGeoDia⁹, e produtos específicos em mídia digital.
           </p>
 
-          <p className="mb-0">
+          <p className="text-sm sm:text-base md:text-lg mb-0">
             Ao final do Projeto SACRE, um fórum permanente será criado com o propósito de apoiar a
             gestão das águas subterrâneas, através das agências governamentais parceiras. O SACRE
             conta com o financiamento da FAPESP pelo Projeto Temático (2020/15434-0) e de Jovem
