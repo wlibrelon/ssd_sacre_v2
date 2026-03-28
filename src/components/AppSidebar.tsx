@@ -39,10 +39,19 @@ export const AppSidebar = ({ onOpenSobre }: { onOpenSobre: () => void }) => {
       icon: Building2,
       items: [
         { title: 'Projeto SACRE', url: '/institucional/projeto' },
-        { title: 'Work Package', url: '/resultados/1' },
         { title: 'Cidade Bauru', url: '/institucional/bauru' },
         { title: 'Desafios', url: '/institucional/desafios' },
         { title: 'Equipe', url: '/institucional/equipe' },
+      ],
+    },
+    {
+      title: 'Área de Estudo',
+      icon: Building2,
+      items: [
+        { title: 'Características', url: '/areaestudo/caracteristicas' },
+        { title: 'Desafios', url: '/areaestudo/desafios' },
+        { title: 'Objetivos', url: '/areaestudo/objetivos' },
+        { title: 'Metas', url: '/areaestudo/metas' },
       ],
     },
     {
