@@ -44,15 +44,13 @@ export default function Bauru() {
         {/* Imagem de fundo com overlays */}
         <div
           className="absolute inset-0 z-0 bg-cover bg-center object-cover brightness-110"
-          style={{ backgroundImage: 'url(/image_2_projeto.png)' }}
+          style={{
+            backgroundImage: `url('/imagem_2_bauru.png')`, // Aspas + / explícito
+            backgroundSize: '80% auto',
+          }}
         />
         <div className="absolute inset-0 z-10 bg-primary/40 mix-blend-overlay" />
         <div className="absolute inset-0 z-10 bg-gradient-to-t from-primary/60 via-transparent to-transparent" />
-
-        {/* Título MENOR no TOPO (uma linha) */}
-        <h1 className="absolute top-4 left-1/2 transform -translate-x-1/2 z-20 text-3xl md:text-5xl font-bold tracking-tight text-white drop-shadow-2xl whitespace-nowrap">
-          Gestão Hídrica Baseada em Dados
-        </h1>
       </section>
 
       {/*}
