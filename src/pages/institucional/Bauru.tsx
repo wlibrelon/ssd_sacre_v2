@@ -34,7 +34,7 @@ export default function Bauru() {
           </div>
 
           {/* COLUNA DIREITA: IMAGEM MAIOR E QUADRADA */}
-          <div className="aspect-square min-h-[400px] md:min-h-[400px] relative rounded-xl overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200"> {/* aspect-square + altura maior */}
+          <div className="aspect-square min-h-[300px] md:min-h-[500px] relative rounded-xl overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200"> {/* aspect-square + altura maior */}
             <div
               className="absolute inset-0 z-0 bg-center bg-cover bg-no-repeat brightness-110 w-full h-full" {/* bg-cover para quadrada */}
               style={{
@@ -46,6 +46,7 @@ export default function Bauru() {
           </div>
         </div>
       </div>
+
 
       <p className="text-muted-foreground text-lg mb-8">O problema hídrico da região</p>
       <p>
