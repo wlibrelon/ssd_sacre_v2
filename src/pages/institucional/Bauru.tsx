@@ -44,7 +44,7 @@ export default function Bauru() {
         {/* Imagem de fundo com overlays */}
         <div
           className="absolute inset-0 z-0 bg-cover bg-center object-cover brightness-110"
-          style={{ backgroundImage: 'url(/image_1_bauru.png)' }}
+          style={{ backgroundImage: 'url(/image_2_projeto.png)' }}
         />
         <div className="absolute inset-0 z-10 bg-primary/40 mix-blend-overlay" />
         <div className="absolute inset-0 z-10 bg-gradient-to-t from-primary/60 via-transparent to-transparent" />
