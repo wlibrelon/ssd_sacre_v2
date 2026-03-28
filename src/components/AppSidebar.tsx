@@ -45,16 +45,6 @@ export const AppSidebar = ({ onOpenSobre }: { onOpenSobre: () => void }) => {
       ],
     },
     {
-      title: 'Área de Estudo',
-      icon: Building2,
-      items: [
-        { title: 'Características', url: '/areaestudo/caracteristicas' },
-        { title: 'Desafios', url: '/areaestudo/desafios' },
-        { title: 'Objetivos', url: '/areaestudo/objetivos' },
-        { title: 'Metas', url: '/areaestudo/metas' },
-      ],
-    },
-    {
       title: 'SSD',
       icon: Activity,
       items: [
