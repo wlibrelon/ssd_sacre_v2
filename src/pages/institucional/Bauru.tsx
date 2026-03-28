@@ -7,13 +7,9 @@ export default function Bauru() {
       <p className="text-muted-foreground text-lg mb-8">A área de estudo</p>
 
       <div className="relative rounded-2xl overflow-hidden min-h-[300px] md:min-h-[400px]">
-        <div className="grid md:grid-cols-[1fr_1.5fr] gap-6 md:gap-8 items-start h-full p-6 md:p-8"> {/* Gap menor, cols desbalanceadas */}
-          {/* COLUNA ESQUERDA: TEXTO EM PRETO - espaços reduzidos */}
-          <div className="space-y-2 md:space-y-3 text-gray-900"> {/* space-y reduzido */}
-            {/* Título 1: Colado ao texto abaixo */}
-            <h3 className="text-xl md:text-2xl font-bold text-gray-900 mb-2"> {/* mb-2 pequeno */}
-              A área de estudo
-            </h3>
+        <div className="grid md:grid-cols-2 gap-8 items-center h-full p-6 md:p-8">
+          {/* COLUNA ESQUERDA: TEXTO EM PRETO */}
+          <div className="space-y-4 text-gray-900">
             <p>
               Localizada nas porções altas das bacias dos rios Batalha e Bauru, compreende parte dos
               municípios de Bauru, Piratininga e Agudos. Esta região está localizada no centro do
@@ -26,27 +22,22 @@ export default function Bauru() {
               centro é Piratininga, com uma população de 12 mil habitantes e um PIB de R$ 260
               milhões.
             </p>
-            {/* Título 2: Espaço mínimo acima do texto (se houver mais), mas mt moderado */}
-            <h3 className="text-xl md:text-2xl font-bold text-gray-900 mt-4 mb-2"> {/* mt-4 reduzido, mb-2 */}
-              O problema hídrico da região
-            </h3>
-            {/* Adicione aqui o texto do segundo título se existir */}
           </div>
 
-          {/* COLUNA DIREITA: IMAGEM MAIOR E QUADRADA */}
-          <div className="aspect-square min-h-[300px] md:min-h-[500px] relative rounded-xl overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200"> {/* aspect-square + altura maior */}
+          {/* COLUNA DIREITA: IMAGEM LIMPA */}
+          <div className="min-h-[250px] md:min-h-[450px] relative rounded-xl overflow-hidden bg-gray-50">
+            {' '}
+            {/* bg-gray-50 fallback */}
             <div
-              className="absolute inset-0 z-0 bg-center bg-cover bg-no-repeat brightness-110 w-full h-full" {/* bg-cover para quadrada */}
+              className="absolute inset-0 z-0 bg-center bg-no-repeat brightness-110 w-full h-full"
               style={{
-                backgroundImage: `url('/imagem_1_bauru.png')`,
-                backgroundSize: 'cover', // Preenche quadrado sem distorção
-                backgroundPosition: 'center',
+                backgroundImage: `url('/imagem_1_bauru.png')`, // Aspas + / explícito
+                backgroundSize: '80% auto',
               }}
             />
           </div>
         </div>
       </div>
-
 
       <p className="text-muted-foreground text-lg mb-8">O problema hídrico da região</p>
       <p>
