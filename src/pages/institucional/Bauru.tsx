@@ -140,7 +140,7 @@ export default function Bauru() {
 
       <div className="grid md:grid-cols-1 gap-8 items-center">
         <div className="space-y-4">
-          <p className="text-muted-foreground text-justify mb-6>As soluções do SACRE</p>
+          <p className="text-muted-foreground text-justify mb-6">As soluções do SACRE</p>
           <p>
             O município de Bauru oferece “outras águas” ainda pouco exploradas para o abastecimento
             público e privado, que são aquelas que o SACRE está estudando para serem incorporadas ao
