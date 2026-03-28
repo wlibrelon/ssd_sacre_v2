@@ -6,34 +6,52 @@ export default function Bauru() {
       <h1 className="text-3xl font-bold text-primary mb-2">Estudo de Caso: Cidade de Bauru</h1>
       <p className="text-muted-foreground text-lg mb-8">A área de estudo</p>
 
-      <div className="relative rounded-2xl overflow-hidden min-h-[300px] md:min-h-[400px]">
-        <div className="grid md:grid-cols-2 gap-8 items-center h-full p-6 md:p-8">
-          {/* COLUNA ESQUERDA: TEXTO EM PRETO */}
-          <div className="space-y-4 text-gray-900">
-            <p>
-              Localizada nas porções altas das bacias dos rios Batalha e Bauru, compreende parte dos
-              municípios de Bauru, Piratininga e Agudos. Esta região está localizada no centro do
-              Estado de São Paulo, nas unidades de Gerenciamento dos Recursos Hídricos do
-              Tietê-Batalha e Tietê-Jacaré.
-            </p>
-            <p>
-              O principal núcleo urbano e alvo da pesquisa é Bauru, um destacado polo econômico
-              regional, com uma população de 380 mil habitantes, e um PIB de R$ 15 bilhões. Outro
-              centro é Piratininga, com uma população de 12 mil habitantes e um PIB de R$ 260
-              milhões.
+      <div className="relative rounded-2xl overflow-hidden min-h-[280px] md:min-h-[380px]">
+        <div className="grid grid-cols-1 md:grid-cols-[2fr_3fr] gap-4 md:gap-6 items-start p-4 md:p-6 h-auto">
+          {' '}
+          {/* Gap/margins reduzidos, cols mais desbalanceadas */}
+          {/* COLUNA ESQUERDA: TEXTO COM ESPAÇOS MÍNIMOS */}
+          <div className="space-y-1.5 md:space-y-2 text-gray-900">
+            {' '}
+            {/* Espaçamento ultra-compacto */}
+            {/* TÍTULO 1: Margin-bottom mínimo ao texto */}
+            <h3 className="text-lg md:text-xl font-bold text-gray-900 mb-1.5 md:mb-2 leading-tight">
+              A área de estudo
+            </h3>
+            <div className="space-y-1.5 md:space-y-2 leading-relaxed">
+              {' '}
+              {/* Inner space para parágrafos */}
+              <p>
+                Localizada nas porções altas das bacias dos rios Batalha e Bauru, compreende parte
+                dos municípios de Bauru, Piratininga e Agudos. Esta região está localizada no centro
+                do Estado de São Paulo, nas unidades de Gerenciamento dos Recursos Hídricos do
+                Tietê-Batalha e Tietê-Jacaré.
+              </p>
+              <p>
+                O principal núcleo urbano e alvo da pesquisa é Bauru, um destacado polo econômico
+                regional, com uma população de 380 mil habitantes, e um PIB de R$ 15 bilhões. Outro
+                centro é Piratininga, com uma população de 12 mil habitantes e um PIB de R$ 260
+                milhões.
+              </p>
+            </div>
+            {/* TÍTULO 2: Margin-top mínimo após texto, mb colado ao conteúdo futuro */}
+            <h3 className="text-lg md:text-xl font-bold text-gray-900 mt-3 md:mt-4 mb-1.5 md:mb-2 leading-tight">
+              O problema hídrico da região
+            </h3>
+            {/* Placeholder para texto do problema - ADICIONE AQUI o conteúdo específico */}
+            <p className="text-gray-700 italic">
+              /* Insira aqui o texto sobre o problema hídrico */
             </p>
           </div>
-
-          {/* COLUNA DIREITA: IMAGEM LIMPA */}
-          <div className="min-h-[250px] md:min-h-[450px] relative rounded-xl overflow-hidden bg-gray-50">
+          {/* COLUNA DIREITA: IMAGEM QUADRADA MAIOR E OTIMIZADA */}
+          <div className="aspect-square md:min-h-[420px] relative rounded-xl overflow-hidden bg-gradient-to-br from-gray-100 via-gray-50 to-white shadow-inner">
             {' '}
-            {/* bg-gray-50 fallback */}
-            <div
-              className="absolute inset-0 z-0 bg-center bg-no-repeat brightness-110 w-full h-full"
-              style={{
-                backgroundImage: `url('/imagem_1_bauru.png')`, // Aspas + / explícito
-                backgroundSize: '80% auto',
-              }}
+            {/* Altura maior, fallback melhor */}
+            <img
+              src="/imagem_1_bauru.png"
+              alt="Mapa da área de estudo: bacias Batalha e Bauru (Bauru-SP)"
+              className="absolute inset-0 w-full h-full object-cover brightness-105 rounded-xl" /* IMG nativa > background para perf/acessibilidade */
+              loading="lazy"
             />
           </div>
         </div>
