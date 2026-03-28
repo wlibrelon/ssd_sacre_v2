@@ -4,7 +4,7 @@ export default function Bauru() {
   return (
     <div className="max-w-4xl space-y-8 animate-fade-in">
       <h1 className="text-3xl font-bold text-primary mb-2">Estudo de Caso: Cidade de Bauru</h1>
-      <p className="text-muted-foreground text-lg mb-8">A área de estudo</p>
+      <p className="text-muted-foreground text-justify mb-6">A área de estudo</p>
 
       <div className="relative rounded-2xl overflow-hidden min-h-[280px] md:min-h-[380px]">
         <div className="grid grid-cols-1 md:grid-cols-[1.4fr_2fr] gap-4 md:gap-6 items-start p-4 md:p-6 h-auto">
@@ -37,7 +37,7 @@ export default function Bauru() {
         </div>
       </div>
 
-      <p className="text-muted-foreground text-lg mb-8">O problema hídrico da região</p>
+      <p className="text-muted-foreground text-justify mb-6">O problema hídrico da região</p>
       <p>
         Embora o abastecimento público de Bauru venha de uma captação no rio Batalha (13,2 Mm³/ano)
         e de 39 poços tubulares profundos no Sistema Aquífero Guarani (34,6 Mm³/ano) (dados de
@@ -67,7 +67,7 @@ export default function Bauru() {
         <div className="absolute inset-0 z-10 bg-gradient-to-t from-primary/60 via-transparent to-transparent" />
       </section>
 
-      <p className="text-muted-foreground text-lg mb-8">
+      <p className="text-muted-foreground text-justify mb-6">
         Problemas na sustentabilidade do abastecimento
       </p>
       <p>
@@ -140,7 +140,7 @@ export default function Bauru() {
 
       <div className="grid md:grid-cols-1 gap-8 items-center">
         <div className="space-y-4">
-          <p className="text-muted-foreground text-lg mb-8">As soluções do SACRE</p>
+          <p className="text-muted-foreground text-justify mb-6>As soluções do SACRE</p>
           <p>
             O município de Bauru oferece “outras águas” ainda pouco exploradas para o abastecimento
             público e privado, que são aquelas que o SACRE está estudando para serem incorporadas ao
@@ -157,7 +157,7 @@ export default function Bauru() {
             alocação dos recursos hídricos.{' '}
           </p>
 
-          <p className="text-muted-foreground text-lg mb-8">Soluções não apenas para Bauru</p>
+          <p className="text-muted-foreground text-justify mb-6">Soluções não apenas para Bauru</p>
           <p>
             Muitos dos problemas de Bauru são também encontrados em outras cidades brasileiras,
             permitindo que as soluções desenvolvidas pelo projeto possam ser transferidas e
