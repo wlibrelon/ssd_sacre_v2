@@ -168,7 +168,7 @@ export default function Bauru() {
         <img
           className="absolute inset-0 z-0 bg-center bg-no-repeat brightness-110"
           style={{
-            backgroundImage: 'url(/imagem_3_bauru.png)',
+            backgroundImage: 'url(/imagem_4_bauru.png)',
             backgroundSize: '70% 70%', // Tamanho fixo %: ajusta sem cortar, centraliza. Teste 60%-80%.
           }}
         />
