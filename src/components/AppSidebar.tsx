@@ -16,7 +16,6 @@ import {
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
-  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
@@ -79,42 +78,44 @@ export const AppSidebar = ({ onOpenSobre }: { onOpenSobre: () => void }) => {
     >
       <SidebarContent className="pt-4">
         {navGroups.map((group) => (
-          <Collapsible key={group.title} defaultOpen={false} className="group/collapsible">
-            <SidebarGroup>
-              <SidebarGroupLabel asChild>
-                <CollapsibleTrigger className="flex items-center w-full hover:bg-sidebar-accent hover:text-sidebar-accent-foreground rounded-md p-2 cursor-pointer transition-colors">
-                  <group.icon className="h-4 w-4 mr-2 shrink-0 text-white" />
-                  <span className="truncate font-medium text-sidebar-foreground text-base">
-                    {group.title}
-                  </span>
-                  <ChevronRight className="ml-auto h-4 w-4 shrink-0 transition-transform group-data-[state=open]/collapsible:rotate-90 text-muted-foreground" />
-                </CollapsibleTrigger>
-              </SidebarGroupLabel>
-              <CollapsibleContent>
-                <SidebarMenuSub className="mt-1">
-                  {group.items.map((item) => (
-                    <SidebarMenuSubItem key={item.title}>
-                      <SidebarMenuSubButton asChild isActive={isActive(item.url)}>
-                        <Link
-                          to={item.url}
-                          className="truncate font-medium text-sidebar-foreground"
-                        >
-                          {item.title}
-                        </Link>
-                      </SidebarMenuSubButton>
-                    </SidebarMenuSubItem>
-                  ))}
-                </SidebarMenuSub>
-              </CollapsibleContent>
-            </SidebarGroup>
-          </Collapsible>
+          <SidebarGroup key={group.title}>
+            <SidebarMenuItem asChild>
+              <Collapsible defaultOpen={false}>
+                <SidebarMenuButton asChild>
+                  <CollapsibleTrigger className="w-full hover:bg-sidebar-accent hover:text-sidebar-accent-foreground rounded-md p-2 transition-colors data-[state=open]:bg-sidebar-accent/50">
+                    <group.icon className="h-4 w-4 mr-2 shrink-0 text-sidebar-foreground" />
+                    <span className="truncate font-medium text-sidebar-foreground text-base">
+                      {group.title}
+                    </span>
+                    <ChevronRight className="ml-auto h-4 w-4 shrink-0 transition-transform duration-200 data-[state=open]:rotate-90 text-muted-foreground" />
+                  </CollapsibleTrigger>
+                </SidebarMenuButton>
+                <CollapsibleContent className="-mt-1">
+                  <SidebarMenuSub>
+                    {group.items.map((item) => (
+                      <SidebarMenuSubItem key={item.title}>
+                        <SidebarMenuSubButton asChild isActive={isActive(item.url)}>
+                          <Link
+                            to={item.url}
+                            className="truncate font-medium text-sidebar-foreground"
+                          >
+                            {item.title}
+                          </Link>
+                        </SidebarMenuSubButton>
+                      </SidebarMenuSubItem>
+                    ))}
+                  </SidebarMenuSub>
+                </CollapsibleContent>
+              </Collapsible>
+            </SidebarMenuItem>
+          </SidebarGroup>
         ))}
 
         <SidebarGroup>
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton onClick={onOpenSobre} tooltip="Fale Conosco">
-                <Info className="h-4 w-4 shrink-0 text-white" />
+                <Info className="h-4 w-4 shrink-0 text-sidebar-foreground" />
                 <span className="truncate font-medium text-sidebar-foreground">Fale Conosco</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
