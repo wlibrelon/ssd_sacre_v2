@@ -12,7 +12,7 @@ import {
   ChartLegendContent,
 } from '@/components/ui/chart'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts'
-import { Play, Settings2 } from 'lucide-react'
+import { Play, Settings2, Activity } from 'lucide-react' // ← Adicione Activity
 
 const generateMockData = (prec: number, pop: number, loss: number) => {
   const baseDemand = 100 + pop / 10
