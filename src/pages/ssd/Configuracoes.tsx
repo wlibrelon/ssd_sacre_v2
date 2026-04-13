@@ -74,6 +74,29 @@ const DataPanel = ({ title, data, cols }: { title?: string; data: any[]; cols: s
   </div>
 )
 
+// 🔧 Função auxiliar para corrigir encoding de caracteres acentuados
+function fixEncoding(text: string): string {
+  // Detecta caracteres corrompidos comuns quando UTF-8 é mal interpretado
+  const hasCorruptedChars =
+    /[\u00C2\u00C3\u00C9\u00CA\u00D4\u00DB\u00E2\u00EA\u00F4\u00FB\uFFFD]/g.test(text)
+
+  if (hasCorruptedChars) {
+    try {
+      // Tenta decodificar como ISO-8859-1 (Latin-1)
+      const bytes = new Uint8Array(text.length)
+      for (let i = 0; i < text.length; i++) {
+        bytes[i] = text.charCodeAt(i)
+      }
+      return new TextDecoder('iso-8859-1').decode(bytes)
+    } catch (error) {
+      console.warn('Falha ao corrigir encoding:', error)
+      return text
+    }
+  }
+
+  return text
+}
+
 export default function Configuracoes() {
   const { csvData, setCsvData, taxaRetorno, setTaxaRetorno } = useSimulationStore()
   const [taxa, setTaxa] = useState(taxaRetorno.toString())
@@ -94,8 +117,12 @@ export default function Configuracoes() {
     const reader = new FileReader()
     reader.onload = (event) => {
       try {
-        const result = event.target?.result as string | undefined
+        let result = event.target?.result as string | undefined
         if (!result) throw new Error('File empty or invalid')
+
+        // 🔧 Aplicar correção de encoding
+        result = fixEncoding(result)
+
         const lines = result.split('\n')
         const parsed = lines
           .slice(1)
@@ -111,7 +138,7 @@ export default function Configuracoes() {
               CAPEX,
               OPEX,
               Aceitacao_Social,
-            ] = line.split(',')
+            ] = line.split(',').map((col) => col.trim())
             return {
               Tempo,
               Fonte,
@@ -141,7 +168,7 @@ export default function Configuracoes() {
         })
       }
     }
-    reader.readAsText(file)
+    reader.readAsText(file, 'UTF-8')
   }
 
   return (
