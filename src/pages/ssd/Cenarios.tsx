@@ -20,7 +20,11 @@ const PERDAS = [
   { label: 'Atual (30%)', val: 0.3 },
   { label: 'Meta (15%)', val: 0.15 },
 ]
-const DEMANDAS = ['Tendencial', 'Acelerada', 'Reduzida']
+const DEMANDAS = [
+  { label: 'Tendencial', val: 100 },
+  { label: 'Acelerada', val: 120 },
+  { label: 'Reduzida', val: 80 },
+]
 const ACOES = [
   'Barraginhas',
   'Campo de poços SAG',
@@ -47,21 +51,20 @@ const MySelect = ({ val, setVal, placeholder, options }: any) => (
 export default function Cenarios() {
   const { csvData } = useSimulationStore()
   const [selections, setSelections] = useState<Record<string, any>>(
-    FONTES.reduce(
-      (acc, f) => ({ ...acc, [f]: { cenario: '', sub: '', perdas: 0.3, demanda: '', acoes: [] } }),
-      {},
-    ),
+    FONTES.reduce((acc, f) => ({ ...acc, [f]: { cenario: '', sub: '', acoes: [] } }), {}),
   )
+  const [globalPerdas, setGlobalPerdas] = useState(0.3)
+  const [globalDemanda, setGlobalDemanda] = useState(100)
   const [results, setResults] = useState<any[]>([])
   const [timeData, setTimeData] = useState<any[]>([])
 
   const handleSimulate = () => {
     const res = csvData.map((r) => {
       const sel = selections[r.Fonte]
-      const perdas = sel ? sel.perdas : 0.3
       return {
         ...r,
-        Vazao_Distribuida: r.Vazao_Captada * (1 - perdas),
+        Vazao_Distribuida: r.Vazao_Captada * (1 - globalPerdas),
+        Demanda: globalDemanda,
         Cenario_da_fonte: sel ? `${sel.cenario} ${sel.sub}` : '',
         Acoes: sel ? sel.acoes.join(', ') : '',
       }
@@ -124,24 +127,6 @@ export default function Cenarios() {
                     placeholder="Sub Cenário"
                     options={SUB_CENARIOS}
                   />
-                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">
-                    Perdas
-                  </p>
-                  <MySelect
-                    val={sel.perdas.toString()}
-                    setVal={(v: string) => update('perdas', parseFloat(v))}
-                    placeholder="Trajetória de Perdas"
-                    options={PERDAS}
-                  />
-                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">
-                    Demanda
-                  </p>
-                  <MySelect
-                    val={sel.demanda}
-                    setVal={(v: string) => update('demanda', v)}
-                    placeholder="Cenário de Demanda"
-                    options={DEMANDAS}
-                  />
                 </div>
                 <div className="pt-3 border-t">
                   <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
@@ -175,6 +160,38 @@ export default function Cenarios() {
           )
         })}
       </div>
+
+      <Card className="shadow-sm border-t-4 border-t-secondary">
+        <CardHeader className="py-4 bg-slate-50/50">
+          <CardTitle className="text-lg">Parâmetros Globais</CardTitle>
+        </CardHeader>
+        <CardContent className="pt-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">
+                Perdas
+              </p>
+              <MySelect
+                val={globalPerdas.toString()}
+                setVal={(v: string) => setGlobalPerdas(parseFloat(v))}
+                placeholder="Trajetória de Perdas"
+                options={PERDAS}
+              />
+            </div>
+            <div className="space-y-2">
+              <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">
+                Demanda
+              </p>
+              <MySelect
+                val={globalDemanda.toString()}
+                setVal={(v: string) => setGlobalDemanda(parseFloat(v))}
+                placeholder="Cenário de Demanda"
+                options={DEMANDAS}
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="flex justify-end">
         <Button
