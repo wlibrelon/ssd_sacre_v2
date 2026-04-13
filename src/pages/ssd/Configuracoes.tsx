@@ -89,7 +89,7 @@ export default function Configuracoes() {
     const file = e.target.files?.[0]
     if (!file) return
 
-    setSelectedFile(file.name) // Feedback visual imediato
+    setSelectedFile(file.name)
 
     const reader = new FileReader()
     reader.onload = (event) => {
@@ -101,11 +101,22 @@ export default function Configuracoes() {
           .slice(1)
           .filter((l) => l.trim())
           .map((line) => {
-            const [Tempo, Fonte, Vazao_Captada, Demanda, CAPEX, OPEX, Aceitacao_Social] =
-              line.split(',')
+            const [
+              Tempo,
+              Fonte,
+              Cenario,
+              Estrategia,
+              Vazao_Captada,
+              Demanda,
+              CAPEX,
+              OPEX,
+              Aceitacao_Social,
+            ] = line.split(',')
             return {
               Tempo,
               Fonte,
+              Cenario,
+              Estrategia,
               Vazao_Captada: parseFloat(Vazao_Captada || '0'),
               Demanda: parseFloat(Demanda || '0'),
               CAPEX: parseFloat(CAPEX || '0'),
@@ -121,11 +132,11 @@ export default function Configuracoes() {
           })
         } else throw new Error('Invalid CSV')
       } catch (err) {
-        setSelectedFile(null) // Limpa feedback em erro
+        setSelectedFile(null)
         toast({
           title: 'Erro de Importação',
           description:
-            'Formato de CSV inválido. Verifique colunas: Tempo,Fonte,Vazao_Captada,Demanda,CAPEX,OPEX,Aceitacao_Social.',
+            'Formato de CSV inválido. Verifique colunas: Tempo,Fonte,Cenario,Estrategia,Vazao_Captada,Demanda,CAPEX,OPEX,Aceitacao_Social.',
           variant: 'destructive',
         })
       }
@@ -219,15 +230,25 @@ export default function Configuracoes() {
                 </p>
               )}
               <p className="mt-2 text-xs text-muted-foreground text-center">
-                Arraste ou clique para selecionar um CSV com colunas: Tempo, Fonte, Vazão Captada,
-                Demanda, CAPEX, OPEX, Aceitação Social
+                Arraste ou clique para selecionar um CSV com colunas: Tempo, Fonte, Cenário,
+                Estratégia, Vazão Captada, Demanda, CAPEX, OPEX, Aceitação Social
               </p>
             </div>
             {csvData.length > 0 ? (
               <DataPanel
                 title={`Preview da Matriz (${csvData.length} registros)`}
                 data={csvData.slice(0, 5)}
-                cols={['Tempo', 'Fonte', 'Vazão Cap.', 'Demanda', 'CAPEX', 'OPEX', 'Aceitação']}
+                cols={[
+                  'Tempo',
+                  'Fonte',
+                  'Cenário',
+                  'Estratégia',
+                  'Vazão Cap.',
+                  'Demanda',
+                  'CAPEX',
+                  'OPEX',
+                  'Aceitação',
+                ]}
               />
             ) : (
               <p className="text-sm text-muted-foreground italic text-center py-8">
