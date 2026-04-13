@@ -106,24 +106,36 @@ export default function Cenarios() {
               </CardHeader>
               <CardContent className="space-y-4 pt-4">
                 <div className="space-y-2">
+                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">
+                    Cenários
+                  </p>
                   <MySelect
                     val={sel.cenario}
                     setVal={(v: string) => update('cenario', v)}
                     placeholder="Selecione o Cenário"
                     options={CENARIOS}
                   />
+                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">
+                    Sub Cenários
+                  </p>
                   <MySelect
                     val={sel.sub}
                     setVal={(v: string) => update('sub', v)}
                     placeholder="Sub Cenário"
                     options={SUB_CENARIOS}
                   />
+                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">
+                    Perdas
+                  </p>
                   <MySelect
                     val={sel.perdas.toString()}
                     setVal={(v: string) => update('perdas', parseFloat(v))}
                     placeholder="Trajetória de Perdas"
                     options={PERDAS}
                   />
+                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">
+                    Demanda
+                  </p>
                   <MySelect
                     val={sel.demanda}
                     setVal={(v: string) => update('demanda', v)}
