@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Table,
@@ -77,11 +77,20 @@ const DataPanel = ({ title, data, cols }: { title?: string; data: any[]; cols: s
 export default function Configuracoes() {
   const { csvData, setCsvData, taxaRetorno, setTaxaRetorno } = useSimulationStore()
   const [taxa, setTaxa] = useState(taxaRetorno.toString())
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [selectedFile, setSelectedFile] = useState<string | null>(null)
   const { toast } = useToast()
+
+  const handleButtonClick = () => {
+    fileInputRef.current?.click()
+  }
 
   const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
+
+    setSelectedFile(file.name) // Feedback visual imediato
+
     const reader = new FileReader()
     reader.onload = (event) => {
       try {
@@ -97,11 +106,11 @@ export default function Configuracoes() {
             return {
               Tempo,
               Fonte,
-              Vazao_Captada: parseFloat(Vazao_Captada),
-              Demanda: parseFloat(Demanda),
-              CAPEX: parseFloat(CAPEX),
-              OPEX: parseFloat(OPEX),
-              Aceitacao_Social: parseInt(Aceitacao_Social),
+              Vazao_Captada: parseFloat(Vazao_Captada || '0'),
+              Demanda: parseFloat(Demanda || '0'),
+              CAPEX: parseFloat(CAPEX || '0'),
+              OPEX: parseFloat(OPEX || '0'),
+              Aceitacao_Social: parseInt(Aceitacao_Social || '0'),
             }
           })
         if (parsed.length > 0 && parsed[0].Tempo) {
@@ -112,9 +121,11 @@ export default function Configuracoes() {
           })
         } else throw new Error('Invalid CSV')
       } catch (err) {
+        setSelectedFile(null) // Limpa feedback em erro
         toast({
           title: 'Erro de Importação',
-          description: 'Formato de CSV inválido.',
+          description:
+            'Formato de CSV inválido. Verifique colunas: Tempo,Fonte,Vazao_Captada,Demanda,CAPEX,OPEX,Aceitacao_Social.',
           variant: 'destructive',
         })
       }
@@ -181,16 +192,36 @@ export default function Configuracoes() {
             <CardTitle className="text-lg">4. Importação de Dados (CSV)</CardTitle>
           </CardHeader>
           <CardContent className="space-y-5">
-            <div className="flex items-center gap-4 bg-slate-50 p-4 rounded-lg border">
-              <Input
+            <div className="bg-slate-50 p-6 rounded-xl border-2 border-dashed border-slate-200 hover:border-primary/50 transition-all duration-200 group">
+              <label htmlFor="file-upload" className="cursor-pointer block w-full">
+                <Button
+                  type="button"
+                  size="lg"
+                  className="w-full justify-center group-hover:scale-[1.02] transition-transform"
+                  onClick={handleButtonClick}
+                  aria-label="Escolher arquivo CSV"
+                >
+                  <Upload className="mr-2 h-5 w-5" />
+                  {selectedFile ? 'Alterar arquivo' : 'Escolher .CSV'}
+                </Button>
+              </label>
+              <input
+                ref={fileInputRef}
+                id="file-upload"
                 type="file"
                 accept=".csv"
                 onChange={handleUpload}
-                className="max-w-[200px] cursor-pointer"
+                className="sr-only"
               />
-              <Button variant="outline" className="pointer-events-none">
-                <Upload className="mr-2 h-4 w-4" /> Escolher .csv
-              </Button>
+              {selectedFile && (
+                <p className="mt-3 text-sm text-success font-medium flex items-center justify-center">
+                  ✅ {selectedFile} selecionado
+                </p>
+              )}
+              <p className="mt-2 text-xs text-muted-foreground text-center">
+                Arraste ou clique para selecionar um CSV com colunas: Tempo, Fonte, Vazão Captada,
+                Demanda, CAPEX, OPEX, Aceitação Social
+              </p>
             </div>
             {csvData.length > 0 ? (
               <DataPanel
@@ -199,8 +230,8 @@ export default function Configuracoes() {
                 cols={['Tempo', 'Fonte', 'Vazão Cap.', 'Demanda', 'CAPEX', 'OPEX', 'Aceitação']}
               />
             ) : (
-              <p className="text-sm text-muted-foreground italic">
-                Nenhuma matriz de dados importada.
+              <p className="text-sm text-muted-foreground italic text-center py-8">
+                Importe um CSV para visualizar a matriz de simulação.
               </p>
             )}
           </CardContent>
