@@ -78,7 +78,9 @@ export default function Configuracoes() {
     const reader = new FileReader()
     reader.onload = (event) => {
       try {
-        const lines = (event.target?.result as string).split('\n')
+        const result = event.target?.result as string | undefined
+        if (!result) throw new Error('File empty or invalid')
+        const lines = result.split('\n')
         const parsed = lines
           .slice(1)
           .filter((l) => l.trim())
