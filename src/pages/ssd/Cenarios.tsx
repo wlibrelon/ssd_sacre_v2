@@ -14,14 +14,20 @@ import useSimulationStore from '@/stores/useSimulationStore'
 import { SimulationCharts } from '@/components/SimulationCharts'
 
 const FONTES = ['Batalha', 'Bauru', 'Guarani']
-const CENARIOS = ['Base', 'Clima Seco', 'Clima Úmido']
-const SUB_CENARIOS = ['Curto Prazo', 'Médio Prazo', 'Longo Prazo']
+const CENARIOS = ['Tendencial', 'Pessimista', 'Conservacionista']
+const SUB_CENARIOS = ['Clima', 'Uso da Terra Batalha', 'Uso da Terra Bauru', 'Condutividade SAG']
 const PERDAS = [
   { label: 'Atual (30%)', val: 0.3 },
   { label: 'Meta (15%)', val: 0.15 },
 ]
-const DEMANDAS = ['Normal', 'Alta (+20%)', 'Baixa (-10%)']
-const ACOES = ['Ação 1: Nova Captação', 'Ação 2: Tratamento Avançado', 'Ação 3: Conscientização']
+const DEMANDAS = ['Tendencial', 'Acelerada', 'Reduzida']
+const ACOES = [
+  'Barraginhas',
+  'Campo de poços SAG',
+  'Uso atual SAG',
+  'Inclusão de 100 poços SAG',
+  'Uso atual SAB',
+]
 
 const MySelect = ({ val, setVal, placeholder, options }: any) => (
   <Select value={val} onValueChange={setVal}>
