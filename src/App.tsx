@@ -9,16 +9,15 @@ import Index from './pages/Index'
 import AuthPage from './pages/auth/AuthPage'
 import Dashboard from './pages/restrito/Dashboard'
 import Projeto from './pages/institucional/Projeto'
-import Bauru from './pages/institucional/Bauru'
-import Desafios from './pages/institucional/Desafios'
 import Equipe from './pages/institucional/Equipe'
 import Cenarios from './pages/ssd/Cenarios'
 import Configuracoes from './pages/ssd/Configuracoes'
-import WorkPackage from './pages/resultados/WorkPackage'
 import Publicacoes from './pages/divulgacao/Publicacoes'
 import Midia from './pages/divulgacao/Midia'
 import Congressos from './pages/divulgacao/Congressos'
 import NotFound from './pages/NotFound'
+import Placeholder from './pages/Placeholder'
+import Contexto from './pages/area-estudo/Contexto'
 
 const App = () => (
   <BrowserRouter future={{ v7_startTransition: false, v7_relativeSplatPath: false }}>
@@ -30,21 +29,44 @@ const App = () => (
           <Route element={<Layout />}>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<AuthPage />} />
-            <Route path="/restrito" element={<Dashboard />} />
 
             <Route path="/institucional/projeto" element={<Projeto />} />
-            <Route path="/institucional/bauru" element={<Bauru />} />
-            <Route path="/institucional/desafios" element={<Desafios />} />
+            <Route
+              path="/institucional/objetivos"
+              element={<Placeholder title="Objetivos Institucionais" />}
+            />
+            <Route path="/institucional/parceiros" element={<Placeholder title="Parceiros" />} />
             <Route path="/institucional/equipe" element={<Equipe />} />
+
+            <Route path="/area-estudo/contexto" element={<Contexto />} />
+            <Route
+              path="/area-estudo/objetivos"
+              element={<Placeholder title="Objetivos da Área de Estudo" />}
+            />
+            <Route path="/area-estudo/documentos" element={<Placeholder title="Documentos" />} />
+            <Route path="/area-estudo/camadas" element={<Placeholder title="Camadas (Mapas)" />} />
+
+            <Route
+              path="/projetos/objetivos"
+              element={<Placeholder title="Objetivos dos Projetos" />}
+            />
+            <Route
+              path="/projetos/resultados"
+              element={<Placeholder title="Resultados dos Projetos" />}
+            />
 
             <Route path="/ssd/cenarios" element={<Cenarios />} />
             <Route path="/ssd/configuracoes" element={<Configuracoes />} />
 
-            <Route path="/resultados/:id" element={<WorkPackage />} />
-
             <Route path="/divulgacao/publicacoes" element={<Publicacoes />} />
             <Route path="/divulgacao/midia" element={<Midia />} />
             <Route path="/divulgacao/congressos" element={<Congressos />} />
+            <Route
+              path="/divulgacao/atividades-sociais"
+              element={<Placeholder title="Atividades Sociais" />}
+            />
+
+            <Route path="/restrito" element={<Dashboard />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>

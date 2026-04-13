@@ -1,8 +1,8 @@
 import { useAuth } from '@/contexts/AuthContext'
 import { Navigate } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Database, Megaphone, Users, Settings, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { ShieldAlert, Database, Users, Download } from 'lucide-react'
 
 export default function Dashboard() {
   const { user, isAuthenticated } = useAuth()
@@ -11,83 +11,66 @@ export default function Dashboard() {
     return <Navigate to="/auth" replace />
   }
 
+  const areas = [
+    {
+      title: 'Dados dos Projetos',
+      icon: Database,
+      desc: 'Gerenciar matrizes de dados, fontes hidrológicas e parâmetros brutos para as simulações do SSD.',
+    },
+    {
+      title: 'Inclusão de Divulgações',
+      icon: Megaphone,
+      desc: 'Adicionar e editar publicações científicas, notícias na mídia, eventos e atividades sociais.',
+    },
+    {
+      title: 'Cadastros',
+      icon: Users,
+      desc: 'Gerir perfis de acesso, pesquisadores da equipe e conceder permissões para novos parceiros institucionais.',
+    },
+    {
+      title: 'Configurações',
+      icon: Settings,
+      desc: 'Ajustes gerais do portal, gestão de APIs externas e personalização da interface administrativa.',
+    },
+  ]
+
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-end">
+    <div className="space-y-8 animate-fade-in max-w-6xl mx-auto">
+      <div className="flex justify-between items-end border-b pb-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-primary">
-            Dashboard Administrativo
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Bem-vindo(a), {user?.name}. Nível de acesso:{' '}
-            <span className="font-semibold uppercase text-secondary">{user?.role}</span>
+          <h1 className="text-3xl font-bold tracking-tight text-primary">Acesso Restrito</h1>
+          <p className="text-muted-foreground mt-2 text-lg">
+            Painel Administrativo. Autenticado como:{' '}
+            <strong className="text-secondary uppercase">{user?.role}</strong>
           </p>
         </div>
-        <Button variant="outline" className="gap-2">
-          <Download className="h-4 w-4" /> Exportar Logs
-        </Button>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">Modelos Ativos</CardTitle>
-            <Database className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">14</div>
-            <p className="text-xs text-muted-foreground">+2 adicionados este mês</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">Usuários Registrados</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">128</div>
-            <p className="text-xs text-muted-foreground">Gestores e pesquisadores</p>
-          </CardContent>
-        </Card>
-        <Card className="border-secondary/50 bg-secondary/5">
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium text-secondary-foreground">
-              Acessos Pendentes
-            </CardTitle>
-            <ShieldAlert className="h-4 w-4 text-secondary" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-secondary">3</div>
-            <Button variant="link" className="p-0 h-auto text-xs">
-              Revisar solicitações
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card className="mt-8">
-        <CardHeader>
-          <CardTitle>Logs Recentes do Sistema</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {[1, 2, 3].map((i) => (
-              <div
-                key={i}
-                className="flex items-center gap-4 text-sm border-b pb-4 last:border-0 last:pb-0"
-              >
-                <div className="w-24 text-muted-foreground shrink-0">Hoje, 14:{i}0</div>
-                <div className="font-medium truncate flex-1">
-                  Script Python{' '}
-                  <code className="bg-muted px-1 py-0.5 rounded">run_scenario_v2.py</code>{' '}
-                  executado.
-                </div>
-                <div className="text-green-600 font-medium">Sucesso</div>
+      <div className="grid md:grid-cols-2 gap-6">
+        {areas.map((area) => (
+          <Card
+            key={area.title}
+            className="hover:shadow-lg transition-all duration-300 group cursor-pointer border-l-4 border-l-transparent hover:border-l-secondary"
+          >
+            <CardHeader className="flex flex-row items-center gap-4 pb-2">
+              <div className="p-3 bg-secondary/10 rounded-lg group-hover:bg-secondary/20 transition-colors">
+                <area.icon className="h-6 w-6 text-secondary" />
               </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+              <CardTitle className="text-xl group-hover:text-primary transition-colors">
+                {area.title}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground mb-4 min-h-[40px] leading-relaxed">
+                {area.desc}
+              </p>
+              <Button variant="ghost" className="w-full justify-between group-hover:bg-slate-50">
+                Acessar Módulo <ArrowRight className="h-4 w-4" />
+              </Button>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
     </div>
   )
 }
