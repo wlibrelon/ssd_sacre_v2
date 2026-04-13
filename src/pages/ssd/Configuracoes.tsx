@@ -21,24 +21,31 @@ const FONTES = [
   { id: 3, desc: 'Guarani (Subterrânea)' },
 ]
 const ACOES = [
-  { id: 1, desc: 'Nova Captação' },
-  { id: 2, desc: 'Tratamento Avançado' },
+  { id: 1, desc: 'Barraginhas' },
+  { id: 1, desc: 'Campo de poços SAG' },
+  { id: 1, desc: 'Uso atual SAG' },
+  { id: 1, desc: 'Inclusão de 100 poços SAG' },
+  { id: 2, desc: 'Uso atual SAB' },
 ]
 const CENARIOS = [
-  { id: 1, desc: 'Base' },
-  { id: 2, desc: 'Pessimista' },
+  { id: 1, desc: 'Tendencial' },
+  { id: 1, desc: 'Pessimista' },
+  { id: 2, desc: 'Conservacionista' },
 ]
 const SUB = [
-  { id: 1, desc: 'Curto Prazo' },
-  { id: 2, desc: 'Longo Prazo' },
+  { id: 1, desc: 'Clima' },
+  { id: 1, desc: 'Uso da Terra Batalha' },
+  { id: 1, desc: 'Uso da Terra Bauru' },
+  { id: 2, desc: 'Condutividade SAG' },
 ]
 const PERDAS = [
   { desc: 'Atual', val: '30%' },
   { desc: 'Reduzida', val: '15%' },
 ]
 const DEMANDAS = [
-  { id: 1, desc: 'Tendência Histórica' },
-  { id: 2, desc: 'Acelerada' },
+  { id: 1, desc: 'Tendencial' },
+  { id: 1, desc: 'Acelerada' },
+  { id: 2, desc: 'Reduzida' },
 ]
 
 const DataPanel = ({ title, data, cols }: { title?: string; data: any[]; cols: string[] }) => (
