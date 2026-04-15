@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Select,
@@ -8,224 +8,350 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
-import { Play, Upload } from 'lucide-react'
-import useSimulationStore from '@/stores/useSimulationStore'
 import {
   LineChart,
-  BarChart,
-  ComposedChart,
   Line,
-  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   Legend,
   ResponsiveContainer,
+  BarChart,
+  Bar,
+  ComposedChart,
   ReferenceLine,
 } from 'recharts'
+import { useStore } from '@/store' // Assuming a store hook, e.g., Zustand
+
+type CsvRow = {
+  Tempo: string
+  Fonte: string
+  cenario: string
+  estrategia: string
+  Vazao_Captada: number
+  Demanda: number
+  CAPEX: number
+  OPEX: number
+  Aceitacao_Social: number
+}
+
+type Simulation = {
+  id: string
+  fonte: string
+  cenario: string
+  estrategia: string
+  // Add other fields as needed
+}
 
 const Cenarios: React.FC = () => {
-  const { simulacao, setSimulacao } = useSimulationStore()
-  const [csvData, setCsvData] = useState<any[]>([])
-  const [results, setResults] = useState<any[]>([])
-  const [chart1Data, setChart1Data] = useState<any[]>([])
-  const [chart2Data, setChart2Data] = useState<any[]>([])
-  const [chart3Data, setChart3Data] = useState<any[]>([])
-  const [chart4Data, setChart4Data] = useState<any[]>([])
+  const { simulations } = useStore() // Assuming store has simulations array
+  const [csvData, setCsvData] = useState<CsvRow[]>([])
+  const [perdas, setPerdas] = useState<number>(0.3)
+  const [demandaGlobal, setDemandaGlobal] = useState<number>(100)
+  const [filteredData, setFilteredData] = useState<CsvRow[]>([])
+  const [preview, setPreview] = useState<string[]>([])
+  const [error, setError] = useState<string>('')
 
-  const handleSimulate = () => {
-    if (csvData.length === 0 || simulacao.length === 0) {
-      alert('Please import CSV and add simulations')
-      return
+  const requiredColumns = [
+    'Tempo',
+    'Fonte',
+    'cenario',
+    'estrategia',
+    'Vazao_Captada',
+    'Demanda',
+    'CAPEX',
+    'OPEX',
+    'Aceitacao_Social',
+  ]
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const text = e.target?.result as string
+      const lines = text.split('\n')
+      setPreview(lines.slice(0, 5))
+      const headers = lines[0].split(',').map((h) => h.trim().toLowerCase())
+      const missing = requiredColumns.filter((col) => !headers.includes(col.toLowerCase()))
+      if (missing.length > 0) {
+        setError(`Missing columns: ${missing.join(', ')}`)
+        return
+      }
+      setError('')
+      const data: CsvRow[] = lines
+        .slice(1)
+        .map((line) => {
+          const values = line.split(',')
+          return {
+            Tempo: values[0],
+            Fonte: values[1],
+            cenario: values[2],
+            estrategia: values[3],
+            Vazao_Captada: parseFloat(values[4]),
+            Demanda: parseFloat(values[5]),
+            CAPEX: parseFloat(values[6]),
+            OPEX: parseFloat(values[7]),
+            Aceitacao_Social: parseFloat(values[8]),
+          }
+        })
+        .filter((row) => !isNaN(row.Vazao_Captada)) // Basic validation
+      setCsvData(data)
     }
-
-    const processedResults: any[] = []
-    const chart1: any[] = []
-    const chart2: any[] = []
-    const chart3: any[] = []
-    const chart4: any[] = []
-
-    simulacao.forEach((sim: any) => {
-      const filteredData = csvData.filter(
-        (row) =>
-          row.Fonte === sim.fonte &&
-          row.cenario === sim.cenarios &&
-          row.estrategia === sim.estrategia,
-      )
-      // Process filteredData into results, chart1Data, etc.
-      // Assuming data structure: { tempo, vazao_captada, vazao_distribuida, demanda, fonte, etc. }
-      // Aggregate or map as needed
-      // For chart1: group by tempo and fonte
-      // This is placeholder; actual logic depends on data
-      const tempChart1 = filteredData.reduce((acc, row) => {
-        const existing = acc.find((item: any) => item.tempo === row.tempo)
-        if (existing) {
-          existing[row.Fonte] = row.vazao_captada
-        } else {
-          acc.push({ tempo: row.tempo, [row.Fonte]: row.vazao_captada })
-        }
-        return acc
-      }, [])
-      chart1.push(...tempChart1)
-
-      // Similar for others
-      // chart2: % per fonte per tempo
-      // chart3: vazao_captada and distribuida per tempo
-      // chart4: vazao_total_distribuida + demanda per tempo
-      // Implement aggregation logic here
-    })
-
-    setResults(processedResults)
-    setChart1Data(chart1)
-    setChart2Data(chart2)
-    setChart3Data(chart3)
-    setChart4Data(chart4)
+    reader.readAsText(file)
   }
 
+  useEffect(() => {
+    if (simulations.length === 0 || csvData.length === 0) return
+    const processed = simulations.map((sim) => {
+      const filtered = csvData.filter(
+        (row) =>
+          row.Fonte.toLowerCase() === sim.fonte.toLowerCase() &&
+          row.cenario.toLowerCase() === sim.cenario.toLowerCase() &&
+          row.estrategia.toLowerCase() === sim.estrategia.toLowerCase(),
+      )
+      console.log(`Simulation ${sim.id}: ${filtered.length} records found`)
+      return {
+        ...sim,
+        records: filtered,
+        vazaoDistribuida: filtered.map((r) => ({
+          ...r,
+          Vazao_Distribuida: r.Vazao_Captada * (1 - perdas),
+        })),
+      }
+    })
+    setFilteredData(processed.flatMap((p) => p.records))
+  }, [simulations, csvData, perdas])
+
+  // Prepare data for charts
+  const chart1Data = filteredData.reduce((acc, row) => {
+    const existing = acc.find((d) => d.Tempo === row.Tempo)
+    if (existing) {
+      existing[row.Fonte] = row.Vazao_Captada
+    } else {
+      acc.push({ Tempo: row.Tempo, [row.Fonte]: row.Vazao_Captada })
+    }
+    return acc
+  }, [] as any[])
+
+  const chart2Data = filteredData.reduce((acc, row) => {
+    const existing = acc.find((d) => d.Tempo === row.Tempo)
+    if (existing) {
+      existing[row.Fonte] = (row.Vazao_Captada / existing.total) * 100
+      existing.total += row.Vazao_Captada
+    } else {
+      acc.push({ Tempo: row.Tempo, [row.Fonte]: 100, total: row.Vazao_Captada }) // Simplified for single
+    }
+    return acc
+  }, [] as any[])
+
+  const chart3Data = filteredData.map((row) => ({
+    Tempo: row.Tempo,
+    Vazao_Captada: row.Vazao_Captada,
+    Vazao_Distribuida: row.Vazao_Captada * (1 - perdas),
+  }))
+
+  const chart4Data = filteredData.reduce((acc, row) => {
+    const existing = acc.find((d) => d.Tempo === row.Tempo)
+    if (existing) {
+      existing.Vazao_Total_Distribuida += row.Vazao_Captada * (1 - perdas)
+    } else {
+      acc.push({
+        Tempo: row.Tempo,
+        Vazao_Total_Distribuida: row.Vazao_Captada * (1 - perdas),
+        Demanda: demandaGlobal,
+      })
+    }
+    return acc
+  }, [] as any[])
+
   return (
-    <div className="space-y-6">
-      {/* Tabela Simulação */}
-      <Card className="border shadow-sm border-t-4 border-t-blue-500">
+    <div className="p-4">
+      <Card>
         <CardHeader>
-          <CardTitle>Tabela Simulação</CardTitle>
-        </CardHeader>
-        <CardContent>{/* Table content */}</CardContent>
-      </Card>
-
-      {/* Parâmetros Globais */}
-      <Card className="border shadow-sm border-t-4 border-t-green-500">
-        <CardHeader>
-          <CardTitle>Parâmetros Globais</CardTitle>
-        </CardHeader>
-        <CardContent>{/* Parameters */}</CardContent>
-      </Card>
-
-      {/* Importação CSV */}
-      <Card className="border shadow-sm border-t-4 border-t-yellow-500">
-        <CardHeader>
-          <CardTitle>Importação CSV</CardTitle>
+          <CardTitle>Simulação Table</CardTitle>
         </CardHeader>
         <CardContent>
-          <Button>
-            <Upload className="mr-2" /> Importar CSV
-          </Button>
+          <table className="w-full border-collapse border border-gray-300">
+            <thead>
+              <tr>
+                <th className="border border-gray-300 p-2">Fonte</th>
+                <th className="border border-gray-300 p-2">Cenário</th>
+                <th className="border border-gray-300 p-2">Estratégia</th>
+                {/* Add more columns as needed */}
+              </tr>
+            </thead>
+            <tbody>
+              {simulations.map((sim) => (
+                <tr key={sim.id}>
+                  <td className="border border-gray-300 p-2">{sim.fonte}</td>
+                  <td className="border border-gray-300 p-2">{sim.cenario}</td>
+                  <td className="border border-gray-300 p-2">{sim.estrategia}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </CardContent>
       </Card>
 
-      {/* Resumo Processamento */}
-      <Card className="border shadow-sm border-t-4 border-t-purple-500">
+      <Card className="mt-4">
         <CardHeader>
-          <CardTitle>Resumo Processamento</CardTitle>
+          <CardTitle>Parâmetros Globais</CardTitle>
         </CardHeader>
-        <CardContent>{/* Summary */}</CardContent>
+        <CardContent>
+          <div className="flex gap-4">
+            <Select value={perdas.toString()} onValueChange={(v) => setPerdas(parseFloat(v))}>
+              <SelectTrigger className="w-32">
+                <SelectValue placeholder="Perdas" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="0.3">30%</SelectItem>
+                <SelectItem value="0.15">15%</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select
+              value={demandaGlobal.toString()}
+              onValueChange={(v) => setDemandaGlobal(parseFloat(v))}
+            >
+              <SelectTrigger className="w-32">
+                <SelectValue placeholder="Demanda" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="100">100</SelectItem>
+                <SelectItem value="120">120</SelectItem>
+                <SelectItem value="80">80</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
       </Card>
 
-      {/* Botão Rodar Simulação */}
-      <Button onClick={handleSimulate}>
-        <Play className="mr-2" /> Rodar Simulação
-      </Button>
+      <Card className="mt-4">
+        <CardHeader>
+          <CardTitle>Upload CSV</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <input type="file" accept=".csv" onChange={handleFileUpload} />
+          {error && <p className="text-red-500">{error}</p>}
+          {preview.length > 0 && (
+            <div>
+              <h4>Preview:</h4>
+              <pre>{preview.join('\n')}</pre>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-      {/* Gráficos */}
-      {results.length > 0 && (
-        <div className="grid md:grid-cols-2 gap-4 overflow-x-auto">
-          <Card>
-            <CardHeader>
-              <CardTitle>Chart 1: Tempo vs Vazao Captada por Fonte</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={400}>
-                <LineChart data={chart1Data}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="tempo" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  {/* Dynamic lines per fonte */}
-                  {Object.keys(chart1Data[0] || {})
-                    .filter((key) => key !== 'tempo')
-                    .map((fonte, index) => (
-                      <Line
-                        key={fonte}
-                        type="monotone"
-                        dataKey={fonte}
-                        stroke={`hsl(${index * 60}, 70%, 50%)`}
-                      />
-                    ))}
-                </LineChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
+      <Card className="mt-4">
+        <CardHeader>
+          <CardTitle>Resumo de Processamento</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {simulations.map((sim) => {
+            const count = csvData.filter(
+              (row) =>
+                row.Fonte.toLowerCase() === sim.fonte.toLowerCase() &&
+                row.cenario.toLowerCase() === sim.cenario.toLowerCase() &&
+                row.estrategia.toLowerCase() === sim.estrategia.toLowerCase(),
+            ).length
+            return (
+              <p key={sim.id}>
+                {count > 0
+                  ? `${count} registros encontrados para ${sim.fonte}, ${sim.cenario}, ${sim.estrategia}`
+                  : `Nenhum registro encontrado para ${sim.fonte}, ${sim.cenario}, ${sim.estrategia}`}
+              </p>
+            )
+          })}
+        </CardContent>
+      </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Chart 2: Tempo vs % por Fonte</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={400}>
-                <BarChart data={chart2Data}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="tempo" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  {/* Stacked bars */}
-                  {Object.keys(chart2Data[0] || {})
-                    .filter((key) => key !== 'tempo')
-                    .map((fonte, index) => (
-                      <Bar
-                        key={fonte}
-                        dataKey={fonte}
-                        stackId="a"
-                        fill={`hsl(${index * 60}, 70%, 50%)`}
-                      />
-                    ))}
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
+      <div className="grid grid-cols-2 gap-4 mt-4">
+        <Card>
+          <CardHeader>
+            <CardTitle>Chart 1: Tempo vs Vazao_Captada por Fonte</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={400}>
+              <LineChart data={chart1Data}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="Tempo" />
+                <YAxis />
+                <Tooltip />
+                <Legend />
+                {Object.keys(chart1Data[0] || {})
+                  .filter((k) => k !== 'Tempo')
+                  .map((fonte) => (
+                    <Line key={fonte} type="monotone" dataKey={fonte} stroke="#8884d8" />
+                  ))}
+              </LineChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Chart 3: Tempo vs Vazao Captada e Distribuida</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={400}>
-                <LineChart data={chart3Data}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="tempo" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Line type="monotone" dataKey="vazao_captada" stroke="#8884d8" />
-                  <Line type="monotone" dataKey="vazao_distribuida" stroke="#82ca9d" />
-                </LineChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Chart 2: % por Fonte por Tempo</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={400}>
+              <BarChart data={chart2Data}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="Tempo" />
+                <YAxis />
+                <Tooltip />
+                <Legend />
+                {Object.keys(chart2Data[0] || {})
+                  .filter((k) => k !== 'Tempo' && k !== 'total')
+                  .map((fonte) => (
+                    <Bar key={fonte} dataKey={fonte} stackId="a" fill="#8884d8" />
+                  ))}
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Chart 4: Tempo vs Vazao Total Distribuida e Demanda</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={400}>
-                <ComposedChart data={chart4Data}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="tempo" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Bar dataKey="vazao_total_distribuida" fill="#8884d8" />
-                  <Line type="monotone" dataKey="demanda" stroke="#ff0000" />
-                  <ReferenceLine y={0} stroke="#000000" strokeDasharray="5 5" />
-                </ComposedChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+        <Card>
+          <CardHeader>
+            <CardTitle>Chart 3: Vazao_Captada vs Vazao_Distribuida</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={400}>
+              <LineChart data={chart3Data}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="Tempo" />
+                <YAxis />
+                <Tooltip />
+                <Legend />
+                <Line type="monotone" dataKey="Vazao_Captada" stroke="#8884d8" />
+                <Line type="monotone" dataKey="Vazao_Distribuida" stroke="#82ca9d" />
+              </LineChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Chart 4: Vazao_Total_Distribuida vs Demanda</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={400}>
+              <ComposedChart data={chart4Data}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="Tempo" />
+                <YAxis />
+                <Tooltip />
+                <Legend />
+                <Bar dataKey="Vazao_Total_Distribuida" fill="#8884d8" />
+                <Line type="monotone" dataKey="Demanda" stroke="#ff7300" />
+                <ReferenceLine y={0} stroke="#000" />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }
+
 export default Cenarios
