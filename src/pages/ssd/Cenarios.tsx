@@ -1,271 +1,313 @@
+import React, { useState } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import {
   LineChart,
-  BarChart,
   Line,
+  BarChart,
   Bar,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   Legend,
-  ResponsiveContainer,
   ReferenceLine,
-  ComposedChart,
 } from 'recharts'
+import Papa from 'papaparse'
 
-// Adicione estes 4 estados novos (depois dos estados existentes):
-const [chartDataA, setChartDataA] = useState<any[]>([])
-const [chartDataB, setChartDataB] = useState<any[]>([])
-const [chartDataC, setChartDataC] = useState<any[]>([])
-const [chartDataD, setChartDataD] = useState<any[]>([])
+const PERDAS = [0.3, 0.15]
+const DEMANDAS = [100, 120, 80]
 
-///
-const handleSimulate = () => {
-  if (csvData.length === 0 || !simulacao || simulacao.length === 0) {
-    alert('CSV ou simulação vazios')
-    return
+interface MySelectProps {
+  options: { val: string; label: string }[]
+  value: string
+  onChange: (value: string) => void
+  placeholder: string
+}
+
+const MySelect: React.FC<MySelectProps> = ({ options, value, onChange, placeholder }) => (
+  <Select value={value} onValueChange={onChange}>
+    <SelectTrigger>
+      <SelectValue placeholder={placeholder} />
+    </SelectTrigger>
+    <SelectContent>
+      {options.map((option) => (
+        <SelectItem key={option.val} value={option.val}>
+          {option.label}
+        </SelectItem>
+      ))}
+    </SelectContent>
+  </Select>
+)
+
+export default function Cenarios() {
+  const [csvData, setCsvData] = useState<any[]>([])
+  const [selectedFonte, setSelectedFonte] = useState('')
+  const [selectedCenario, setSelectedCenario] = useState('')
+  const [selectedEstrategia, setSelectedEstrategia] = useState('')
+  const [perdaIndex, setPerdaIndex] = useState(0)
+  const [demandaIndex, setDemandaIndex] = useState(0)
+  const [simulationResults, setSimulationResults] = useState<any[]>([])
+  const [chartDataA, setChartDataA] = useState<any[]>([])
+  const [chartDataB, setChartDataB] = useState<any[]>([])
+  const [chartDataC, setChartDataC] = useState<any[]>([])
+  const [chartDataD, setChartDataD] = useState<any[]>([])
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file) {
+      Papa.parse(file, {
+        header: true,
+        complete: (results) => {
+          setCsvData(results.data)
+        },
+        error: (error) => {
+          console.error('Error parsing CSV:', error)
+        },
+      })
+    }
   }
 
-  // Filtrar por simulação
-  const filtered = csvData.filter((row: any) => {
-    return simulacao.some(
-      (sim: any) =>
-        row.Fonte === sim.fonte &&
-        row.cenario === sim.cenarios &&
-        row.estrategia === sim.estrategias
+  const handleSimulate = () => {
+    if (!csvData.length) return
+
+    const filteredData = csvData.filter(
+      (row) =>
+        row.Fonte === selectedFonte &&
+        row.cenario === selectedCenario &&
+        row.estrategias === selectedEstrategia,
     )
-  })
 
-  // Calcular Vazão Distribuída
-  const processed = filtered.map((row: any) => ({
-    ...row,
-    Vazao_Captada: parseFloat(row.Vazao_Captada),
-    Vazao_Distribuida: parseFloat(row.Vazao_Captada) * (1 - globalPerdas),
-  }))
-
-  setResults(processed)
-
-  // Agrupar por Tempo
-  const grouped: { [key: string]: any[] } = {}
-  processed.forEach((row) => {
-    if (!grouped[row.Tempo]) grouped[row.Tempo] = []
-    grouped[row.Tempo].push(row)
-  })
-
-  // Gráfico A: Vazão por Fonte
-  const graphA = Object.entries(grouped).map(([tempo, rows]) => {
-    const obj: any = { Tempo: tempo }
-    rows.forEach((r) => {
-      obj[r.Fonte] = (obj[r.Fonte] || 0) + r.Vazao_Captada
+    const groupedByTempo: { [key: string]: any[] } = {}
+    filteredData.forEach((row) => {
+      const tempo = row.Tempo
+      if (!groupedByTempo[tempo]) {
+        groupedByTempo[tempo] = []
+      }
+      groupedByTempo[tempo].push(row)
     })
-    return obj
-  })
-  setChartDataA(graphA)
 
-  // Gráfico B: % por Fonte
-  const graphB = Object.entries(grouped).map(([tempo, rows]) => {
-    const total = rows.reduce((sum, r) => sum + r.Vazao_Captada, 0)
-    const obj: any = { Tempo: tempo }
-    rows.forEach((r) => {
-      obj[r.Fonte] = total > 0 ? (r.Vazao_Captada / total) * 100 : 0
+    const results: any[] = []
+    const chartA: any[] = []
+    const chartB: any[] = []
+    const chartC: any[] = []
+    const chartD: any[] = []
+
+    Object.keys(groupedByTempo).forEach((tempo) => {
+      const rows = groupedByTempo[tempo]
+      const totalVazaoCaptada = rows.reduce(
+        (sum, row) => sum + parseFloat(row.Vazao_Captada || 0),
+        0,
+      )
+      const perda = PERDAS[perdaIndex]
+      const vazaoDistribuida = totalVazaoCaptada * (1 - perda)
+      const demanda = DEMANDAS[demandaIndex]
+      const percentual = (vazaoDistribuida / demanda) * 100
+
+      results.push({
+        Tempo: tempo,
+        Vazao_Captada: totalVazaoCaptada,
+        Vazao_Distribuida: vazaoDistribuida,
+        Demanda: demanda,
+        Percentual: percentual,
+      })
+
+      chartA.push({ Tempo: tempo, Vazao_Captada: totalVazaoCaptada })
+      chartB.push({ Tempo: tempo, Percentual: percentual })
+      chartC.push({
+        Tempo: tempo,
+        Vazao_Captada: totalVazaoCaptada,
+        Vazao_Distribuida: vazaoDistribuida,
+      })
+      chartD.push({ Tempo: tempo, Vazao_Distribuida: vazaoDistribuida, Demanda: demanda })
     })
-    return obj
-  })
-  setChartDataB(graphB)
 
-  // Gráfico C: Captada vs Distribuída
-  const graphC = Object.entries(grouped).map(([tempo, rows]) => ({
-    Tempo: tempo,
-    Vazao_Captada: rows.reduce((sum, r) => sum + r.Vazao_Captada, 0),
-    Vazao_Distribuida: rows.reduce((sum, r) => sum + r.Vazao_Distribuida, 0),
+    setSimulationResults(results)
+    setChartDataA(chartA)
+    setChartDataB(chartB)
+    setChartDataC(chartC)
+    setChartDataD(chartD)
+  }
+
+  const fonteOptions = Array.from(new Set(csvData.map((row) => row.Fonte))).map((val) => ({
+    val,
+    label: val,
   }))
-  setChartDataC(graphC)
-
-  // Gráfico D: Total Distribuída vs Demanda
-  const graphD = Object.entries(grouped).map(([tempo, rows]) => ({
-    Tempo: tempo,
-    Vazao_Total_Distribuida: rows.reduce((sum, r) => sum + r.Vazao_Distribuida, 0),
-    Demanda: globalDemanda,
+  const cenarioOptions = Array.from(new Set(csvData.map((row) => row.cenario))).map((val) => ({
+    val,
+    label: val,
   }))
-  setChartDataD(graphD)
-}
+  const estrategiaOptions = Array.from(new Set(csvData.map((row) => row.estrategias))).map(
+    (val) => ({ val, label: val }),
+  )
 
-///
-  // Filtrar dados por simulacao
-  const filteredBySimulation = csvData.filter((row) => {
-    return simulacao.some(
-      (sim) =>
-        row.Fonte === sim.fonte &&
-        row.cenario === sim.cenarios &&
-        row.estrategia === sim.estrategias
-    )
-  })
-
-  // Calcular Vazao_Distribuida para todos os registros filtrados
-  const processed = filteredBySimulation.map((row) => ({
-    ...row,
-    Vazao_Captada: parseFloat(row.Vazao_Captada),
-    Vazao_Distribuida: parseFloat(row.Vazao_Captada) * (1 - globalPerdas),
-  }))
-
-  setResults(processed)
-
-  // Preparar dados para os 4 gráficos
-  const groupedByTempo: { [tempo: string]: any[] } = {}
-  processed.forEach((row) => {
-    if (!groupedByTempo[row.Tempo]) groupedByTempo[row.Tempo] = []
-    groupedByTempo[row.Tempo].push(row)
-  })
-
-  // Gráfico A: Linha - Vazão captada por Fonte vs Tempo
-  const graphA = Object.entries(groupedByTempo).map(([tempo, rows]) => {
-    const obj: any = { Tempo: tempo }
-    rows.forEach((row) => {
-      obj[row.Fonte] = (obj[row.Fonte] || 0) + row.Vazao_Captada
-    })
-    return obj
-  })
-  setChartDataA(graphA)
-
-  // Gráfico B: Barra empilhada - % por Fonte vs Tempo
-  const graphB = Object.entries(groupedByTempo).map(([tempo, rows]) => {
-    const total = rows.reduce((sum, row) => sum + row.Vazao_Captada, 0)
-    const obj: any = { Tempo: tempo }
-    rows.forEach((row) => {
-      obj[row.Fonte] = ((obj[row.Fonte] || 0) + row.Vazao_Captada / total) * 100
-    })
-    return obj
-  })
-  setChartDataB(graphB)
-
-  // Gráfico C: Linha - Vazão captada vs distribuída vs Tempo
-  const graphC = Object.entries(groupedByTempo).map(([tempo, rows]) => ({
-    Tempo: tempo,
-    Vazao_Captada: rows.reduce((sum, row) => sum + row.Vazao_Captada, 0),
-    Vazao_Distribuida: rows.reduce((sum, row) => sum + row.Vazao_Distribuida, 0),
-  }))
-  setChartDataC(graphC)
-
-  // Gráfico D: Linha - Vazão total distribuída vs Demanda vs Tempo
-  const graphD = Object.entries(groupedByTempo).map(([tempo, rows]) => ({
-    Tempo: tempo,
-    Vazao_Total_Distribuida: rows.reduce((sum, row) => sum + row.Vazao_Distribuida, 0),
-    Demanda: globalDemanda,
-    Saldo: rows.reduce((sum, row) => sum + row.Vazao_Distribuida, 0) - globalDemanda,
-  }))
-  setChartDataD(graphD)
-}
-
-// Substitua a última seção {results.length > 0 && <SimulationCharts...} por:
-{results.length > 0 && (
-  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-    {/* Gráfico A */}
-    <Card className="shadow-sm">
-      <CardHeader className="py-4 bg-slate-50/50">
-        <CardTitle className="text-lg">Vazão Captada por Fonte vs Tempo</CardTitle>
-      </CardHeader>
-      <CardContent className="pt-4">
-        <ResponsiveContainer width="100%" height={350}>
-          <LineChart data={chartDataA}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="Tempo" />
-            <YAxis />
-            <Tooltip />
-            <Legend />
-            {Object.keys(chartDataA[0] || {})
-              .filter((k) => k !== 'Tempo')
-              .map((fonte, idx) => (
-                <Line
-                  key={fonte}
-                  type="monotone"
-                  dataKey={fonte}
-                  stroke={`hsl(${idx * 60}, 70%, 50%)`}
-                  strokeWidth={2}
-                />
+  return (
+    <div className="p-4">
+      <h1>Cenarios</h1>
+      <div className="mb-4">
+        <h2>Parâmetros Globais</h2>
+        <div className="flex gap-4">
+          <MySelect
+            options={fonteOptions}
+            value={selectedFonte}
+            onChange={setSelectedFonte}
+            placeholder="Selecione Fonte"
+          />
+          <MySelect
+            options={cenarioOptions}
+            value={selectedCenario}
+            onChange={setSelectedCenario}
+            placeholder="Selecione Cenário"
+          />
+          <MySelect
+            options={estrategiaOptions}
+            value={selectedEstrategia}
+            onChange={setSelectedEstrategia}
+            placeholder="Selecione Estratégia"
+          />
+          <Select
+            value={perdaIndex.toString()}
+            onValueChange={(val) => setPerdaIndex(parseInt(val))}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Perda" />
+            </SelectTrigger>
+            <SelectContent>
+              {PERDAS.map((p, i) => (
+                <SelectItem key={i} value={i.toString()}>
+                  {p}
+                </SelectItem>
               ))}
-          </LineChart>
-        </ResponsiveContainer>
-      </CardContent>
-    </Card>
-
-    {/* Gráfico B */}
-    <Card className="shadow-sm">
-      <CardHeader className="py-4 bg-slate-50/50">
-        <CardTitle className="text-lg">% por Fonte vs Tempo (Empilhado)</CardTitle>
-      </CardHeader>
-      <CardContent className="pt-4">
-        <ResponsiveContainer width="100%" height={350}>
-          <BarChart data={chartDataB}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="Tempo" />
-            <YAxis />
-            <Tooltip />
-            <Legend />
-            {Object.keys(chartDataB[0] || {})
-              .filter((k) => k !== 'Tempo')
-              .map((fonte, idx) => (
-                <Bar
-                  key={fonte}
-                  dataKey={fonte}
-                  stackId="a"
-                  fill={`hsl(${idx * 60}, 70%, 50%)`}
-                />
+            </SelectContent>
+          </Select>
+          <Select
+            value={demandaIndex.toString()}
+            onValueChange={(val) => setDemandaIndex(parseInt(val))}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Demanda" />
+            </SelectTrigger>
+            <SelectContent>
+              {DEMANDAS.map((d, i) => (
+                <SelectItem key={i} value={i.toString()}>
+                  {d}
+                </SelectItem>
               ))}
-          </BarChart>
-        </ResponsiveContainer>
-      </CardContent>
-    </Card>
-
-    {/* Gráfico C */}
-    <Card className="shadow-sm">
-      <CardHeader className="py-4 bg-slate-50/50">
-        <CardTitle className="text-lg">Vazão Captada vs Distribuída vs Tempo</CardTitle>
-      </CardHeader>
-      <CardContent className="pt-4">
-        <ResponsiveContainer width="100%" height={350}>
-          <LineChart data={chartDataC}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="Tempo" />
-            <YAxis />
-            <Tooltip />
-            <Legend />
-            <Line type="monotone" dataKey="Vazao_Captada" stroke="#8884d8" strokeWidth={2} />
-            <Line type="monotone" dataKey="Vazao_Distribuida" stroke="#82ca9d" strokeWidth={2} />
-          </LineChart>
-        </ResponsiveContainer>
-      </CardContent>
-    </Card>
-
-    {/* Gráfico D */}
-    <Card className="shadow-sm">
-      <CardHeader className="py-4 bg-slate-50/50">
-        <CardTitle className="text-lg">Vazão Total Distribuída vs Demanda vs Tempo</CardTitle>
-      </CardHeader>
-      <CardContent className="pt-4">
-        <ResponsiveContainer width="100%" height={350}>
-          <LineChart data={chartDataD}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="Tempo" />
-            <YAxis />
-            <Tooltip />
-            <Legend />
-            <ReferenceLine
-              y={0}
-              stroke="#000000"
-              strokeDasharray="5 5"
-              label={{ value: 'Equilíbrio (Y=0)', position: 'right', fill: '#000' }}
-            />
-            <Line
-              type="monotone"
-              dataKey="Vazao_Total_Distribuida"
-              stroke="#8884d8"
-              strokeWidth={2}
-              name="Vazão Distribuída"
-            />
-            <Line type="monotone" dataKey="Demanda" stroke="#ff0000" strokeWidth={2} name="Demanda" />
-          </LineChart>
-        </ResponsiveContainer>
-      </CardContent>
-    </Card>
-  </div>
-)}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+      <div className="mb-4">
+        <h2>Upload CSV</h2>
+        <Input type="file" accept=".csv" onChange={handleFileUpload} />
+      </div>
+      <Button onClick={handleSimulate}>Simular</Button>
+      <div className="mb-4">
+        <h2>Tabela Simulação</h2>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Tempo</TableHead>
+              <TableHead>Vazao_Captada</TableHead>
+              <TableHead>Vazao_Distribuida</TableHead>
+              <TableHead>Demanda</TableHead>
+              <TableHead>Percentual</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {simulationResults.map((row, index) => (
+              <TableRow key={index}>
+                <TableCell>{row.Tempo}</TableCell>
+                <TableCell>{row.Vazao_Captada}</TableCell>
+                <TableCell>{row.Vazao_Distribuida}</TableCell>
+                <TableCell>{row.Demanda}</TableCell>
+                <TableCell>{row.Percentual}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <Card>
+          <CardHeader>
+            <CardTitle>Gráfico A: Vazão Captada por Fonte</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <LineChart width={400} height={300} data={chartDataA}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="Tempo" />
+              <YAxis />
+              <Tooltip />
+              <Legend />
+              <Line type="monotone" dataKey="Vazao_Captada" stroke="#8884d8" />
+            </LineChart>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Gráfico B: Percentual</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <BarChart width={400} height={300} data={chartDataB}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="Tempo" />
+              <YAxis />
+              <Tooltip />
+              <Legend />
+              <Bar dataKey="Percentual" fill="#82ca9d" />
+            </BarChart>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Gráfico C: Captada vs Distribuída</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <LineChart width={400} height={300} data={chartDataC}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="Tempo" />
+              <YAxis />
+              <Tooltip />
+              <Legend />
+              <Line type="monotone" dataKey="Vazao_Captada" stroke="#8884d8" />
+              <Line type="monotone" dataKey="Vazao_Distribuida" stroke="#82ca9d" />
+            </LineChart>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Gráfico D: Distribuída vs Demanda</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <LineChart width={400} height={300} data={chartDataD}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="Tempo" />
+              <YAxis />
+              <Tooltip />
+              <Legend />
+              <ReferenceLine y={0} stroke="red" />
+              <Line type="monotone" dataKey="Vazao_Distribuida" stroke="#8884d8" />
+              <Line type="monotone" dataKey="Demanda" stroke="#82ca9d" />
+            </LineChart>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  )
+}
