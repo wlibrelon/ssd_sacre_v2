@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Select,
   SelectContent,
@@ -10,222 +10,135 @@ import {
 import { Button } from '@/components/ui/button'
 import {
   Table,
-  TableHeader,
-  TableHead,
-  TableRow,
   TableBody,
   TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from '@/components/ui/table'
 
-const fontes = ['Batalha', 'Bauru', 'Guarani']
-const fatores = ['Clima', 'Uso da Terra', 'Condutividade Hidráulica', 'Captações a Montante']
-const cenariosOptions = ['Tendencial', 'Pessimista', 'Conservacionista']
-const acoes = [
-  'Redução de emissões de gases de efeito estufa',
-  'Conservação de recursos hídricos',
-  'Restauração de ecossistemas',
-  'Promoção de energias renováveis',
-  'Gestão sustentável do solo',
-  'Controle de poluição',
-  'Educação ambiental',
-  'Monitoramento e avaliação',
-]
-
-type Cenario = {
-  fator: string
-  cenario?: string
-}
-
-type Simulacao = {
-  cenarios: string
-  estrategias: string
-}
-
 const Configuracoes: React.FC = () => {
-  const [selectedFonte, setSelectedFonte] = useState<string>('')
-  const [cenarios, setCenarios] = useState<Cenario[]>([])
-  const [estrategias, setEstrategias] = useState<string[]>([])
-  const [simulacao, setSimulacao] = useState<Simulacao | null>(null)
+  const [fonte, setFonte] = useState<string>('')
+  const [cenario, setCenario] = useState<string>('')
+  const [estrategia, setEstrategia] = useState<string>('')
+  const [buttonText, setButtonText] = useState<string>('Gravar cenários e estratégias')
 
-  const [newFator, setNewFator] = useState<string>('')
-  const [newCenario, setNewCenario] = useState<string>('')
-  const [selectedAcao, setSelectedAcao] = useState<string>('')
+  const fontes = ['Batalha', 'Bauru', 'Guarani']
+  const fatores = ['Fator1', 'Fator2', 'Fator3'] // Placeholder
+  const cenarios = ['Cenário1', 'Cenário2', 'Cenário3'] // Placeholder
+  const acoes = ['Ação1', 'Ação2', 'Ação3', 'Ação4', 'Ação5', 'Ação6', 'Ação7', 'Ação8']
 
-  const addCenario = () => {
-    if (newFator) {
-      setCenarios([...cenarios, { fator: newFator, cenario: newCenario || undefined }])
-      setNewFator('')
-      setNewCenario('')
-    }
+  const simulacaoData = [
+    { id: 1, descricao: 'Simulação 1', valor: 100 },
+    { id: 2, descricao: 'Simulação 2', valor: 200 },
+    // Add more data as needed
+  ]
+
+  const handleButtonClick = () => {
+    setButtonText(
+      buttonText === 'Gravar cenários e estratégias'
+        ? 'Adicionar'
+        : 'Gravar cenários e estratégias',
+    )
   }
-
-  const addEstrategia = () => {
-    if (selectedAcao && !estrategias.includes(selectedAcao)) {
-      setEstrategias([...estrategias, selectedAcao])
-      setSelectedAcao('')
-    }
-  }
-
-  const gravar = () => {
-    const cenariosStr = cenarios
-      .map((c) => `${c.fator}${c.cenario ? ` ${c.cenario}` : ''}`)
-      .join(' | ')
-    const estrategiasStr = estrategias.join(' | ')
-    setSimulacao({ cenarios: cenariosStr, estrategias: estrategiasStr })
-    setCenarios([])
-    setEstrategias([])
-  }
-
-  const isButtonDisabled = cenarios.length === 0 && estrategias.length === 0
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Card Seleção Fonte */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Seleção Fonte</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Select value={selectedFonte} onValueChange={setSelectedFonte}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione uma fonte" />
-              </SelectTrigger>
-              <SelectContent>
-                {fontes.map((fonte) => (
-                  <SelectItem key={fonte} value={fonte}>
-                    {fonte}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </CardContent>
-        </Card>
+    <div className="p-4 space-y-4">
+      {/* Card Fonte */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Fonte</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Select value={fonte} onValueChange={setFonte}>
+            <SelectTrigger>
+              <SelectValue placeholder="Selecione uma fonte" />
+            </SelectTrigger>
+            <SelectContent>
+              {fontes.map((f) => (
+                <SelectItem key={f} value={f}>
+                  {f}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </CardContent>
+      </Card>
 
-        {/* Card Construtor Cenários */}
+      {/* Grid with two cards */}
+      <div className="grid md:grid-cols-2 gap-4">
         <Card>
           <CardHeader>
             <CardTitle>Construtor Cenários</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <Select value={newFator} onValueChange={setNewFator}>
+          <CardContent className="space-y-2">
+            <Select value={cenario} onValueChange={setCenario}>
               <SelectTrigger>
-                <SelectValue placeholder="Selecione Fator (obrigatório)" />
+                <SelectValue placeholder="Selecione um cenário" />
               </SelectTrigger>
               <SelectContent>
-                {fatores.map((fator) => (
-                  <SelectItem key={fator} value={fator}>
-                    {fator}
+                {cenarios.map((c) => (
+                  <SelectItem key={c} value={c}>
+                    {c}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            <Select value={newCenario} onValueChange={setNewCenario}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione Cenário (opcional)" />
-              </SelectTrigger>
-              <SelectContent>
-                {cenariosOptions.map((cenario) => (
-                  <SelectItem key={cenario} value={cenario}>
-                    {cenario}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button onClick={addCenario} disabled={!newFator}>
-              Adicionar Cenário
-            </Button>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Fonte</TableHead>
-                  <TableHead>Fator</TableHead>
-                  <TableHead>Cenário</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {cenarios.map((c, index) => (
-                  <TableRow key={index}>
-                    <TableCell>{selectedFonte}</TableCell>
-                    <TableCell>{c.fator}</TableCell>
-                    <TableCell>{c.cenario || '-'}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            {/* Add more selects for fatores if needed */}
           </CardContent>
         </Card>
 
-        {/* Card Construtor Estratégias */}
         <Card>
           <CardHeader>
             <CardTitle>Construtor Estratégias</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <Select value={selectedAcao} onValueChange={setSelectedAcao}>
+          <CardContent className="space-y-2">
+            <Select value={estrategia} onValueChange={setEstrategia}>
               <SelectTrigger>
-                <SelectValue placeholder="Selecione Ação" />
+                <SelectValue placeholder="Selecione uma estratégia" />
               </SelectTrigger>
               <SelectContent>
-                {acoes.map((acao) => (
-                  <SelectItem key={acao} value={acao}>
-                    {acao}
+                {acoes.map((a) => (
+                  <SelectItem key={a} value={a}>
+                    {a}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            <Button onClick={addEstrategia} disabled={!selectedAcao}>
-              Adicionar Estratégia
-            </Button>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Ação</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {estrategias.map((acao, index) => (
-                  <TableRow key={index}>
-                    <TableCell>{acao}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            {/* Add more selects for fatores if needed */}
           </CardContent>
         </Card>
       </div>
 
-      {/* Botão Gravar */}
-      <div className="flex justify-center">
-        <Button onClick={gravar} disabled={isButtonDisabled}>
-          Gravar cenários e estratégias
-        </Button>
-      </div>
+      {/* Button */}
+      <Button onClick={handleButtonClick}>{buttonText}</Button>
 
-      {/* Tabela Simulação */}
-      {simulacao && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Tabela Simulação</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Cenários</TableHead>
-                  <TableHead>Estratégias</TableHead>
+      {/* Table Simulacao acumulativa */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Simulação Acumulativa</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>ID</TableHead>
+                <TableHead>Descrição</TableHead>
+                <TableHead>Valor</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {simulacaoData.map((item) => (
+                <TableRow key={item.id}>
+                  <TableCell>{item.id}</TableCell>
+                  <TableCell>{item.descricao}</TableCell>
+                  <TableCell>{item.valor}</TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                <TableRow>
-                  <TableCell>{simulacao.cenarios}</TableCell>
-                  <TableCell>{simulacao.estrategias}</TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      )}
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
     </div>
   )
 }
