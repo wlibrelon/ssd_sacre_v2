@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { useSimulationStore } from '../stores/useSimulationStore' // Assuming the store path
+import { useSimulationStore } from '@/stores/useSimulationStore' // Assuming the store path
 import {
   LineChart,
   Line,
@@ -13,15 +13,15 @@ import {
   ResponsiveContainer,
   ReferenceLine,
 } from 'recharts'
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card' // Assuming shadcn/ui path
-import { Button } from '../components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card' // Assuming shadcn/ui path
+import { Button } from '@/components/ui/button'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '../components/ui/select'
+} from '@/components/ui/select'
 import {
   Table,
   TableBody,
@@ -29,7 +29,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '../components/ui/table'
+} from '@/components/ui/table'
 
 type CsvRow = {
   Tempo: string
