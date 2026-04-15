@@ -37,6 +37,7 @@ const Configuracoes: React.FC = () => {
     'Condição atual de captação',
     'Expansão de poços no município',
     'Mais poços na área urbana',
+    'Captações a Montante',
   ]
 
   const addCenario = () => {
