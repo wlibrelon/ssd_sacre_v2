@@ -228,3 +228,4 @@ const Cenarios: React.FC = () => {
     </div>
   )
 }
+export default Cenarios
