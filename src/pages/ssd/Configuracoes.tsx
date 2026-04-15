@@ -25,7 +25,8 @@ const Configuracoes: React.FC = () => {
 
   const fontes = ['Batalha', 'Bauru', 'Guarani']
   const fatores = ['Clima', 'Uso da Terra', 'Condutividade Hidráulica', 'Captações a Montante']
-  const cenariosOptions = ['Cenário1', 'Cenário2', 'Cenário3']
+  const cenariosOptions = ['Tendencial', 'Pessimista', 'Conservacionista']
+
   const acoes = [
     'Instalar Barraginhas',
     'Uso atual',
