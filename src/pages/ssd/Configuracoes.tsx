@@ -1,21 +1,19 @@
 import React, { useState } from 'react'
 import { Trash2 } from 'lucide-react'
 
-type Cenario = { fonte: string; fator: string; cenario: string }
-type Simulacao = { cenarios: Cenario[]; estrategias: string[] }
+type Cenario = {
+  id: number
+  nome: string
+  fatores: string[]
+}
 
-const fontes = ['Batalha', 'Bauru', 'Guarani']
-const fatores = ['Clima', 'Uso da Terra', 'Condutividade Hidráulica', 'Captações a Montante']
-const cenariosOptions = ['Cenário1', 'Cenário2', 'Cenário3']
-const acoes = [
-  'Instalar Barraginhas',
-  'Uso atual',
-  'Expansão de poços',
-  'Instalar barramento a montante',
-  'Condição atual de captação',
-  'Expansão de poços no município',
-  'Mais poços na área urbana',
-]
+type Simulacao = {
+  id: number
+  fonte: string
+  cenario: string
+  acao: string
+  estrategia: string
+}
 
 const App: React.FC = () => {
   const [selectedFonte, setSelectedFonte] = useState<string>('')
@@ -27,19 +25,41 @@ const App: React.FC = () => {
   const [simulacao, setSimulacao] = useState<Simulacao[]>([])
   const [isFirstGravar, setIsFirstGravar] = useState<boolean>(true)
 
+  const fontes = ['Batalha', 'Bauru', 'Guarani']
+  const fatores = ['Clima', 'Uso da Terra', 'Solo', 'Água', 'Vegetação', 'População']
+  const cenariosOptions = cenarios.map((c) => c.nome)
+  const acoes = ['Ação 1', 'Ação 2', 'Ação 3', 'Ação 4', 'Ação 5', 'Ação 6', 'Ação 7']
+
   const addCenario = () => {
-    setCenarios((prev) =>
-      prev.concat({ fonte: selectedFonte, fator: newFator, cenario: newCenario }),
-    )
+    if (newCenario.trim()) {
+      const newCen: Cenario = {
+        id: cenarios.length + 1,
+        nome: newCenario,
+        fatores: [],
+      }
+      setCenarios([...cenarios, newCen])
+      setNewCenario('')
+    }
   }
 
   const addEstrategia = () => {
-    setEstrategias((prev) => prev.concat(selectedAcao))
+    if (selectedAcao && !estrategias.includes(selectedAcao)) {
+      setEstrategias([...estrategias, selectedAcao])
+    }
   }
 
   const handleGravarOuAdicionar = () => {
-    setSimulacao((prev) => prev.concat({ cenarios, estrategias }))
-    setIsFirstGravar(false)
+    if (selectedFonte && cenariosOptions.length > 0 && selectedAcao && estrategias.length > 0) {
+      const newSim: Simulacao = {
+        id: simulacao.length + 1,
+        fonte: selectedFonte,
+        cenario: cenariosOptions[0], // Assuming first for simplicity
+        acao: selectedAcao,
+        estrategia: estrategias[0], // Assuming first for simplicity
+      }
+      setSimulacao([...simulacao, newSim])
+      setIsFirstGravar(false)
+    }
   }
 
   const handleDeleteSimulacao = (index: number) => {
@@ -47,9 +67,11 @@ const App: React.FC = () => {
   }
 
   return (
-    <div>
-      <div className="card fonte">
-        <h3>Fonte</h3>
+    <div className="p-4">
+      <h1>Simulação</h1>
+      {/* Form elements */}
+      <div className="mb-4">
+        <label>Fonte:</label>
         <select value={selectedFonte} onChange={(e) => setSelectedFonte(e.target.value)}>
           <option value="">Selecione</option>
           {fontes.map((f) => (
@@ -59,100 +81,57 @@ const App: React.FC = () => {
           ))}
         </select>
       </div>
-      <div className="grid construtores">
-        <div className="cenarios">
-          <h4>Cenários</h4>
-          <select value={newFator} onChange={(e) => setNewFator(e.target.value)}>
-            <option value="">Fator</option>
-            {fatores.map((f) => (
-              <option key={f} value={f}>
-                {f}
-              </option>
-            ))}
-          </select>
-          <select value={newCenario} onChange={(e) => setNewCenario(e.target.value)}>
-            <option value="">Cenário</option>
-            {cenariosOptions.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-          <button onClick={addCenario}>Adicionar Cenário</button>
-          <table>
-            <thead>
-              <tr>
-                <th>Fonte</th>
-                <th>Fator</th>
-                <th>Cenário</th>
-              </tr>
-            </thead>
-            <tbody>
-              {cenarios.map((c, i) => (
-                <tr key={i}>
-                  <td>{c.fonte}</td>
-                  <td>{c.fator}</td>
-                  <td>{c.cenario}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <div className="estrategias">
-          <h4>Estratégias</h4>
-          <select value={selectedAcao} onChange={(e) => setSelectedAcao(e.target.value)}>
-            <option value="">Ação</option>
-            {acoes.map((a) => (
-              <option key={a} value={a}>
-                {a}
-              </option>
-            ))}
-          </select>
-          <button onClick={addEstrategia}>Adicionar Estratégia</button>
-          <table>
-            <thead>
-              <tr>
-                <th>Estratégia</th>
-              </tr>
-            </thead>
-            <tbody>
-              {estrategias.map((e, i) => (
-                <tr key={i}>
-                  <td>{e}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+      <div className="mb-4">
+        <label>Novo Cenário:</label>
+        <input value={newCenario} onChange={(e) => setNewCenario(e.target.value)} />
+        <button onClick={addCenario}>Adicionar Cenário</button>
       </div>
-      <div className="button-container">
-        <button onClick={handleGravarOuAdicionar}>{isFirstGravar ? 'Gravar' : 'Adicionar'}</button>
+      <div className="mb-4">
+        <label>Ação:</label>
+        <select value={selectedAcao} onChange={(e) => setSelectedAcao(e.target.value)}>
+          <option value="">Selecione</option>
+          {acoes.map((a) => (
+            <option key={a} value={a}>
+              {a}
+            </option>
+          ))}
+        </select>
+        <button onClick={addEstrategia}>Adicionar Estratégia</button>
       </div>
-      <div className="tabela simulacao">
-        <h4>Simulação</h4>
-        <table>
-          <thead>
-            <tr>
-              <th>Cenários</th>
-              <th>Estratégias</th>
-              <th>Ações</th>
+      <button onClick={handleGravarOuAdicionar}>{isFirstGravar ? 'Gravar' : 'Adicionar'}</button>
+      {/* Simulation table */}
+      <table className="border-collapse border border-gray-300 mt-4">
+        <thead>
+          <tr>
+            <th className="border border-gray-300 p-2">ID</th>
+            <th className="border border-gray-300 p-2">Fonte</th>
+            <th className="border border-gray-300 p-2">Cenário</th>
+            <th className="border border-gray-300 p-2">Ação</th>
+            <th className="border border-gray-300 p-2">Estratégia</th>
+            <th className="border border-gray-300 p-2">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {simulacao.map((sim, i) => (
+            <tr key={sim.id}>
+              <td className="border border-gray-300 p-2">{sim.id}</td>
+              <td className="border border-gray-300 p-2">{sim.fonte}</td>
+              <td className="border border-gray-300 p-2">{sim.cenario}</td>
+              <td className="border border-gray-300 p-2">{sim.acao}</td>
+              <td className="border border-gray-300 p-2">{sim.estrategia}</td>
+              <td className="border border-gray-300 p-2">
+                <button
+                  onClick={() => handleDeleteSimulacao(i)}
+                  className="cursor-pointer hover:bg-red-100 hover:text-red-600 p-1 rounded"
+                  title="Excluir simulação"
+                >
+                  <Trash2 size={18} />
+                </button>
+              </td>
             </tr>
-          </thead>
-          <tbody>
-            {simulacao.map((s, i) => (
-              <tr key={i}>
-                <td>{s.cenarios.map((c) => `${c.fonte}-${c.fator}-${c.cenario}`).join(', ')}</td>
-                <td>{s.estrategias.join(', ')}</td>
-                <td>
-                  <button onClick={() => handleDeleteSimulacao(i)}>
-                    <Trash2 />
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+          ))}
+        </tbody>
+      </table>
     </div>
   )
 }
