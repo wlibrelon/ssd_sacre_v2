@@ -27,7 +27,14 @@ const Configuracoes: React.FC = () => {
   const [isFirstGravar, setIsFirstGravar] = useState<boolean>(true)
 
   const fontes = ['Rio Batalha', 'Sistema Aquífero Bauru', 'Sistema Aquífero Guarani']
-  const fatores = ['Clima', 'Uso da Terra', 'Condutividade Hidráulica', 'Captações a Montante']
+  const fatores = [
+    'Clima',
+    'Uso da Terra',
+    'Condutividade Hidráulica',
+    'Captações a Montante',
+    'Transmissividade moderada',
+    'Transmissividade alta',
+  ]
   const cenariosOptions = ['Tendencial', 'Pessimista', 'Conservacionista']
   const acoes = [
     'Instalar Barraginhas',
