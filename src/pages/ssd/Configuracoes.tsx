@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { Trash2 } from 'lucide-react'
-import useSimulationStore from '@/stores/useSimulationStore' // ✅ ADICIONADO
+import useSimulationStore from '@/stores/useSimulationStore'
 
 type Cenario = {
   fonte: string
