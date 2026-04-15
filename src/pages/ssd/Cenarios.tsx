@@ -17,7 +17,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Play, Upload } from 'lucide-react'
-import { useSimulationStore } from '@/stores/simulationStore'
+import useSimulationStore from '@/stores/simulationStore'
 import {
   LineChart,
   BarChart,
