@@ -1,5 +1,12 @@
-import React, { useState, useRef } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import React, { useState } from 'react'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Button } from '@/components/ui/button'
 import {
   Table,
   TableBody,
@@ -8,188 +15,227 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Upload } from 'lucide-react'
 
-interface DataPanelProps {
+// Reusable DataPanel component for static tables
+type DataPanelProps = {
   title: string
-  data: { [key: string]: string | number }[]
-  cols: string[]
+  data: { id: number; descricao: string }[]
 }
 
-const DataPanel: React.FC<DataPanelProps> = ({ title, data, cols }) => {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              {cols.map((col) => (
-                <TableHead key={col}>{col}</TableHead>
-              ))}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {data.map((row, index) => (
-              <TableRow key={index}>
-                {cols.map((col) => (
-                  <TableCell key={col}>{row[col]}</TableCell>
-                ))}
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
-  )
-}
+const DataPanel: React.FC<DataPanelProps> = ({ title, data }) => (
+  <div className="border rounded p-4">
+    <h3 className="text-lg font-semibold mb-2">{title}</h3>
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>ID</TableHead>
+          <TableHead>Descrição</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {data.map((item) => (
+          <TableRow key={item.id}>
+            <TableCell>{item.id}</TableCell>
+            <TableCell>{item.descricao}</TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  </div>
+)
 
-const fixEncoding = (text: string): string => {
-  // Simple fix for common encoding issues, e.g., replace wrong accents
-  return text
-    .replace(/Ã¡/g, 'á')
-    .replace(/Ã©/g, 'é')
-    .replace(/Ã­/g, 'í')
-    .replace(/Ã³/g, 'ó')
-    .replace(/Ãº/g, 'ú')
-    .replace(/Ã§/g, 'ç')
-    .replace(/Ã£/g, 'ã')
-    .replace(/Ãµ/g, 'õ')
-    .replace(/Ã€/g, 'À')
-    .replace(/Ã‰/g, 'É')
-    .replace(/Ã/g, 'Í')
-    .replace(/Ã“/g, 'Ó')
-    .replace(/Ãš/g, 'Ú')
-}
+// Static data for panels 1-4
+const fontesList = [
+  { id: 1, descricao: 'Fonte 1' },
+  { id: 2, descricao: 'Fonte 2' },
+]
+
+const fatoresList = [
+  { id: 1, descricao: 'Fator 1' },
+  { id: 2, descricao: 'Fator 2' },
+]
+
+const cenariosList = [
+  { id: 1, descricao: 'Cenário 1' },
+  { id: 2, descricao: 'Cenário 2' },
+]
+
+const acoesList = [
+  { id: 1, descricao: 'Ação 1' },
+  { id: 2, descricao: 'Ação 2' },
+]
 
 const Configuracoes: React.FC = () => {
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [csvData, setCsvData] = useState<{ [key: string]: string }[]>([])
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [selectedFonte, setSelectedFonte] = useState<string>('')
+  const [selectedFator, setSelectedFator] = useState<string>('')
+  const [selectedCenario, setSelectedCenario] = useState<string>('')
+  const [selectedAcao, setSelectedAcao] = useState<string>('')
+  const [cenarioSimulacao, setCenarioSimulacao] = useState<{ id: number; descricao: string }[]>([])
+  const [estrategiaSimulacao, setEstrategiaSimulacao] = useState<
+    { id: number; descricao: string }[]
+  >([])
 
-  const fontes = [
-    { id: 1, nome: 'Batalha', tipo: 'Superficial' },
-    { id: 2, nome: 'Bauru', tipo: 'Subterrânea' },
-    { id: 3, nome: 'Guarani', tipo: 'Subterrânea' },
-  ]
-
-  const fatores = [
-    { id: 1, nome: 'Clima' },
-    { id: 2, nome: 'Uso da Terra' },
-    { id: 3, nome: 'Condutividade Hidráulica' },
-    { id: 4, nome: 'Captações a Montante' },
-  ]
-
-  const cenarios = [
-    { id: 1, nome: 'Tendencial' },
-    { id: 2, nome: 'Pessimista' },
-    { id: 3, nome: 'Conservacionista' },
-  ]
-
-  const acoes = [
-    { id: 1, nome: 'Instalar barraginhas' },
-    { id: 2, nome: 'Uso atual' },
-    { id: 3, nome: 'Expansão de poços' },
-    { id: 4, nome: 'Instalar barramento a montante' },
-    { id: 5, nome: 'Condição atual da captação' },
-    { id: 6, nome: 'Expansão de poços no município' },
-    { id: 7, nome: 'Mais poços na área urbana' },
-    { id: 8, nome: 'Barramento a montante' },
-  ]
-
-  const handleButtonClick = () => {
-    fileInputRef.current?.click()
-  }
-
-  const handleUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (file) {
-      setSelectedFile(file)
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        const text = e.target?.result as string
-        const fixedText = fixEncoding(text)
-        const lines = fixedText.split('\n').filter((line) => line.trim() !== '')
-        if (lines.length < 2) {
-          console.warn('CSV file must have at least a header and one data row.')
-          return
-        }
-        const headers = lines[0].split(',').map((h) => h.trim().replace(/"/g, ''))
-        const data = lines.slice(1).map((line) => {
-          const values = line.split(',').map((v) => v.trim().replace(/"/g, ''))
-          const obj: { [key: string]: string } = {}
-          headers.forEach((header, index) => {
-            obj[header] = values[index] || ''
-          })
-          return obj
-        })
-        setCsvData(data.slice(0, 5)) // Preview first 5
-      }
-      reader.readAsText(file, 'UTF-8')
+  const handleAddCenario = () => {
+    if (selectedFonte && selectedFator && selectedCenario) {
+      const descricao = `${selectedFonte}_${selectedFator}_${selectedCenario}`
+      const newId = cenarioSimulacao.length + 1
+      setCenarioSimulacao([...cenarioSimulacao, { id: newId, descricao }])
+      setSelectedFonte('')
+      setSelectedFator('')
+      setSelectedCenario('')
     }
   }
 
+  const handleSaveCenario = () => {
+    // Simulate creating table cenario_simulacao
+    console.log('Creating cenario_simulacao table with data:', cenarioSimulacao)
+    // In a real app, send to backend
+    setCenarioSimulacao([])
+  }
+
+  const handleAddAcao = () => {
+    if (selectedAcao) {
+      const newId = estrategiaSimulacao.length + 1
+      setEstrategiaSimulacao([...estrategiaSimulacao, { id: newId, descricao: selectedAcao }])
+      setSelectedAcao('')
+    }
+  }
+
+  const handleSaveAcao = () => {
+    // Simulate creating table estrategia_simulacao
+    console.log('Creating estrategia_simulacao table with data:', estrategiaSimulacao)
+    // In a real app, send to backend
+    setEstrategiaSimulacao([])
+  }
+
   return (
-    <div className="grid md:grid-cols-2 gap-4">
-      <DataPanel title="Fontes" data={fontes} cols={['id', 'nome', 'tipo']} />
-      <DataPanel title="Fatores" data={fatores} cols={['id', 'nome']} />
-      <DataPanel title="Cenários" data={cenarios} cols={['id', 'nome']} />
-      <Card>
-        <CardHeader>
-          <CardTitle>Upload CSV</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="file-upload">Select CSV File</Label>
-              <Input
-                id="file-upload"
-                type="file"
-                accept=".csv"
-                ref={fileInputRef}
-                onChange={handleUpload}
-                className="hidden"
-              />
-              <Button
-                onClick={handleButtonClick}
-                className="w-full flex items-center justify-center gap-2"
-              >
-                <Upload size={16} />
-                Upload CSV
-              </Button>
-            </div>
-            {selectedFile && <p>Selected: {selectedFile.name}</p>}
-            {csvData.length > 0 && (
-              <div>
-                <h4>Preview (First 5 Rows):</h4>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      {Object.keys(csvData[0]).map((key) => (
-                        <TableHead key={key}>{key}</TableHead>
-                      ))}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {csvData.map((row, index) => (
-                      <TableRow key={index}>
-                        {Object.values(row).map((value, i) => (
-                          <TableCell key={i}>{value}</TableCell>
-                        ))}
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
+    <div className="container mx-auto p-4">
+      <h1 className="text-2xl font-bold mb-4">Configurações</h1>
+      <div className="grid md:grid-cols-2 gap-4">
+        {/* Quadro 1: Fontes */}
+        <DataPanel title="Fontes" data={fontesList} />
+
+        {/* Quadro 2: Fatores */}
+        <DataPanel title="Fatores" data={fatoresList} />
+
+        {/* Quadro 3: Cenários */}
+        <DataPanel title="Cenários" data={cenariosList} />
+
+        {/* Quadro 4: Ações */}
+        <DataPanel title="Ações" data={acoesList} />
+
+        {/* Quadro 5: Construtor de Cenários */}
+        <div className="border rounded p-4">
+          <h3 className="text-lg font-semibold mb-2">Construtor de Cenários para Simulação</h3>
+          <div className="mb-2">
+            <label className="block text-sm font-medium mb-1">Fonte</label>
+            <Select value={selectedFonte} onValueChange={setSelectedFonte}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione Fonte" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Batalha">Batalha</SelectItem>
+                <SelectItem value="Bauru">Bauru</SelectItem>
+                <SelectItem value="Guarani">Guarani</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-        </CardContent>
-      </Card>
+          <div className="mb-2">
+            <label className="block text-sm font-medium mb-1">Fator</label>
+            <Select value={selectedFator} onValueChange={setSelectedFator}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione Fator" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Clima">Clima</SelectItem>
+                <SelectItem value="Uso da Terra">Uso da Terra</SelectItem>
+                <SelectItem value="Condutividade">Condutividade</SelectItem>
+                <SelectItem value="Captações">Captações</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="mb-2">
+            <label className="block text-sm font-medium mb-1">Cenário</label>
+            <Select value={selectedCenario} onValueChange={setSelectedCenario}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione Cenário" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Tendencial">Tendencial</SelectItem>
+                <SelectItem value="Pessimista">Pessimista</SelectItem>
+                <SelectItem value="Conservacionista">Conservacionista</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <Button onClick={handleAddCenario} className="mb-2">
+            Adicionar
+          </Button>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>ID</TableHead>
+                <TableHead>Descrição</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {cenarioSimulacao.map((item) => (
+                <TableRow key={item.id}>
+                  <TableCell>{item.id}</TableCell>
+                  <TableCell>{item.descricao}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+          <Button onClick={handleSaveCenario} className="mt-2">
+            Gravar
+          </Button>
+        </div>
+
+        {/* Quadro 6: Construtor de Estratégias */}
+        <div className="border rounded p-4">
+          <h3 className="text-lg font-semibold mb-2">Construtor de Estratégias de Ações</h3>
+          <div className="mb-2">
+            <label className="block text-sm font-medium mb-1">Ações</label>
+            <Select value={selectedAcao} onValueChange={setSelectedAcao}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione Ação" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="1-Instalar barraginhas">1-Instalar barraginhas</SelectItem>
+                <SelectItem value="2-Ação 2">2-Ação 2</SelectItem>
+                <SelectItem value="3-Ação 3">3-Ação 3</SelectItem>
+                <SelectItem value="4-Ação 4">4-Ação 4</SelectItem>
+                <SelectItem value="5-Ação 5">5-Ação 5</SelectItem>
+                <SelectItem value="6-Ação 6">6-Ação 6</SelectItem>
+                <SelectItem value="7-Ação 7">7-Ação 7</SelectItem>
+                <SelectItem value="8-Barramento a montante">8-Barramento a montante</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <Button onClick={handleAddAcao} className="mb-2">
+            Adicionar
+          </Button>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>ID</TableHead>
+                <TableHead>Descrição</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {estrategiaSimulacao.map((item) => (
+                <TableRow key={item.id}>
+                  <TableCell>{item.id}</TableCell>
+                  <TableCell>{item.descricao}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+          <Button onClick={handleSaveAcao} className="mt-2">
+            Gravar
+          </Button>
+        </div>
+      </div>
     </div>
   )
 }
