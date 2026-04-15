@@ -47,6 +47,7 @@ export default function Cenarios() {
   const [globalDemanda, setGlobalDemanda] = useState(100)
   const [results, setResults] = useState<any[]>([])
   const [timeData, setTimeData] = useState<any[]>([])
+  const [processingInfo, setProcessingInfo] = useState<any[]>([])
 
   const requiredColumns = [
     'Tempo',
@@ -114,36 +115,94 @@ export default function Cenarios() {
     reader.readAsText(file, 'UTF-8')
   }
 
+  // ✅ NOVA FUNÇÃO: Filtrar csvData por cada simulacao
+  const filterCsvBySimulation = (csvData: any[], simRow: any) => {
+    return csvData.filter(
+      (row) =>
+        row.Fonte === simRow.fonte &&
+        row.cenario === simRow.cenarios &&
+        row.estrategia === simRow.estrategia,
+    )
+  }
+
+  // ✅ MODIFICADO: handleSimulate com lógica de filtro multi-critério
   const handleSimulate = () => {
     if (csvData.length === 0) {
       alert('Por favor, importe um CSV válido antes de rodar a simulação')
       return
     }
 
-    // Usar csvData importado no processamento
-    const res = csvData.map((r) => {
-      return {
-        ...r,
-        Vazao_Distribuida: parseFloat(r.Vazao_Captada) * (1 - globalPerdas),
-        Demanda: globalDemanda,
-      }
+    if (!simulacao || simulacao.length === 0) {
+      alert('Por favor, configure simulações na página de Configurações')
+      return
+    }
+
+    // Arrays para acumular resultados
+    let allResults: any[] = []
+    let consolidatedTimeData: any[] = {}
+    const procInfo: any[] = []
+
+    // ✅ LOOP: Processar cada simulacao
+    simulacao.forEach((sim, simIndex) => {
+      // Filtrar csvData por Fonte, Cenario, Estrategia
+      const filteredData = filterCsvBySimulation(csvData, sim)
+
+      console.log(
+        `Simulação ${simIndex}: Fonte=${sim.fonte}, Cenario=${sim.cenarios}, Estrategia=${sim.estrategia}`,
+      )
+      console.log(`  → Registros encontrados: ${filteredData.length}`)
+
+      // Processa apenas dados filtrados
+      const res = filteredData.map((r) => {
+        return {
+          ...r,
+          Vazao_Distribuida: parseFloat(r.Vazao_Captada) * (1 - globalPerdas),
+          Demanda_Ajustada: globalDemanda,
+          Simulacao_Index: simIndex,
+        }
+      })
+
+      allResults = [...allResults, ...res]
+
+      // Agrupar por Tempo (similar ao original)
+      const grouped = res.reduce((acc: any, row) => {
+        if (!acc[row.Tempo])
+          acc[row.Tempo] = { Tempo: row.Tempo, Demanda: row.Demanda, TotalCap: 0, TotalDist: 0 }
+        acc[row.Tempo][`${row.Fonte}_Cap`] = parseFloat(row.Vazao_Captada)
+        acc[row.Tempo].TotalCap += parseFloat(row.Vazao_Captada)
+        acc[row.Tempo].TotalDist += parseFloat(res[0].Vazao_Distribuida)
+        return acc
+      }, {})
+
+      // Consolidar timeData
+      Object.entries(grouped).forEach(([tempo, data]) => {
+        if (!consolidatedTimeData[tempo]) {
+          consolidatedTimeData[tempo] = data
+        } else {
+          ;(consolidatedTimeData[tempo] as any).TotalCap += (data as any).TotalCap
+          ;(consolidatedTimeData[tempo] as any).TotalDist += (data as any).TotalDist
+        }
+      })
+
+      // Registrar informação de processamento
+      procInfo.push({
+        simulacao_index: simIndex,
+        fonte: sim.fonte,
+        cenario: sim.cenarios,
+        estrategia: sim.estrategia,
+        registros_encontrados: filteredData.length,
+      })
     })
-    setResults(res)
 
-    const grouped = res.reduce((acc: any, row) => {
-      if (!acc[row.Tempo])
-        acc[row.Tempo] = { Tempo: row.Tempo, Demanda: row.Demanda, TotalCap: 0, TotalDist: 0 }
-      acc[row.Tempo][`${row.Fonte}_Cap`] = parseFloat(row.Vazao_Captada)
-      acc[row.Tempo].TotalCap += parseFloat(row.Vazao_Captada)
-      acc[row.Tempo].TotalDist += parseFloat(r.Vazao_Distribuida)
-      return acc
-    }, {})
+    setResults(allResults)
 
-    setTimeData(
-      Object.values(grouped)
-        .map((t: any) => ({ ...t, Saldo: t.TotalDist - t.Demanda }))
-        .sort((a, b) => a.Tempo.localeCompare(b.Tempo)),
-    )
+    // ✅ Consolidar timeData final
+    const finalTimeData = Object.values(consolidatedTimeData)
+      .map((t: any) => ({ ...t, Saldo: t.TotalDist - t.Demanda }))
+      .sort((a: any, b: any) => a.Tempo.localeCompare(b.Tempo))
+
+    setTimeData(finalTimeData)
+    setProcessingInfo(procInfo)
   }
 
   return (
@@ -219,6 +278,45 @@ export default function Cenarios() {
           </div>
         </CardContent>
       </Card>
+
+      {/* ✅ NOVO: Resumo de Processamento */}
+      {processingInfo.length > 0 && (
+        <Card className="shadow-sm border-t-4 border-t-green-500">
+          <CardHeader className="py-4 bg-green-50/50">
+            <CardTitle className="text-lg">Resumo de Simulações Processadas</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-4">
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse border border-gray-300">
+                <thead>
+                  <tr className="bg-gray-100">
+                    <th className="border border-gray-300 p-2 text-left">Índice</th>
+                    <th className="border border-gray-300 p-2 text-left">Fonte</th>
+                    <th className="border border-gray-300 p-2 text-left">Cenário</th>
+                    <th className="border border-gray-300 p-2 text-left">Estratégia</th>
+                    <th className="border border-gray-300 p-2 text-center">
+                      Registros Encontrados
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {processingInfo.map((info, i) => (
+                    <tr key={i} className="hover:bg-gray-50">
+                      <td className="border border-gray-300 p-2">{info.simulacao_index}</td>
+                      <td className="border border-gray-300 p-2">{info.fonte}</td>
+                      <td className="border border-gray-300 p-2">{info.cenario}</td>
+                      <td className="border border-gray-300 p-2">{info.estrategia}</td>
+                      <td className="border border-gray-300 p-2 text-center font-semibold">
+                        {info.registros_encontrados}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* ✅ NOVO: Quadro Importação CSV */}
       <Card className="shadow-sm border-t-4 border-t-secondary">
@@ -312,3 +410,5 @@ export default function Cenarios() {
     </div>
   )
 }
+
+export default Cenarios
