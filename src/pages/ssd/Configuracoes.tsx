@@ -1,144 +1,199 @@
 import React, { useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { Button } from '@/components/ui/button'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
+
+type Cenario = {
+  fonte: string
+  fator: string
+  cenario: string
+}
+
+type Simulacao = {
+  cenarios: string
+  estrategias: string
+}
 
 const Configuracoes: React.FC = () => {
-  const [fonte, setFonte] = useState<string>('')
-  const [cenario, setCenario] = useState<string>('')
-  const [estrategia, setEstrategia] = useState<string>('')
-  const [buttonText, setButtonText] = useState<string>('Gravar cenários e estratégias')
+  const [selectedFonte, setSelectedFonte] = useState<string>('')
+  const [newFator, setNewFator] = useState<string>('')
+  const [newCenario, setNewCenario] = useState<string>('')
+  const [cenarios, setCenarios] = useState<Cenario[]>([])
+  const [selectedAcao, setSelectedAcao] = useState<string>('')
+  const [estrategias, setEstrategias] = useState<string[]>([])
+  const [simulacao, setSimulacao] = useState<Simulacao[]>([])
+  const [isFirstGravar, setIsFirstGravar] = useState<boolean>(true)
 
   const fontes = ['Batalha', 'Bauru', 'Guarani']
-  const fatores = ['Fator1', 'Fator2', 'Fator3'] // Placeholder
-  const cenarios = ['Cenário1', 'Cenário2', 'Cenário3'] // Placeholder
-  const acoes = ['Ação1', 'Ação2', 'Ação3', 'Ação4', 'Ação5', 'Ação6', 'Ação7', 'Ação8']
+  const fatores = ['Fator1', 'Fator2', 'Fator3'] // Example options
+  const cenariosOptions = ['Cenário1', 'Cenário2', 'Cenário3'] // Example options
+  const acoes = ['Ação1', 'Ação2', 'Ação3'] // Example options
 
-  const simulacaoData = [
-    { id: 1, descricao: 'Simulação 1', valor: 100 },
-    { id: 2, descricao: 'Simulação 2', valor: 200 },
-    // Add more data as needed
-  ]
+  const addCenario = () => {
+    if (newFator) {
+      setCenarios([...cenarios, { fonte: selectedFonte, fator: newFator, cenario: newCenario }])
+      setNewFator('')
+      setNewCenario('')
+    }
+  }
 
-  const handleButtonClick = () => {
-    setButtonText(
-      buttonText === 'Gravar cenários e estratégias'
-        ? 'Adicionar'
-        : 'Gravar cenários e estratégias',
-    )
+  const addEstrategia = () => {
+    if (selectedAcao) {
+      setEstrategias([...estrategias, selectedAcao])
+      setSelectedAcao('')
+    }
+  }
+
+  const handleGravarOuAdicionar = () => {
+    const cenariosStr = cenarios.map((c) => `${c.fonte} | ${c.fator} | ${c.cenario}`).join(' | ')
+    const estrategiasStr = estrategias.join(' | ')
+    setSimulacao([...simulacao, { cenarios: cenariosStr, estrategias: estrategiasStr }])
+    setCenarios([])
+    setEstrategias([])
+    if (isFirstGravar) {
+      setIsFirstGravar(false)
+    }
   }
 
   return (
-    <div className="p-4 space-y-4">
-      {/* Card Fonte */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Fonte</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Select value={fonte} onValueChange={setFonte}>
-            <SelectTrigger>
-              <SelectValue placeholder="Selecione uma fonte" />
-            </SelectTrigger>
-            <SelectContent>
-              {fontes.map((f) => (
-                <SelectItem key={f} value={f}>
-                  {f}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </CardContent>
-      </Card>
-
-      {/* Grid with two cards */}
-      <div className="grid md:grid-cols-2 gap-4">
-        <Card>
-          <CardHeader>
-            <CardTitle>Construtor Cenários</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <Select value={cenario} onValueChange={setCenario}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione um cenário" />
-              </SelectTrigger>
-              <SelectContent>
-                {cenarios.map((c) => (
-                  <SelectItem key={c} value={c}>
-                    {c}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {/* Add more selects for fatores if needed */}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Construtor Estratégias</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <Select value={estrategia} onValueChange={setEstrategia}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione uma estratégia" />
-              </SelectTrigger>
-              <SelectContent>
-                {acoes.map((a) => (
-                  <SelectItem key={a} value={a}>
-                    {a}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {/* Add more selects for fatores if needed */}
-          </CardContent>
-        </Card>
+    <div className="p-4">
+      {/* Top: Card Fonte */}
+      <div className="mb-4 p-4 border rounded shadow">
+        <label className="block mb-2">Fonte:</label>
+        <select
+          value={selectedFonte}
+          onChange={(e) => setSelectedFonte(e.target.value)}
+          className="w-full p-2 border rounded"
+        >
+          <option value="">Selecione</option>
+          {fontes.map((f) => (
+            <option key={f} value={f}>
+              {f}
+            </option>
+          ))}
+        </select>
       </div>
 
-      {/* Button */}
-      <Button onClick={handleButtonClick}>{buttonText}</Button>
-
-      {/* Table Simulacao acumulativa */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Simulação Acumulativa</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>ID</TableHead>
-                <TableHead>Descrição</TableHead>
-                <TableHead>Valor</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {simulacaoData.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell>{item.id}</TableCell>
-                  <TableCell>{item.descricao}</TableCell>
-                  <TableCell>{item.valor}</TableCell>
-                </TableRow>
+      {/* Middle: Grid with Construtores */}
+      <div className="grid md:grid-cols-2 gap-4 mb-4">
+        {/* Quadro 2: Fator and Cenário */}
+        <div className="p-4 border rounded shadow">
+          <h3 className="mb-2">Adicionar Cenário</h3>
+          <label className="block mb-2">Fator (obrigatório):</label>
+          <select
+            value={newFator}
+            onChange={(e) => setNewFator(e.target.value)}
+            className="w-full p-2 border rounded mb-2"
+          >
+            <option value="">Selecione</option>
+            {fatores.map((f) => (
+              <option key={f} value={f}>
+                {f}
+              </option>
+            ))}
+          </select>
+          <label className="block mb-2">Cenário (opcional):</label>
+          <select
+            value={newCenario}
+            onChange={(e) => setNewCenario(e.target.value)}
+            className="w-full p-2 border rounded mb-2"
+          >
+            <option value="">Selecione</option>
+            {cenariosOptions.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+          <button onClick={addCenario} className="px-4 py-2 bg-blue-500 text-white rounded">
+            Adicionar Cenário
+          </button>
+          <table className="w-full mt-4 border-collapse border border-gray-300">
+            <thead>
+              <tr>
+                <th className="border border-gray-300 p-2">Fonte</th>
+                <th className="border border-gray-300 p-2">Fator</th>
+                <th className="border border-gray-300 p-2">Cenário</th>
+              </tr>
+            </thead>
+            <tbody>
+              {cenarios.map((c, i) => (
+                <tr key={i}>
+                  <td className="border border-gray-300 p-2">{c.fonte}</td>
+                  <td className="border border-gray-300 p-2">{c.fator}</td>
+                  <td className="border border-gray-300 p-2">{c.cenario}</td>
+                </tr>
               ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+            </tbody>
+          </table>
+        </div>
+
+        {/* Quadro 3: Ações */}
+        <div className="p-4 border rounded shadow">
+          <h3 className="mb-2">Adicionar Estratégia</h3>
+          <label className="block mb-2">Ação:</label>
+          <select
+            value={selectedAcao}
+            onChange={(e) => setSelectedAcao(e.target.value)}
+            className="w-full p-2 border rounded mb-2"
+          >
+            <option value="">Selecione</option>
+            {acoes.map((a) => (
+              <option key={a} value={a}>
+                {a}
+              </option>
+            ))}
+          </select>
+          <button onClick={addEstrategia} className="px-4 py-2 bg-blue-500 text-white rounded">
+            Adicionar Estratégia
+          </button>
+          <table className="w-full mt-4 border-collapse border border-gray-300">
+            <thead>
+              <tr>
+                <th className="border border-gray-300 p-2">Ação</th>
+              </tr>
+            </thead>
+            <tbody>
+              {estrategias.map((e, i) => (
+                <tr key={i}>
+                  <td className="border border-gray-300 p-2">{e}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Single Button */}
+      <div className="text-center mb-4">
+        <button
+          onClick={handleGravarOuAdicionar}
+          className="px-6 py-3 bg-green-500 text-white rounded"
+          disabled={cenarios.length === 0 && estrategias.length === 0}
+        >
+          {isFirstGravar ? 'Gravar cenários e estratégias' : 'Adicionar'}
+        </button>
+      </div>
+
+      {/* Tabela Simulacao */}
+      {simulacao.length > 0 && (
+        <div className="p-4 border rounded shadow">
+          <h3 className="mb-2">Simulação</h3>
+          <table className="w-full border-collapse border border-gray-300">
+            <thead>
+              <tr>
+                <th className="border border-gray-300 p-2">Cenários</th>
+                <th className="border border-gray-300 p-2">Estratégias</th>
+              </tr>
+            </thead>
+            <tbody>
+              {simulacao.map((s, i) => (
+                <tr key={i}>
+                  <td className="border border-gray-300 p-2">{s.cenarios}</td>
+                  <td className="border border-gray-300 p-2">{s.estrategias}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   )
 }
