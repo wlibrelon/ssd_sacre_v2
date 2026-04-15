@@ -7,15 +7,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'
 import { Play } from 'lucide-react'
 import useSimulationStore from '@/stores/useSimulationStore'
 import { SimulationCharts } from '@/components/SimulationCharts'
 
-const FONTES = ['Batalha', 'Bauru', 'Guarani']
-const CENARIOS = ['Tendencial', 'Pessimista', 'Conservacionista']
-const SUB_CENARIOS = ['Clima', 'Uso da Terra Batalha', 'Uso da Terra Bauru', 'Condutividade SAG']
 const PERDAS = [
   { label: 'Atual (30%)', val: 0.3 },
   { label: 'Meta (15%)', val: 0.15 },
@@ -24,13 +20,6 @@ const DEMANDAS = [
   { label: 'Tendencial', val: 100 },
   { label: 'Acelerada', val: 120 },
   { label: 'Reduzida', val: 80 },
-]
-const ACOES = [
-  'Barraginhas',
-  'Campo de poços SAG',
-  'Uso atual SAG',
-  'Inclusão de 100 poços SAG',
-  'Uso atual SAB',
 ]
 
 const MySelect = ({ val, setVal, placeholder, options }: any) => (
@@ -49,24 +38,24 @@ const MySelect = ({ val, setVal, placeholder, options }: any) => (
 )
 
 export default function Cenarios() {
-  const { csvData } = useSimulationStore()
-  const [selections, setSelections] = useState<Record<string, any>>(
-    FONTES.reduce((acc, f) => ({ ...acc, [f]: { cenario: '', sub: '', acoes: [] } }), {}),
-  )
+  const { csvData, simulacao } = useSimulationStore()
+  const [selectedSimulacaoIndex, setSelectedSimulacaoIndex] = useState<number>(0)
   const [globalPerdas, setGlobalPerdas] = useState(0.3)
   const [globalDemanda, setGlobalDemanda] = useState(100)
   const [results, setResults] = useState<any[]>([])
   const [timeData, setTimeData] = useState<any[]>([])
 
   const handleSimulate = () => {
+    // Manter toda a lógica original, usando dados de simulacao selecionada
     const res = csvData.map((r) => {
-      const sel = selections[r.Fonte]
       return {
         ...r,
         Vazao_Distribuida: r.Vazao_Captada * (1 - globalPerdas),
         Demanda: globalDemanda,
-        Cenario_da_fonte: sel ? `${sel.cenario} ${sel.sub}` : '',
-        Acoes: sel ? sel.acoes.join(', ') : '',
+        Cenario_Simulacao:
+          selectedSimulacaoIndex >= 0
+            ? `${simulacao[selectedSimulacaoIndex].fonte} | ${simulacao[selectedSimulacaoIndex].cenarios} | ${simulacao[selectedSimulacaoIndex].estrategias}`
+            : '',
       }
     })
     setResults(res)
@@ -97,70 +86,38 @@ export default function Cenarios() {
         </p>
       </div>
 
-      <div className="grid md:grid-cols-3 gap-6">
-        {FONTES.map((f) => {
-          const sel = selections[f]
-          const update = (k: string, v: any) =>
-            setSelections((s) => ({ ...s, [f]: { ...s[f], [k]: v } }))
-          return (
-            <Card key={f} className="shadow-sm border-t-4 border-t-secondary">
-              <CardHeader className="py-4 bg-slate-50/50">
-                <CardTitle className="text-lg">{f}</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4 pt-4">
-                <div className="space-y-2">
-                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">
-                    Cenários
-                  </p>
-                  <MySelect
-                    val={sel.cenario}
-                    setVal={(v: string) => update('cenario', v)}
-                    placeholder="Selecione o Cenário"
-                    options={CENARIOS}
-                  />
-                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">
-                    Sub Cenários
-                  </p>
-                  <MySelect
-                    val={sel.sub}
-                    setVal={(v: string) => update('sub', v)}
-                    placeholder="Sub Cenário"
-                    options={SUB_CENARIOS}
-                  />
-                </div>
-                <div className="pt-3 border-t">
-                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
-                    Ações Integradas
-                  </p>
-                  <div className="space-y-1.5">
-                    {ACOES.map((a) => (
-                      <label
-                        key={a}
-                        className="flex items-start gap-2 text-xs py-0.5 cursor-pointer group"
-                      >
-                        <Checkbox
-                          checked={sel.acoes.includes(a)}
-                          onCheckedChange={(c) =>
-                            update(
-                              'acoes',
-                              c ? [...sel.acoes, a] : sel.acoes.filter((x: string) => x !== a),
-                            )
-                          }
-                          className="mt-0.5"
-                        />
-                        <span className="group-hover:text-primary transition-colors leading-tight">
-                          {a}
-                        </span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )
-        })}
-      </div>
+      {/* Novo Quadro: Seleção de Simulação */}
+      {simulacao && simulacao.length > 0 && (
+        <Card className="shadow-sm border-t-4 border-t-secondary">
+          <CardHeader className="py-4 bg-slate-50/50">
+            <CardTitle className="text-lg">Seleção de Simulação</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-4">
+            <div className="space-y-2">
+              <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">
+                Cenários e Estratégias
+              </p>
+              <Select
+                value={selectedSimulacaoIndex.toString()}
+                onValueChange={(v) => setSelectedSimulacaoIndex(parseInt(v))}
+              >
+                <SelectTrigger className="h-9 text-xs font-medium">
+                  <SelectValue placeholder="Selecione uma simulação" />
+                </SelectTrigger>
+                <SelectContent>
+                  {simulacao.map((s, idx) => (
+                    <SelectItem key={idx} value={idx.toString()}>
+                      {`${s.fonte} | ${s.cenarios} | ${s.estrategias}`}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
+      {/* Quadro Parâmetros Globais - MANTIDO INTACTO */}
       <Card className="shadow-sm border-t-4 border-t-secondary">
         <CardHeader className="py-4 bg-slate-50/50">
           <CardTitle className="text-lg">Parâmetros Globais</CardTitle>
@@ -193,6 +150,7 @@ export default function Cenarios() {
         </CardContent>
       </Card>
 
+      {/* Botão Rodar Simulação - MANTIDO INTACTO */}
       <div className="flex justify-end">
         <Button
           onClick={handleSimulate}
@@ -203,6 +161,7 @@ export default function Cenarios() {
         </Button>
       </div>
 
+      {/* Gráficos - MANTIDO INTACTO */}
       {results.length > 0 && <SimulationCharts results={results} timeData={timeData} />}
     </div>
   )

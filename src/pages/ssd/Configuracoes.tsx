@@ -94,7 +94,7 @@ const Configuracoes: React.FC = () => {
         {/* Quadro 2: Fator and Cenário */}
         <div className="p-4 border rounded shadow">
           <h3 className="mb-2">Adicionar Cenário</h3>
-          <label className="block mb-2">Fator (obrigatório):</label>
+          <label className="block mb-2">Fator:</label>
           <select
             value={newFator}
             onChange={(e) => setNewFator(e.target.value)}
@@ -107,7 +107,7 @@ const Configuracoes: React.FC = () => {
               </option>
             ))}
           </select>
-          <label className="block mb-2">Cenário (opcional):</label>
+          <label className="block mb-2">Cenário:</label>
           <select
             value={newCenario}
             onChange={(e) => setNewCenario(e.target.value)}
