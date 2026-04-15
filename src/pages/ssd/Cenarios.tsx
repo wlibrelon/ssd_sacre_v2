@@ -86,7 +86,38 @@ export default function Cenarios() {
         </p>
       </div>
 
-      {/* Novo Quadro: Seleção de Simulação */}
+      {/* ✅ NOVO: Tabela de Simulação - PRIMEIRO CARD */}
+      {simulacao && simulacao.length > 0 && (
+        <Card className="shadow-sm border-t-4 border-t-secondary">
+          <CardHeader className="py-4 bg-slate-50/50">
+            <CardTitle className="text-lg">Tabela de Simulação</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-4">
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse border border-gray-300">
+                <thead>
+                  <tr>
+                    <th className="border border-gray-300 p-2 text-left">Fonte</th>
+                    <th className="border border-gray-300 p-2 text-left">Cenários</th>
+                    <th className="border border-gray-300 p-2 text-left">Estratégias</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {simulacao.map((s, i) => (
+                    <tr key={i} className="hover:bg-gray-50">
+                      <td className="border border-gray-300 p-2">{s.fonte}</td>
+                      <td className="border border-gray-300 p-2">{s.cenarios}</td>
+                      <td className="border border-gray-300 p-2">{s.estrategias}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Quadro: Seleção de Simulação */}
       {simulacao && simulacao.length > 0 && (
         <Card className="shadow-sm border-t-4 border-t-secondary">
           <CardHeader className="py-4 bg-slate-50/50">
