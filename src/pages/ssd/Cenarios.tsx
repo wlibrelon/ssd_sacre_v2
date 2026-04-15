@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { Play, Upload } from 'lucide-react'
-import { useSimulationStore } from '@/stores/useSimulationStore'
+import useSimulationStore from '@/stores/useSimulationStore'
 import {
   LineChart,
   BarChart,
