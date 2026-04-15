@@ -26,7 +26,7 @@ const Configuracoes: React.FC = () => {
   const [simulacao, setSimulacao] = useState<Simulacao[]>([])
   const [isFirstGravar, setIsFirstGravar] = useState<boolean>(true)
 
-  const fontes = ['Batalha', 'Bauru', 'Guarani']
+  const fontes = ['Rio Batalha', 'Sistema Aquífero Bauru', 'Sistema Aquífero Guarani']
   const fatores = ['Clima', 'Uso da Terra', 'Condutividade Hidráulica', 'Captações a Montante']
   const cenariosOptions = ['Tendencial', 'Pessimista', 'Conservacionista']
   const acoes = [
