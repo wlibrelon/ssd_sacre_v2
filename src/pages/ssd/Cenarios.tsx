@@ -9,6 +9,14 @@ import {
 } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import {
   LineChart,
   Line,
   XAxis,
@@ -16,15 +24,13 @@ import {
   CartesianGrid,
   Tooltip,
   Legend,
-  ResponsiveContainer,
   BarChart,
   Bar,
-  ComposedChart,
-  ReferenceLine,
+  ResponsiveContainer,
 } from 'recharts'
-import { useStore } from '@/store' // Assuming a store hook, e.g., Zustand
+import useSimulationStore from '@/stores/useSimulationStore'
 
-type CsvRow = {
+type SimulacaoRow = {
   Tempo: string
   Fonte: string
   cenario: string
@@ -36,186 +42,195 @@ type CsvRow = {
   Aceitacao_Social: number
 }
 
-type Simulation = {
-  id: string
-  fonte: string
-  cenario: string
-  estrategia: string
-  // Add other fields as needed
+type ProcessedData = {
+  Tempo: string
+  Vazao_Captada: number
+  Vazao_Distribuida: number
+  Fonte: string
+  Demanda: number
 }
 
 const Cenarios: React.FC = () => {
-  const { simulations } = useStore() // Assuming store has simulations array
-  const [csvData, setCsvData] = useState<CsvRow[]>([])
+  const { simulacao, csvData, setCsvData, setSimulacao } = useSimulationStore()
   const [perdas, setPerdas] = useState<number>(0.3)
-  const [demandaGlobal, setDemandaGlobal] = useState<number>(100)
-  const [filteredData, setFilteredData] = useState<CsvRow[]>([])
-  const [preview, setPreview] = useState<string[]>([])
-  const [error, setError] = useState<string>('')
+  const [demanda, setDemanda] = useState<number>(100)
+  const [processedData, setProcessedData] = useState<ProcessedData[]>([])
+  const [chartData1, setChartData1] = useState<any[]>([])
+  const [chartData2, setChartData2] = useState<any[]>([])
+  const [chartData3, setChartData3] = useState<any[]>([])
+  const [chartData4, setChartData4] = useState<any[]>([])
 
-  const requiredColumns = [
-    'Tempo',
-    'Fonte',
-    'cenario',
-    'estrategia',
-    'Vazao_Captada',
-    'Demanda',
-    'CAPEX',
-    'OPEX',
-    'Aceitacao_Social',
-  ]
-
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCsvUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      const text = e.target?.result as string
-      const lines = text.split('\n')
-      setPreview(lines.slice(0, 5))
-      const headers = lines[0].split(',').map((h) => h.trim().toLowerCase())
-      const missing = requiredColumns.filter((col) => !headers.includes(col.toLowerCase()))
-      if (missing.length > 0) {
-        setError(`Missing columns: ${missing.join(', ')}`)
-        return
+    if (file) {
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        const text = e.target?.result as string
+        const rows = text.split('\n').map((row) => row.split(','))
+        const headers = rows[0]
+        const requiredHeaders = [
+          'Tempo',
+          'Fonte',
+          'cenario',
+          'estrategia',
+          'Vazao_Captada',
+          'Demanda',
+          'CAPEX',
+          'OPEX',
+          'Aceitacao_Social',
+        ]
+        const isValid = requiredHeaders.every((header) => headers.includes(header))
+        if (!isValid) {
+          alert('CSV inválido: colunas obrigatórias não encontradas.')
+          return
+        }
+        const data: SimulacaoRow[] = rows.slice(1).map((row) => ({
+          Tempo: row[0],
+          Fonte: row[1],
+          cenario: row[2],
+          estrategia: row[3],
+          Vazao_Captada: parseFloat(row[4]),
+          Demanda: parseFloat(row[5]),
+          CAPEX: parseFloat(row[6]),
+          OPEX: parseFloat(row[7]),
+          Aceitacao_Social: parseFloat(row[8]),
+        }))
+        setCsvData(data)
       }
-      setError('')
-      const data: CsvRow[] = lines
-        .slice(1)
-        .map((line) => {
-          const values = line.split(',')
-          return {
-            Tempo: values[0],
-            Fonte: values[1],
-            cenario: values[2],
-            estrategia: values[3],
-            Vazao_Captada: parseFloat(values[4]),
-            Demanda: parseFloat(values[5]),
-            CAPEX: parseFloat(values[6]),
-            OPEX: parseFloat(values[7]),
-            Aceitacao_Social: parseFloat(values[8]),
-          }
-        })
-        .filter((row) => !isNaN(row.Vazao_Captada)) // Basic validation
-      setCsvData(data)
+      reader.readAsText(file)
     }
-    reader.readAsText(file)
   }
 
-  useEffect(() => {
-    if (simulations.length === 0 || csvData.length === 0) return
-    const processed = simulations.map((sim) => {
-      const filtered = csvData.filter(
-        (row) =>
-          row.Fonte.toLowerCase() === sim.fonte.toLowerCase() &&
-          row.cenario.toLowerCase() === sim.cenario.toLowerCase() &&
-          row.estrategia.toLowerCase() === sim.estrategia.toLowerCase(),
-      )
-      console.log(`Simulation ${sim.id}: ${filtered.length} records found`)
-      return {
-        ...sim,
-        records: filtered,
-        vazaoDistribuida: filtered.map((r) => ({
-          ...r,
-          Vazao_Distribuida: r.Vazao_Captada * (1 - perdas),
-        })),
-      }
-    })
-    setFilteredData(processed.flatMap((p) => p.records))
-  }, [simulations, csvData, perdas])
-
-  // Prepare data for charts
-  const chart1Data = filteredData.reduce((acc, row) => {
-    const existing = acc.find((d) => d.Tempo === row.Tempo)
-    if (existing) {
-      existing[row.Fonte] = row.Vazao_Captada
-    } else {
-      acc.push({ Tempo: row.Tempo, [row.Fonte]: row.Vazao_Captada })
-    }
-    return acc
-  }, [] as any[])
-
-  const chart2Data = filteredData.reduce((acc, row) => {
-    const existing = acc.find((d) => d.Tempo === row.Tempo)
-    if (existing) {
-      existing[row.Fonte] = (row.Vazao_Captada / existing.total) * 100
-      existing.total += row.Vazao_Captada
-    } else {
-      acc.push({ Tempo: row.Tempo, [row.Fonte]: 100, total: row.Vazao_Captada }) // Simplified for single
-    }
-    return acc
-  }, [] as any[])
-
-  const chart3Data = filteredData.map((row) => ({
-    Tempo: row.Tempo,
-    Vazao_Captada: row.Vazao_Captada,
-    Vazao_Distribuida: row.Vazao_Captada * (1 - perdas),
-  }))
-
-  const chart4Data = filteredData.reduce((acc, row) => {
-    const existing = acc.find((d) => d.Tempo === row.Tempo)
-    if (existing) {
-      existing.Vazao_Total_Distribuida += row.Vazao_Captada * (1 - perdas)
-    } else {
-      acc.push({
-        Tempo: row.Tempo,
-        Vazao_Total_Distribuida: row.Vazao_Captada * (1 - perdas),
-        Demanda: demandaGlobal,
+  const runSimulation = () => {
+    if (!csvData.length) return
+    const filteredData = csvData
+      .filter((row: SimulacaoRow) => {
+        const sim = simulacao.find((s) => s.Fonte?.toLowerCase() === row.Fonte?.toLowerCase())
+        return sim && sim.cenario === row.cenario && sim.estrategia === row.estrategia
       })
-    }
-    return acc
-  }, [] as any[])
+      .map((row: SimulacaoRow) => ({
+        ...row,
+        Vazao_Distribuida: row.Vazao_Captada * (1 - perdas),
+        Demanda: demanda,
+      }))
+    setProcessedData(filteredData)
+
+    // Process Chart 1: Line - Vazão captada por Fonte (X = Tempo)
+    const groupedByTempo = filteredData.reduce((acc, row) => {
+      if (!acc[row.Tempo]) acc[row.Tempo] = {}
+      acc[row.Tempo][row.Fonte] = row.Vazao_Captada
+      return acc
+    }, {} as any)
+    const chart1Data = Object.keys(groupedByTempo).map((tempo) => ({
+      Tempo: tempo,
+      ...groupedByTempo[tempo],
+    }))
+    setChartData1(chart1Data)
+
+    // Process Chart 2: Stacked Bar - % por Fonte (X = Tempo)
+    const chart2Data = Object.keys(groupedByTempo).map((tempo) => {
+      const total = Object.values(groupedByTempo[tempo]).reduce(
+        (sum: number, val: number) => sum + val,
+        0,
+      )
+      const obj: any = { Tempo: tempo }
+      Object.keys(groupedByTempo[tempo]).forEach((fonte) => {
+        obj[fonte] = (groupedByTempo[tempo][fonte] / total) * 100
+      })
+      return obj
+    })
+    setChartData2(chart2Data)
+
+    // Process Chart 3: Line - Vazão captada vs distribuída
+    const chart3Data = filteredData.map((row) => ({
+      Tempo: row.Tempo,
+      Vazao_Captada: row.Vazao_Captada,
+      Vazao_Distribuida: row.Vazao_Distribuida,
+    }))
+    setChartData3(chart3Data)
+
+    // Process Chart 4: Line + Bar - Vazão total distribuída vs Demanda
+    const totalDistributed = filteredData.reduce((acc, row) => {
+      if (!acc[row.Tempo]) acc[row.Tempo] = 0
+      acc[row.Tempo] += row.Vazao_Distribuida
+      return acc
+    }, {} as any)
+    const chart4Data = Object.keys(totalDistributed).map((tempo) => ({
+      Tempo: tempo,
+      Vazao_Distribuida: totalDistributed[tempo],
+      Demanda: demanda,
+    }))
+    setChartData4(chart4Data)
+  }
 
   return (
-    <div className="p-4">
+    <div className="p-4 space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle>Simulação Table</CardTitle>
+          <CardTitle>Tabela de Simulação</CardTitle>
         </CardHeader>
         <CardContent>
-          <table className="w-full border-collapse border border-gray-300">
-            <thead>
-              <tr>
-                <th className="border border-gray-300 p-2">Fonte</th>
-                <th className="border border-gray-300 p-2">Cenário</th>
-                <th className="border border-gray-300 p-2">Estratégia</th>
-                {/* Add more columns as needed */}
-              </tr>
-            </thead>
-            <tbody>
-              {simulations.map((sim) => (
-                <tr key={sim.id}>
-                  <td className="border border-gray-300 p-2">{sim.fonte}</td>
-                  <td className="border border-gray-300 p-2">{sim.cenario}</td>
-                  <td className="border border-gray-300 p-2">{sim.estrategia}</td>
-                </tr>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Tempo</TableHead>
+                <TableHead>Fonte</TableHead>
+                <TableHead>Cenário</TableHead>
+                <TableHead>Estratégia</TableHead>
+                <TableHead>Vazão Captada</TableHead>
+                <TableHead>Demanda</TableHead>
+                <TableHead>CAPEX</TableHead>
+                <TableHead>OPEX</TableHead>
+                <TableHead>Aceitação Social</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {simulacao.map((row, index) => (
+                <TableRow key={index}>
+                  <TableCell>{row.Tempo}</TableCell>
+                  <TableCell>{row.Fonte}</TableCell>
+                  <TableCell>{row.cenario}</TableCell>
+                  <TableCell>{row.estrategia}</TableCell>
+                  <TableCell>{row.Vazao_Captada}</TableCell>
+                  <TableCell>{row.Demanda}</TableCell>
+                  <TableCell>{row.CAPEX}</TableCell>
+                  <TableCell>{row.OPEX}</TableCell>
+                  <TableCell>{row.Aceitacao_Social}</TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
 
-      <Card className="mt-4">
+      <Card>
         <CardHeader>
           <CardTitle>Parâmetros Globais</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="flex gap-4">
-            <Select value={perdas.toString()} onValueChange={(v) => setPerdas(parseFloat(v))}>
-              <SelectTrigger className="w-32">
-                <SelectValue placeholder="Perdas" />
+        <CardContent className="space-y-2">
+          <div>
+            <label>Perdas:</label>
+            <Select
+              value={perdas.toString()}
+              onValueChange={(value) => setPerdas(parseFloat(value))}
+            >
+              <SelectTrigger>
+                <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="0.3">30%</SelectItem>
                 <SelectItem value="0.15">15%</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+          <div>
+            <label>Demanda:</label>
             <Select
-              value={demandaGlobal.toString()}
-              onValueChange={(v) => setDemandaGlobal(parseFloat(v))}
+              value={demanda.toString()}
+              onValueChange={(value) => setDemanda(parseFloat(value))}
             >
-              <SelectTrigger className="w-32">
-                <SelectValue placeholder="Demanda" />
+              <SelectTrigger>
+                <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="100">100</SelectItem>
@@ -227,60 +242,41 @@ const Cenarios: React.FC = () => {
         </CardContent>
       </Card>
 
-      <Card className="mt-4">
+      <Card>
         <CardHeader>
-          <CardTitle>Upload CSV</CardTitle>
+          <CardTitle>Importação CSV</CardTitle>
         </CardHeader>
         <CardContent>
-          <input type="file" accept=".csv" onChange={handleFileUpload} />
-          {error && <p className="text-red-500">{error}</p>}
-          {preview.length > 0 && (
-            <div>
-              <h4>Preview:</h4>
-              <pre>{preview.join('\n')}</pre>
-            </div>
-          )}
+          <input type="file" accept=".csv" onChange={handleCsvUpload} />
         </CardContent>
       </Card>
 
-      <Card className="mt-4">
+      <Card>
         <CardHeader>
           <CardTitle>Resumo de Processamento</CardTitle>
         </CardHeader>
         <CardContent>
-          {simulations.map((sim) => {
-            const count = csvData.filter(
-              (row) =>
-                row.Fonte.toLowerCase() === sim.fonte.toLowerCase() &&
-                row.cenario.toLowerCase() === sim.cenario.toLowerCase() &&
-                row.estrategia.toLowerCase() === sim.estrategia.toLowerCase(),
-            ).length
-            return (
-              <p key={sim.id}>
-                {count > 0
-                  ? `${count} registros encontrados para ${sim.fonte}, ${sim.cenario}, ${sim.estrategia}`
-                  : `Nenhum registro encontrado para ${sim.fonte}, ${sim.cenario}, ${sim.estrategia}`}
-              </p>
-            )
-          })}
+          <p>Dados processados: {processedData.length}</p>
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-2 gap-4 mt-4">
+      <Button onClick={runSimulation}>Rodar Simulação</Button>
+
+      <div className="grid grid-cols-2 gap-4">
         <Card>
           <CardHeader>
-            <CardTitle>Chart 1: Tempo vs Vazao_Captada por Fonte</CardTitle>
+            <CardTitle>Chart 1: Vazão Captada por Fonte</CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={400}>
-              <LineChart data={chart1Data}>
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={chartData1}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="Tempo" />
                 <YAxis />
                 <Tooltip />
                 <Legend />
-                {Object.keys(chart1Data[0] || {})
-                  .filter((k) => k !== 'Tempo')
+                {Object.keys(chartData1[0] || {})
+                  .filter((key) => key !== 'Tempo')
                   .map((fonte) => (
                     <Line key={fonte} type="monotone" dataKey={fonte} stroke="#8884d8" />
                   ))}
@@ -291,18 +287,18 @@ const Cenarios: React.FC = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle>Chart 2: % por Fonte por Tempo</CardTitle>
+            <CardTitle>Chart 2: % por Fonte</CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={400}>
-              <BarChart data={chart2Data}>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={chartData2}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="Tempo" />
                 <YAxis />
                 <Tooltip />
                 <Legend />
-                {Object.keys(chart2Data[0] || {})
-                  .filter((k) => k !== 'Tempo' && k !== 'total')
+                {Object.keys(chartData2[0] || {})
+                  .filter((key) => key !== 'Tempo')
                   .map((fonte) => (
                     <Bar key={fonte} dataKey={fonte} stackId="a" fill="#8884d8" />
                   ))}
@@ -313,11 +309,11 @@ const Cenarios: React.FC = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle>Chart 3: Vazao_Captada vs Vazao_Distribuida</CardTitle>
+            <CardTitle>Chart 3: Vazão Captada vs Distribuída</CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={400}>
-              <LineChart data={chart3Data}>
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={chartData3}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="Tempo" />
                 <YAxis />
@@ -332,20 +328,19 @@ const Cenarios: React.FC = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle>Chart 4: Vazao_Total_Distribuida vs Demanda</CardTitle>
+            <CardTitle>Chart 4: Vazão Distribuída vs Demanda</CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={400}>
-              <ComposedChart data={chart4Data}>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={chartData4}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="Tempo" />
                 <YAxis />
                 <Tooltip />
                 <Legend />
-                <Bar dataKey="Vazao_Total_Distribuida" fill="#8884d8" />
+                <Bar dataKey="Vazao_Distribuida" fill="#8884d8" />
                 <Line type="monotone" dataKey="Demanda" stroke="#ff7300" />
-                <ReferenceLine y={0} stroke="#000" />
-              </ComposedChart>
+              </BarChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
