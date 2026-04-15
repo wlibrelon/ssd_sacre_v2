@@ -1,17 +1,23 @@
 import React, { useState } from 'react'
+import { Trash2 } from 'lucide-react'
 
-type Cenario = {
-  fonte: string
-  fator: string
-  cenario: string
-}
+type Cenario = { fonte: string; fator: string; cenario: string }
+type Simulacao = { cenarios: Cenario[]; estrategias: string[] }
 
-type Simulacao = {
-  cenarios: string
-  estrategias: string
-}
+const fontes = ['Batalha', 'Bauru', 'Guarani']
+const fatores = ['Clima', 'Uso da Terra', 'Condutividade Hidráulica', 'Captações a Montante']
+const cenariosOptions = ['Cenário1', 'Cenário2', 'Cenário3']
+const acoes = [
+  'Instalar Barraginhas',
+  'Uso atual',
+  'Expansão de poços',
+  'Instalar barramento a montante',
+  'Condição atual de captação',
+  'Expansão de poços no município',
+  'Mais poços na área urbana',
+]
 
-const Configuracoes: React.FC = () => {
+const App: React.FC = () => {
   const [selectedFonte, setSelectedFonte] = useState<string>('')
   const [newFator, setNewFator] = useState<string>('')
   const [newCenario, setNewCenario] = useState<string>('')
@@ -21,47 +27,30 @@ const Configuracoes: React.FC = () => {
   const [simulacao, setSimulacao] = useState<Simulacao[]>([])
   const [isFirstGravar, setIsFirstGravar] = useState<boolean>(true)
 
-  const fontes = ['Batalha', 'Bauru', 'Guarani']
-  const fatores = ['Fator1', 'Fator2', 'Fator3'] // Example options
-  const cenariosOptions = ['Cenário1', 'Cenário2', 'Cenário3'] // Example options
-  const acoes = ['Ação1', 'Ação2', 'Ação3'] // Example options
-
   const addCenario = () => {
-    if (newFator) {
-      setCenarios([...cenarios, { fonte: selectedFonte, fator: newFator, cenario: newCenario }])
-      setNewFator('')
-      setNewCenario('')
-    }
+    setCenarios((prev) =>
+      prev.concat({ fonte: selectedFonte, fator: newFator, cenario: newCenario }),
+    )
   }
 
   const addEstrategia = () => {
-    if (selectedAcao) {
-      setEstrategias([...estrategias, selectedAcao])
-      setSelectedAcao('')
-    }
+    setEstrategias((prev) => prev.concat(selectedAcao))
   }
 
   const handleGravarOuAdicionar = () => {
-    const cenariosStr = cenarios.map((c) => `${c.fonte} | ${c.fator} | ${c.cenario}`).join(' | ')
-    const estrategiasStr = estrategias.join(' | ')
-    setSimulacao([...simulacao, { cenarios: cenariosStr, estrategias: estrategiasStr }])
-    setCenarios([])
-    setEstrategias([])
-    if (isFirstGravar) {
-      setIsFirstGravar(false)
-    }
+    setSimulacao((prev) => prev.concat({ cenarios, estrategias }))
+    setIsFirstGravar(false)
+  }
+
+  const handleDeleteSimulacao = (index: number) => {
+    setSimulacao((prev) => prev.filter((_, i) => i !== index))
   }
 
   return (
-    <div className="p-4">
-      {/* Top: Card Fonte */}
-      <div className="mb-4 p-4 border rounded shadow">
-        <label className="block mb-2">Fonte:</label>
-        <select
-          value={selectedFonte}
-          onChange={(e) => setSelectedFonte(e.target.value)}
-          className="w-full p-2 border rounded"
-        >
+    <div>
+      <div className="card fonte">
+        <h3>Fonte</h3>
+        <select value={selectedFonte} onChange={(e) => setSelectedFonte(e.target.value)}>
           <option value="">Selecione</option>
           {fontes.map((f) => (
             <option key={f} value={f}>
@@ -70,132 +59,102 @@ const Configuracoes: React.FC = () => {
           ))}
         </select>
       </div>
-
-      {/* Middle: Grid with Construtores */}
-      <div className="grid md:grid-cols-2 gap-4 mb-4">
-        {/* Quadro 2: Fator and Cenário */}
-        <div className="p-4 border rounded shadow">
-          <h3 className="mb-2">Adicionar Cenário</h3>
-          <label className="block mb-2">Fator (obrigatório):</label>
-          <select
-            value={newFator}
-            onChange={(e) => setNewFator(e.target.value)}
-            className="w-full p-2 border rounded mb-2"
-          >
-            <option value="">Selecione</option>
+      <div className="grid construtores">
+        <div className="cenarios">
+          <h4>Cenários</h4>
+          <select value={newFator} onChange={(e) => setNewFator(e.target.value)}>
+            <option value="">Fator</option>
             {fatores.map((f) => (
               <option key={f} value={f}>
                 {f}
               </option>
             ))}
           </select>
-          <label className="block mb-2">Cenário (opcional):</label>
-          <select
-            value={newCenario}
-            onChange={(e) => setNewCenario(e.target.value)}
-            className="w-full p-2 border rounded mb-2"
-          >
-            <option value="">Selecione</option>
+          <select value={newCenario} onChange={(e) => setNewCenario(e.target.value)}>
+            <option value="">Cenário</option>
             {cenariosOptions.map((c) => (
               <option key={c} value={c}>
                 {c}
               </option>
             ))}
           </select>
-          <button onClick={addCenario} className="px-4 py-2 bg-blue-500 text-white rounded">
-            Adicionar Cenário
-          </button>
-          <table className="w-full mt-4 border-collapse border border-gray-300">
+          <button onClick={addCenario}>Adicionar Cenário</button>
+          <table>
             <thead>
               <tr>
-                <th className="border border-gray-300 p-2">Fonte</th>
-                <th className="border border-gray-300 p-2">Fator</th>
-                <th className="border border-gray-300 p-2">Cenário</th>
+                <th>Fonte</th>
+                <th>Fator</th>
+                <th>Cenário</th>
               </tr>
             </thead>
             <tbody>
               {cenarios.map((c, i) => (
                 <tr key={i}>
-                  <td className="border border-gray-300 p-2">{c.fonte}</td>
-                  <td className="border border-gray-300 p-2">{c.fator}</td>
-                  <td className="border border-gray-300 p-2">{c.cenario}</td>
+                  <td>{c.fonte}</td>
+                  <td>{c.fator}</td>
+                  <td>{c.cenario}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-
-        {/* Quadro 3: Ações */}
-        <div className="p-4 border rounded shadow">
-          <h3 className="mb-2">Adicionar Estratégia</h3>
-          <label className="block mb-2">Ação:</label>
-          <select
-            value={selectedAcao}
-            onChange={(e) => setSelectedAcao(e.target.value)}
-            className="w-full p-2 border rounded mb-2"
-          >
-            <option value="">Selecione</option>
+        <div className="estrategias">
+          <h4>Estratégias</h4>
+          <select value={selectedAcao} onChange={(e) => setSelectedAcao(e.target.value)}>
+            <option value="">Ação</option>
             {acoes.map((a) => (
               <option key={a} value={a}>
                 {a}
               </option>
             ))}
           </select>
-          <button onClick={addEstrategia} className="px-4 py-2 bg-blue-500 text-white rounded">
-            Adicionar Estratégia
-          </button>
-          <table className="w-full mt-4 border-collapse border border-gray-300">
+          <button onClick={addEstrategia}>Adicionar Estratégia</button>
+          <table>
             <thead>
               <tr>
-                <th className="border border-gray-300 p-2">Ação</th>
+                <th>Estratégia</th>
               </tr>
             </thead>
             <tbody>
               {estrategias.map((e, i) => (
                 <tr key={i}>
-                  <td className="border border-gray-300 p-2">{e}</td>
+                  <td>{e}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       </div>
-
-      {/* Single Button */}
-      <div className="text-center mb-4">
-        <button
-          onClick={handleGravarOuAdicionar}
-          className="px-6 py-3 bg-green-500 text-white rounded"
-          disabled={cenarios.length === 0 && estrategias.length === 0}
-        >
-          {isFirstGravar ? 'Gravar cenários e estratégias' : 'Adicionar'}
-        </button>
+      <div className="button-container">
+        <button onClick={handleGravarOuAdicionar}>{isFirstGravar ? 'Gravar' : 'Adicionar'}</button>
       </div>
-
-      {/* Tabela Simulacao */}
-      {simulacao.length > 0 && (
-        <div className="p-4 border rounded shadow">
-          <h3 className="mb-2">Simulação</h3>
-          <table className="w-full border-collapse border border-gray-300">
-            <thead>
-              <tr>
-                <th className="border border-gray-300 p-2">Cenários</th>
-                <th className="border border-gray-300 p-2">Estratégias</th>
+      <div className="tabela simulacao">
+        <h4>Simulação</h4>
+        <table>
+          <thead>
+            <tr>
+              <th>Cenários</th>
+              <th>Estratégias</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {simulacao.map((s, i) => (
+              <tr key={i}>
+                <td>{s.cenarios.map((c) => `${c.fonte}-${c.fator}-${c.cenario}`).join(', ')}</td>
+                <td>{s.estrategias.join(', ')}</td>
+                <td>
+                  <button onClick={() => handleDeleteSimulacao(i)}>
+                    <Trash2 />
+                  </button>
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {simulacao.map((s, i) => (
-                <tr key={i}>
-                  <td className="border border-gray-300 p-2">{s.cenarios}</td>
-                  <td className="border border-gray-300 p-2">{s.estrategias}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }
 
-export default Configuracoes
+export default App
