@@ -410,5 +410,3 @@ export default function Cenarios() {
     </div>
   )
 }
-
-export default Cenarios
