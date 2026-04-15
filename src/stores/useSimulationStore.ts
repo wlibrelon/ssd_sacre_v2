@@ -2,22 +2,22 @@ import { create } from 'zustand'
 
 interface Simulacao {
   fonte: string
-  cenarios: any[]
-  estrategia: any[]
+  cenarios: string
+  estrategia: string
 }
 
 interface SimulationStore {
   csvData: any[]
-  simulacao: Simulacao | null
+  simulacao: Simulacao[]
   setCsvData: (data: any[]) => void
-  setSimulacao: (simulacao: Simulacao) => void
+  setSimulacao: (data: Simulacao[]) => void
 }
 
 const useSimulationStore = create<SimulationStore>((set) => ({
   csvData: [],
-  simulacao: null,
+  simulacao: [],
   setCsvData: (data) => set({ csvData: data }),
-  setSimulacao: (simulacao) => set({ simulacao }),
+  setSimulacao: (data) => set({ simulacao: data }),
 }))
 
 export default useSimulationStore
