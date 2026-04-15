@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { Trash2 } from 'lucide-react'
+import useSimulationStore from '@/stores/useSimulationStore' // ✅ ADICIONADO
 
 type Cenario = {
   fonte: string
@@ -14,6 +15,8 @@ type Simulacao = {
 }
 
 const Configuracoes: React.FC = () => {
+  const { setSimulacao: setSim } = useSimulationStore() // ✅ ADICIONADO
+
   const [selectedFonte, setSelectedFonte] = useState<string>('')
   const [newFator, setNewFator] = useState<string>('')
   const [newCenario, setNewCenario] = useState<string>('')
@@ -26,7 +29,6 @@ const Configuracoes: React.FC = () => {
   const fontes = ['Batalha', 'Bauru', 'Guarani']
   const fatores = ['Clima', 'Uso da Terra', 'Condutividade Hidráulica', 'Captações a Montante']
   const cenariosOptions = ['Tendencial', 'Pessimista', 'Conservacionista']
-
   const acoes = [
     'Instalar Barraginhas',
     'Uso atual',
@@ -55,10 +57,12 @@ const Configuracoes: React.FC = () => {
   const handleGravarOuAdicionar = () => {
     const cenariosStr = cenarios.map((c) => `${c.fator} ${c.cenario}`).join(' | ')
     const estrategiasStr = estrategias.join(' | ')
-    setSimulacao([
-      ...simulacao,
-      { fonte: selectedFonte, cenarios: cenariosStr, estrategias: estrategiasStr },
-    ])
+    const novaLinha = { fonte: selectedFonte, cenarios: cenariosStr, estrategias: estrategiasStr }
+
+    const novoArray = [...simulacao, novaLinha]
+    setSimulacao(novoArray)
+    setSim(novoArray) // ✅ ADICIONADO - Persiste no store
+
     setCenarios([])
     setEstrategias([])
     if (isFirstGravar) {
@@ -67,7 +71,9 @@ const Configuracoes: React.FC = () => {
   }
 
   const handleDeleteSimulacao = (index: number) => {
-    setSimulacao((prev) => prev.filter((_, i) => i !== index))
+    const novoArray = simulacao.filter((_, i) => i !== index)
+    setSimulacao(novoArray)
+    setSim(novoArray) // ✅ ADICIONADO - Persiste no store
   }
 
   return (
