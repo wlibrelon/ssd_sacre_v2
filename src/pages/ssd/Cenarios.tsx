@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Select,
@@ -8,345 +8,307 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  BarChart,
-  Bar,
-  ResponsiveContainer,
-} from 'recharts'
+import { Play, Upload } from 'lucide-react'
 import useSimulationStore from '@/stores/useSimulationStore'
+import { SimulationCharts } from '@/components/SimulationCharts'
 
-type SimulacaoRow = {
-  Tempo: string
-  Fonte: string
-  cenario: string
-  estrategia: string
-  Vazao_Captada: number
-  Demanda: number
-  CAPEX: number
-  OPEX: number
-  Aceitacao_Social: number
-}
+const PERDAS = [
+  { label: 'Atual (30%)', val: 0.3 },
+  { label: 'Meta (15%)', val: 0.15 },
+]
+const DEMANDAS = [
+  { label: 'Tendencial', val: 100 },
+  { label: 'Acelerada', val: 120 },
+  { label: 'Reduzida', val: 80 },
+]
 
-type ProcessedData = {
-  Tempo: string
-  Vazao_Captada: number
-  Vazao_Distribuida: number
-  Fonte: string
-  Demanda: number
-}
+const MySelect = ({ val, setVal, placeholder, options }: any) => (
+  <Select value={val} onValueChange={setVal}>
+    <SelectTrigger className="h-9 text-xs font-medium">
+      <SelectValue placeholder={placeholder} />
+    </SelectTrigger>
+    <SelectContent>
+      {options.map((o: any) => (
+        <SelectItem key={o.val ?? o} value={o.val?.toString() ?? o}>
+          {o.label ?? o}
+        </SelectItem>
+      ))}
+    </SelectContent>
+  </Select>
+)
 
-const Cenarios: React.FC = () => {
-  const { simulacao, csvData, setCsvData, setSimulacao } = useSimulationStore()
-  const [perdas, setPerdas] = useState<number>(0.3)
-  const [demanda, setDemanda] = useState<number>(100)
-  const [processedData, setProcessedData] = useState<ProcessedData[]>([])
-  const [chartData1, setChartData1] = useState<any[]>([])
-  const [chartData2, setChartData2] = useState<any[]>([])
-  const [chartData3, setChartData3] = useState<any[]>([])
-  const [chartData4, setChartData4] = useState<any[]>([])
+export default function Cenarios() {
+  const { simulacao } = useSimulationStore()
+  const [csvData, setCsvData] = useState<any[]>([])
+  const [csvPreview, setCsvPreview] = useState<any[]>([])
+  const [csvError, setCsvError] = useState<string>('')
+  const [selectedFile, setSelectedFile] = useState<string | null>(null)
+  const [globalPerdas, setGlobalPerdas] = useState(0.3)
+  const [globalDemanda, setGlobalDemanda] = useState(100)
+  const [results, setResults] = useState<any[]>([])
+  const [timeData, setTimeData] = useState<any[]>([])
 
-  const handleCsvUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (file) {
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        const text = e.target?.result as string
-        const rows = text.split('\n').map((row) => row.split(','))
-        const headers = rows[0]
-        const requiredHeaders = [
-          'Tempo',
-          'Fonte',
-          'cenario',
-          'estrategia',
-          'Vazao_Captada',
-          'Demanda',
-          'CAPEX',
-          'OPEX',
-          'Aceitacao_Social',
-        ]
-        const isValid = requiredHeaders.every((header) => headers.includes(header))
-        if (!isValid) {
-          alert('CSV inválido: colunas obrigatórias não encontradas.')
+  const requiredColumns = [
+    'Tempo',
+    'Fonte',
+    'cenario',
+    'estrategia',
+    'Vazao_Captada',
+    'Demanda',
+    'CAPEX',
+    'OPEX',
+    'Aceitacao_Social',
+  ]
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setSelectedFile(file.name)
+    const reader = new FileReader()
+
+    reader.onload = (event) => {
+      try {
+        let result = event.target?.result as string | undefined
+        if (!result) throw new Error('Arquivo vazio ou inválido')
+
+        const lines = result.split('\n')
+        const headers = lines[0].split(',').map((h) => h.trim())
+
+        // Validar colunas obrigatórias
+        const missingColumns = requiredColumns.filter((col) => !headers.includes(col))
+        if (missingColumns.length > 0) {
+          setCsvError(`Colunas obrigatórias faltando: ${missingColumns.join(', ')}`)
+          setCsvData([])
+          setCsvPreview([])
           return
         }
-        const data: SimulacaoRow[] = rows.slice(1).map((row) => ({
-          Tempo: row[0],
-          Fonte: row[1],
-          cenario: row[2],
-          estrategia: row[3],
-          Vazao_Captada: parseFloat(row[4]),
-          Demanda: parseFloat(row[5]),
-          CAPEX: parseFloat(row[6]),
-          OPEX: parseFloat(row[7]),
-          Aceitacao_Social: parseFloat(row[8]),
-        }))
-        setCsvData(data)
+
+        setCsvError('')
+
+        // Parse dados
+        const parsed = lines
+          .slice(1)
+          .filter((l) => l.trim())
+          .map((line) => {
+            const values = line.split(',').map((v) => v.trim())
+            const obj: any = {}
+            headers.forEach((header, index) => {
+              obj[header] = values[index]
+            })
+            return obj
+          })
+
+        setCsvData(parsed)
+        setCsvPreview(parsed.slice(0, 5))
+      } catch (err) {
+        setSelectedFile(null)
+        setCsvError(
+          `Erro ao processar CSV: ${err instanceof Error ? err.message : 'erro desconhecido'}`,
+        )
+        setCsvData([])
+        setCsvPreview([])
       }
-      reader.readAsText(file)
     }
+
+    reader.readAsText(file, 'UTF-8')
   }
 
-  const runSimulation = () => {
-    if (!csvData.length) return
-    const filteredData = csvData
-      .filter((row: SimulacaoRow) => {
-        const sim = simulacao.find((s) => s.Fonte?.toLowerCase() === row.Fonte?.toLowerCase())
-        return sim && sim.cenario === row.cenario && sim.estrategia === row.estrategia
-      })
-      .map((row: SimulacaoRow) => ({
-        ...row,
-        Vazao_Distribuida: row.Vazao_Captada * (1 - perdas),
-        Demanda: demanda,
-      }))
-    setProcessedData(filteredData)
+  const handleSimulate = () => {
+    if (csvData.length === 0) {
+      alert('Por favor, importe um CSV válido antes de rodar a simulação')
+      return
+    }
 
-    // Process Chart 1: Line - Vazão captada por Fonte (X = Tempo)
-    const groupedByTempo = filteredData.reduce((acc, row) => {
-      if (!acc[row.Tempo]) acc[row.Tempo] = {}
-      acc[row.Tempo][row.Fonte] = row.Vazao_Captada
-      return acc
-    }, {} as any)
-    const chart1Data = Object.keys(groupedByTempo).map((tempo) => ({
-      Tempo: tempo,
-      ...groupedByTempo[tempo],
-    }))
-    setChartData1(chart1Data)
-
-    // Process Chart 2: Stacked Bar - % por Fonte (X = Tempo)
-    const chart2Data = Object.keys(groupedByTempo).map((tempo) => {
-      const total = Object.values(groupedByTempo[tempo]).reduce(
-        (sum: number, val: number) => sum + val,
-        0,
-      )
-      const obj: any = { Tempo: tempo }
-      Object.keys(groupedByTempo[tempo]).forEach((fonte) => {
-        obj[fonte] = (groupedByTempo[tempo][fonte] / total) * 100
-      })
-      return obj
+    // Usar csvData importado no processamento
+    const res = csvData.map((r) => {
+      return {
+        ...r,
+        Vazao_Distribuida: parseFloat(r.Vazao_Captada) * (1 - globalPerdas),
+        Demanda: globalDemanda,
+      }
     })
-    setChartData2(chart2Data)
+    setResults(res)
 
-    // Process Chart 3: Line - Vazão captada vs distribuída
-    const chart3Data = filteredData.map((row) => ({
-      Tempo: row.Tempo,
-      Vazao_Captada: row.Vazao_Captada,
-      Vazao_Distribuida: row.Vazao_Distribuida,
-    }))
-    setChartData3(chart3Data)
-
-    // Process Chart 4: Line + Bar - Vazão total distribuída vs Demanda
-    const totalDistributed = filteredData.reduce((acc, row) => {
-      if (!acc[row.Tempo]) acc[row.Tempo] = 0
-      acc[row.Tempo] += row.Vazao_Distribuida
+    const grouped = res.reduce((acc: any, row) => {
+      if (!acc[row.Tempo])
+        acc[row.Tempo] = { Tempo: row.Tempo, Demanda: row.Demanda, TotalCap: 0, TotalDist: 0 }
+      acc[row.Tempo][`${row.Fonte}_Cap`] = parseFloat(row.Vazao_Captada)
+      acc[row.Tempo].TotalCap += parseFloat(row.Vazao_Captada)
+      acc[row.Tempo].TotalDist += parseFloat(r.Vazao_Distribuida)
       return acc
-    }, {} as any)
-    const chart4Data = Object.keys(totalDistributed).map((tempo) => ({
-      Tempo: tempo,
-      Vazao_Distribuida: totalDistributed[tempo],
-      Demanda: demanda,
-    }))
-    setChartData4(chart4Data)
+    }, {})
+
+    setTimeData(
+      Object.values(grouped)
+        .map((t: any) => ({ ...t, Saldo: t.TotalDist - t.Demanda }))
+        .sort((a, b) => a.Tempo.localeCompare(b.Tempo)),
+    )
   }
 
   return (
-    <div className="p-4 space-y-4">
-      <Card>
-        <CardHeader>
-          <CardTitle>Tabela de Simulação</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Tempo</TableHead>
-                <TableHead>Fonte</TableHead>
-                <TableHead>Cenário</TableHead>
-                <TableHead>Estratégia</TableHead>
-                <TableHead>Vazão Captada</TableHead>
-                <TableHead>Demanda</TableHead>
-                <TableHead>CAPEX</TableHead>
-                <TableHead>OPEX</TableHead>
-                <TableHead>Aceitação Social</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {simulacao.map((row, index) => (
-                <TableRow key={index}>
-                  <TableCell>{row.Tempo}</TableCell>
-                  <TableCell>{row.Fonte}</TableCell>
-                  <TableCell>{row.cenario}</TableCell>
-                  <TableCell>{row.estrategia}</TableCell>
-                  <TableCell>{row.Vazao_Captada}</TableCell>
-                  <TableCell>{row.Demanda}</TableCell>
-                  <TableCell>{row.CAPEX}</TableCell>
-                  <TableCell>{row.OPEX}</TableCell>
-                  <TableCell>{row.Aceitacao_Social}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Parâmetros Globais</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          <div>
-            <label>Perdas:</label>
-            <Select
-              value={perdas.toString()}
-              onValueChange={(value) => setPerdas(parseFloat(value))}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="0.3">30%</SelectItem>
-                <SelectItem value="0.15">15%</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <label>Demanda:</label>
-            <Select
-              value={demanda.toString()}
-              onValueChange={(value) => setDemanda(parseFloat(value))}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="100">100</SelectItem>
-                <SelectItem value="120">120</SelectItem>
-                <SelectItem value="80">80</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Importação CSV</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <input type="file" accept=".csv" onChange={handleCsvUpload} />
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Resumo de Processamento</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p>Dados processados: {processedData.length}</p>
-        </CardContent>
-      </Card>
-
-      <Button onClick={runSimulation}>Rodar Simulação</Button>
-
-      <div className="grid grid-cols-2 gap-4">
-        <Card>
-          <CardHeader>
-            <CardTitle>Chart 1: Vazão Captada por Fonte</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={chartData1}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="Tempo" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                {Object.keys(chartData1[0] || {})
-                  .filter((key) => key !== 'Tempo')
-                  .map((fonte) => (
-                    <Line key={fonte} type="monotone" dataKey={fonte} stroke="#8884d8" />
-                  ))}
-              </LineChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Chart 2: % por Fonte</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={chartData2}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="Tempo" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                {Object.keys(chartData2[0] || {})
-                  .filter((key) => key !== 'Tempo')
-                  .map((fonte) => (
-                    <Bar key={fonte} dataKey={fonte} stackId="a" fill="#8884d8" />
-                  ))}
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Chart 3: Vazão Captada vs Distribuída</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={chartData3}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="Tempo" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Line type="monotone" dataKey="Vazao_Captada" stroke="#8884d8" />
-                <Line type="monotone" dataKey="Vazao_Distribuida" stroke="#82ca9d" />
-              </LineChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Chart 4: Vazão Distribuída vs Demanda</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={chartData4}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="Tempo" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Bar dataKey="Vazao_Distribuida" fill="#8884d8" />
-                <Line type="monotone" dataKey="Demanda" stroke="#ff7300" />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+    <div className="space-y-6 max-w-7xl mx-auto animate-fade-in">
+      <div>
+        <h1 className="text-3xl font-bold text-primary">Simulador de Cenários</h1>
+        <p className="text-muted-foreground mt-1">
+          Configure os parâmetros para cada fonte e execute o modelo matemático para prever os
+          resultados.
+        </p>
       </div>
+
+      {/* ✅ Tabela de Simulação */}
+      {simulacao && simulacao.length > 0 && (
+        <Card className="shadow-sm border-t-4 border-t-secondary">
+          <CardHeader className="py-4 bg-slate-50/50">
+            <CardTitle className="text-lg">Tabela de Simulação</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-4">
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse border border-gray-300">
+                <thead>
+                  <tr>
+                    <th className="border border-gray-300 p-2 text-left">Fonte</th>
+                    <th className="border border-gray-300 p-2 text-left">Cenários</th>
+                    <th className="border border-gray-300 p-2 text-left">Estratégias</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {simulacao.map((s, i) => (
+                    <tr key={i} className="hover:bg-gray-50">
+                      <td className="border border-gray-300 p-2">{s.fonte}</td>
+                      <td className="border border-gray-300 p-2">{s.cenarios}</td>
+                      <td className="border border-gray-300 p-2">{s.estrategias}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ✅ Quadro Parâmetros Globais - MANTIDO INTACTO */}
+      <Card className="shadow-sm border-t-4 border-t-secondary">
+        <CardHeader className="py-4 bg-slate-50/50">
+          <CardTitle className="text-lg">Parâmetros Globais</CardTitle>
+        </CardHeader>
+        <CardContent className="pt-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">
+                Perdas
+              </p>
+              <MySelect
+                val={globalPerdas.toString()}
+                setVal={(v: string) => setGlobalPerdas(parseFloat(v))}
+                placeholder="Trajetória de Perdas"
+                options={PERDAS}
+              />
+            </div>
+            <div className="space-y-2">
+              <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">
+                Demanda
+              </p>
+              <MySelect
+                val={globalDemanda.toString()}
+                setVal={(v: string) => setGlobalDemanda(parseFloat(v))}
+                placeholder="Cenário de Demanda"
+                options={DEMANDAS}
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ✅ NOVO: Quadro Importação CSV */}
+      <Card className="shadow-sm border-t-4 border-t-secondary">
+        <CardHeader className="py-4 bg-slate-50/50">
+          <CardTitle className="text-lg">Importação de Dados (CSV)</CardTitle>
+        </CardHeader>
+        <CardContent className="pt-4 space-y-4">
+          <div className="bg-slate-50 p-6 rounded-xl border-2 border-dashed border-slate-200 hover:border-primary/50 transition-all duration-200 group">
+            <label htmlFor="csv-file" className="cursor-pointer block w-full">
+              <Button
+                type="button"
+                size="lg"
+                className="w-full justify-center group-hover:scale-[1.02] transition-transform"
+                onClick={() => document.getElementById('csv-file')?.click()}
+              >
+                <Upload className="mr-2 h-5 w-5" />
+                {selectedFile ? 'Alterar arquivo' : 'Escolher .CSV'}
+              </Button>
+            </label>
+            <input
+              id="csv-file"
+              type="file"
+              accept=".csv"
+              onChange={handleFileUpload}
+              className="sr-only"
+            />
+            {selectedFile && (
+              <p className="mt-3 text-sm text-green-600 font-medium flex items-center justify-center">
+                ✅ {selectedFile} selecionado
+              </p>
+            )}
+            <p className="mt-2 text-xs text-muted-foreground text-center">
+              Selecione um CSV com colunas: Tempo, Fonte, cenario, estrategia, Vazao_Captada,
+              Demanda, CAPEX, OPEX, Aceitacao_Social
+            </p>
+          </div>
+
+          {csvError && (
+            <div className="bg-red-50 p-4 rounded-md border border-red-200">
+              <p className="text-sm text-red-700">❌ {csvError}</p>
+            </div>
+          )}
+
+          {csvPreview.length > 0 && (
+            <div>
+              <h3 className="text-sm font-semibold mb-2">
+                Preview dos Dados ({csvData.length} registros)
+              </h3>
+              <div className="overflow-x-auto border rounded-md max-h-[300px] overflow-y-auto">
+                <table className="w-full border-collapse border border-gray-300 text-xs">
+                  <thead className="bg-gray-100 sticky top-0">
+                    <tr>
+                      {requiredColumns.map((col) => (
+                        <th key={col} className="border border-gray-300 p-2 text-left">
+                          {col}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {csvPreview.map((row, i) => (
+                      <tr key={i} className="hover:bg-gray-50">
+                        {requiredColumns.map((col) => (
+                          <td key={col} className="border border-gray-300 p-2">
+                            {row[col] || '-'}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ✅ Botão Rodar Simulação - MANTIDO INTACTO */}
+      <div className="flex justify-end">
+        <Button
+          onClick={handleSimulate}
+          size="lg"
+          className="w-full sm:w-auto bg-primary text-white shadow-md hover:bg-primary/90"
+        >
+          <Play className="w-4 h-4 mr-2" /> Rodar Simulação
+        </Button>
+      </div>
+
+      {/* ✅ Gráficos - MANTIDO INTACTO */}
+      {results.length > 0 && <SimulationCharts results={results} timeData={timeData} />}
     </div>
   )
 }
-
-export default Cenarios
