@@ -30,31 +30,12 @@ import {
   Legend,
   ResponsiveContainer,
   ReferenceLine,
-  Cell,
 } from 'recharts'
 
-const PERDAS = {
-  atual: 0.3,
-  meta: 0.15,
-}
+const PERDAS = { atual: 0.3, meta: 0.15 }
+const DEMANDAS = { tendencial: 100, acelerada: 120, reduzida: 80 }
 
-const DEMANDAS = {
-  tendencial: 100,
-  acelerada: 120,
-  reduzida: 80,
-}
-
-const MySelect = ({
-  options,
-  value,
-  onChange,
-  placeholder,
-}: {
-  options: { value: string; label: string }[]
-  value: string
-  onChange: (value: string) => void
-  placeholder: string
-}) => (
+const MySelect = ({ options, value, onChange, placeholder }) => (
   <Select value={value} onValueChange={onChange}>
     <SelectTrigger>
       <SelectValue placeholder={placeholder} />
@@ -88,6 +69,11 @@ const Cenarios: React.FC = () => {
     Array<{ fonte: string; cenarios: string; estrategias: string; registrosEncontrados: number }>
   >([])
 
+  // ✅ FUNÇÃO DE NORMALIZAÇÃO
+  const normalize = (str: string): string => {
+    return str.trim().toLowerCase().replace(/\s+/g, ' ') // múltiplos espaços → 1 espaço
+  }
+
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file) return
@@ -96,29 +82,37 @@ const Cenarios: React.FC = () => {
     reader.onload = (e) => {
       const text = e.target?.result as string
       const lines = text.split('\n')
-      const headers = lines[0].split(',').map((h) => h.trim()) // ← ADICIONE .trim()
+      const headers = lines[0].split(',').map((h) => h.trim()) // ✅ TRIM HEADERS
+
+      console.log('Headers parseados:', headers) // DEBUG
+
       const data = lines
         .slice(1)
         .map((line) => {
           const values = line.split(',')
           const obj: any = {}
           headers.forEach((header, index) => {
-            obj[header.trim()] = values[index]?.trim() || '' // ← ADICIONE .trim() AQUI TAMBÉM
+            const rawValue = values[index]?.trim() || '' // ✅ TRIM VALUE
+            obj[header] = rawValue // Manter valor original para comparação
           })
           return obj
         })
         .filter((row) => Object.values(row).some((val) => val !== ''))
+
       setCsvData(data)
       setCsvPreview(data.slice(0, 5))
       setCsvError('')
-      console.log('Headers normalizados:', headers) // ← DEBUG
-      console.log('Primeira linha de dados:', data[0]) // ← DEBUG
+
+      console.log('Amostra de dados parseados:', data.slice(0, 2)) // DEBUG
     }
     reader.readAsText(file)
   }
 
   const handleSimulate = () => {
-    if (!csvData.length) return
+    if (!csvData.length) {
+      alert('CSV vazio!')
+      return
+    }
 
     let totalRegistros = 0
     let simulacoesComDados = 0
@@ -130,11 +124,31 @@ const Cenarios: React.FC = () => {
     const aggregated: any = {}
 
     simulacao.forEach((sim) => {
-      const filtered = csvData.filter(
-        (row) =>
-          row.Fonte === sim.fonte &&
-          row.Cenario === sim.cenarios &&
-          row.Estrategia === sim.estrategias,
+      // ✅ NORMALIZAR VALORES DO STORE
+      const fonteNorm = normalize(sim.fonte)
+      const cenarioNorm = normalize(sim.cenarios)
+      const estrategiaNorm = normalize(sim.estrategias)
+
+      console.log(
+        `Filtrando: Fonte=[${fonteNorm}], Cenario=[${cenarioNorm}], Estrategia=[${estrategiaNorm}]`,
+      ) // DEBUG
+
+      // ✅ FILTRAR COM NORMALIZAÇÃO
+      const filtered = csvData.filter((row) => {
+        const rowFonteNorm = normalize(row.Fonte || '')
+        const rowCenarioNorm = normalize(row.cenario || '')
+        const rowEstrategiaNorm = normalize(row.estrategia || '')
+
+        return (
+          rowFonteNorm === fonteNorm &&
+          rowCenarioNorm === cenarioNorm &&
+          rowEstrategiaNorm === estrategiaNorm
+        )
+      })
+
+      console.log(`Registros encontrados: ${filtered.length}`) // DEBUG
+      alert(
+        `Procurando:\n  Fonte: [${sim.fonte}]\n  Cenário: [${sim.cenarios}]\n  Estratégia: [${sim.estrategias}]\n\nEncontrados: ${filtered.length} registros`,
       )
 
       detailsArray.push({
@@ -315,7 +329,15 @@ const Cenarios: React.FC = () => {
                   <TableCell>{detail.fonte}</TableCell>
                   <TableCell>{detail.cenarios}</TableCell>
                   <TableCell>{detail.estrategias}</TableCell>
-                  <TableCell>{detail.registrosEncontrados}</TableCell>
+                  <TableCell
+                    className={
+                      detail.registrosEncontrados > 0
+                        ? 'text-green-600 font-bold'
+                        : 'text-red-600 font-bold'
+                    }
+                  >
+                    {detail.registrosEncontrados}
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
