@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Select,
@@ -84,6 +84,9 @@ const Cenarios: React.FC = () => {
   const [chartDataB, setChartDataB] = useState<any[]>([])
   const [chartDataC, setChartDataC] = useState<any[]>([])
   const [chartDataD, setChartDataD] = useState<any[]>([])
+  const [simulationDetails, setSimulationDetails] = useState<
+    Array<{ fonte: string; cenarios: string; estrategias: string; registrosEncontrados: number }>
+  >([])
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -114,9 +117,16 @@ const Cenarios: React.FC = () => {
 
   const handleSimulate = () => {
     if (!csvData.length) return
+
+    let totalRegistros = 0
+    let simulacoesComDados = 0
+    const detailsArray = []
+    const uniqueTempos = new Set<string>()
+
     const perdasValue = PERDAS[globalPerdas as keyof typeof PERDAS]
     const demandaValue = DEMANDAS[globalDemanda as keyof typeof DEMANDAS]
     const aggregated: any = {}
+
     simulacao.forEach((sim) => {
       const filtered = csvData.filter(
         (row) =>
@@ -124,8 +134,25 @@ const Cenarios: React.FC = () => {
           row.Cenario === sim.cenarios &&
           row.Estrategia === sim.estrategias,
       )
+
+      detailsArray.push({
+        fonte: sim.fonte,
+        cenarios: sim.cenarios,
+        estrategias: sim.estrategias,
+        registrosEncontrados: filtered.length,
+      })
+
+      totalRegistros += filtered.length
+      if (filtered.length > 0) {
+        simulacoesComDados++
+      } else {
+        console.warn(`Sem dados: ${sim.fonte}/${sim.cenarios}/${sim.estrategias}`)
+      }
+
       filtered.forEach((row) => {
         const tempo = row.Tempo
+        uniqueTempos.add(tempo)
+
         if (!aggregated[tempo]) {
           aggregated[tempo] = { tempo, captada: 0, distribuida: 0, fontes: {} }
         }
@@ -139,13 +166,21 @@ const Cenarios: React.FC = () => {
         aggregated[tempo].fontes[sim.fonte] += vazaoCaptada
       })
     })
+
+    setSimulationDetails(detailsArray)
+    const uniqueTemposArray = Array.from(uniqueTempos)
+    setProcessingInfo(
+      `Total de ${totalRegistros} registros filtrados | Tempos únicos: ${uniqueTemposArray.length} | Simulações com dados: ${simulacoesComDados}/${simulacao.length}`,
+    )
+
     const timeData = Object.values(aggregated)
     setTimeData(timeData)
-    // Prepare chart data
+
     const chartA: any[] = []
     const chartB: any[] = []
     const chartC: any[] = []
     const chartD: any[] = []
+
     timeData.forEach((item: any) => {
       chartA.push({ tempo: item.tempo, ...item.fontes })
       const totalCaptada = item.captada
@@ -160,11 +195,11 @@ const Cenarios: React.FC = () => {
       chartC.push({ tempo: item.tempo, captada: item.captada, distribuida: item.distribuida })
       chartD.push({ tempo: item.tempo, distribuida: item.distribuida, demanda: demandaValue })
     })
+
     setChartDataA(chartA)
     setChartDataB(chartB)
     setChartDataC(chartC)
     setChartDataD(chartD)
-    setProcessingInfo(`Processed ${timeData.length} time points.`)
   }
 
   return (
@@ -263,7 +298,27 @@ const Cenarios: React.FC = () => {
           <CardTitle>Resumo</CardTitle>
         </CardHeader>
         <CardContent>
-          <p>{processingInfo}</p>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Fonte</TableHead>
+                <TableHead>Cenários</TableHead>
+                <TableHead>Estratégias</TableHead>
+                <TableHead>Registros Encontrados</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {simulationDetails.map((detail, index) => (
+                <TableRow key={index}>
+                  <TableCell>{detail.fonte}</TableCell>
+                  <TableCell>{detail.cenarios}</TableCell>
+                  <TableCell>{detail.estrategias}</TableCell>
+                  <TableCell>{detail.registrosEncontrados}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+          <p className="mt-4 text-sm text-gray-600">{processingInfo}</p>
         </CardContent>
       </Card>
 
