@@ -395,7 +395,7 @@ const Cenarios: React.FC = () => {
             <Card className="bg-gradient-to-br from-blue-50 to-blue-100">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium text-gray-600">
-                  Média Vazão Captada
+                  Média Captada (m3)
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -409,7 +409,7 @@ const Cenarios: React.FC = () => {
             <Card className="bg-gradient-to-br from-cyan-50 to-cyan-100">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium text-gray-600">
-                  Média Vazão Distribuída
+                  Média Distribuída (m3)
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -515,7 +515,7 @@ const Cenarios: React.FC = () => {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Tempo</TableHead>
-                      <TableHead>Vazão Distribuída</TableHead>
+                      <TableHead>Volume Distribuído</TableHead>
                       <TableHead>Demanda</TableHead>
                       <TableHead>Déficit</TableHead>
                     </TableRow>
@@ -542,7 +542,7 @@ const Cenarios: React.FC = () => {
       <div className="grid grid-cols-1 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>(A) Vazão Captada por Fonte vs Tempo</CardTitle>
+            <CardTitle>(A) Volume Captado por Fonte vs Tempo</CardTitle>
             <Button
               size="sm"
               variant="outline"
@@ -618,7 +618,7 @@ const Cenarios: React.FC = () => {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>(C) Vazão Captada vs Distribuída</CardTitle>
+            <CardTitle>(C) Volume Captado vs Distribuído</CardTitle>
             <Button
               size="sm"
               variant="outline"
@@ -661,7 +661,7 @@ const Cenarios: React.FC = () => {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>(D) Vazão Total Distribuída vs Demanda</CardTitle>
+            <CardTitle>(D) Volume Total Distribuído vs Demanda</CardTitle>
             <Button
               size="sm"
               variant="outline"
@@ -724,8 +724,8 @@ const Cenarios: React.FC = () => {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Tempo</TableHead>
-                    <TableHead>Vazão Captada</TableHead>
-                    <TableHead>Vazão Distribuída</TableHead>
+                    <TableHead>Volume Captado</TableHead>
+                    <TableHead>Volume Distribuído</TableHead>
                     <TableHead>CAPEX</TableHead>
                     <TableHead>OPEX</TableHead>
                   </TableRow>
