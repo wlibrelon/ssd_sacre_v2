@@ -50,6 +50,10 @@ const MySelect = ({ options, value, onChange, placeholder }) => (
   </Select>
 )
 
+const formatNumber = (value: number): string => {
+  return value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
 const Cenarios: React.FC = () => {
   const { simulacao } = useSimulationStore()
   const [csvData, setCsvData] = useState<any[]>([])
@@ -148,6 +152,7 @@ const Cenarios: React.FC = () => {
     const aggregated: any = {}
     let totalCapex = 0
     let totalOpex = 0
+    let totalCaptada = 0
     const deficitList: any[] = []
 
     simulacao.forEach((sim) => {
@@ -206,6 +211,7 @@ const Cenarios: React.FC = () => {
         aggregated[tempo].opex += opex
         totalCapex += capex
         totalOpex += opex
+        totalCaptada += vazaoCaptada
 
         if (!aggregated[tempo].fontes[sim.fonte]) {
           aggregated[tempo].fontes[sim.fonte] = 0
@@ -246,11 +252,11 @@ const Cenarios: React.FC = () => {
       }
     })
 
-    const mediaDistribuida = totalDistribuida / timeData.length
+    const mediaCaptada = totalCaptada / timeData.length
     const mediaDemanda = totalDemanda / timeData.length
 
     setDashboardMetrics({
-      mediaDistribuida: mediaDistribuida.toFixed(2),
+      mediaCaptada: mediaCaptada.toFixed(2),
       mediaDemanda: mediaDemanda.toFixed(2),
       totalCapex: totalCapex.toFixed(2),
       totalOpex: totalOpex.toFixed(2),
@@ -268,10 +274,10 @@ const Cenarios: React.FC = () => {
 
     timeData.forEach((item: any) => {
       chartA.push({ tempo: item.tempo, ...item.fontes })
-      const totalCaptada = item.captada
+      const totalCaptadaItem = item.captada
       const fontesPercent = Object.keys(item.fontes).map((fonte) => ({
         fonte,
-        percent: (item.fontes[fonte] / totalCaptada) * 100,
+        percent: (item.fontes[fonte] / totalCaptadaItem) * 100,
       }))
       chartB.push({
         tempo: item.tempo,
@@ -389,12 +395,12 @@ const Cenarios: React.FC = () => {
             <Card className="bg-gradient-to-br from-blue-50 to-blue-100">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium text-gray-600">
-                  Média Vazão Distribuída
+                  Média Vazão Captada
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-blue-600">
-                  {dashboardMetrics.mediaDistribuida}
+                  {formatNumber(parseFloat(dashboardMetrics.mediaCaptada))}
                 </div>
                 <p className="text-xs text-gray-500 mt-1">m³/s</p>
               </CardContent>
@@ -406,7 +412,7 @@ const Cenarios: React.FC = () => {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-green-600">
-                  {dashboardMetrics.mediaDemanda}
+                  {formatNumber(parseFloat(dashboardMetrics.mediaDemanda))}
                 </div>
                 <p className="text-xs text-gray-500 mt-1">m³/s</p>
               </CardContent>
@@ -418,7 +424,7 @@ const Cenarios: React.FC = () => {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-orange-600">
-                  {dashboardMetrics.totalCapex}
+                  {formatNumber(parseFloat(dashboardMetrics.totalCapex))}
                 </div>
                 <p className="text-xs text-gray-500 mt-1">R$</p>
               </CardContent>
@@ -429,7 +435,9 @@ const Cenarios: React.FC = () => {
                 <CardTitle className="text-sm font-medium text-gray-600">Total OPEX</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-red-600">{dashboardMetrics.totalOpex}</div>
+                <div className="text-2xl font-bold text-red-600">
+                  {formatNumber(parseFloat(dashboardMetrics.totalOpex))}
+                </div>
                 <p className="text-xs text-gray-500 mt-1">R$</p>
               </CardContent>
             </Card>
@@ -502,10 +510,10 @@ const Cenarios: React.FC = () => {
                     {deficitMonths.map((month, index) => (
                       <TableRow key={index}>
                         <TableCell>{month.tempo}</TableCell>
-                        <TableCell>{month.distribuida.toFixed(2)}</TableCell>
-                        <TableCell>{month.demanda.toFixed(2)}</TableCell>
+                        <TableCell>{formatNumber(month.distribuida)}</TableCell>
+                        <TableCell>{formatNumber(month.demanda)}</TableCell>
                         <TableCell className="text-red-600 font-bold">
-                          {month.deficit.toFixed(2)}
+                          {formatNumber(month.deficit)}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -517,7 +525,7 @@ const Cenarios: React.FC = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>(A) Vazão Captada por Fonte vs Tempo</CardTitle>
