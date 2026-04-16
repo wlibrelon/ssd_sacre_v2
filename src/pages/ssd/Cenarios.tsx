@@ -356,7 +356,7 @@ const Cenarios: React.FC = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle>Upload CSV</CardTitle>
+          <CardTitle>Importação de dados para simulação</CardTitle>
         </CardHeader>
         <CardContent>
           <input type="file" accept=".csv" onChange={handleFileUpload} />

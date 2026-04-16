@@ -15,7 +15,7 @@ type Simulacao = {
 }
 
 const Configuracoes: React.FC = () => {
-  const { setSimulacao: setSim } = useSimulationStore() // ✅ ADICIONADO
+  const { setSimulacao: setSim } = useSimulationStore()
 
   const [selectedFonte, setSelectedFonte] = useState<string>('')
   const [newFator, setNewFator] = useState<string>('')
@@ -56,11 +56,19 @@ const Configuracoes: React.FC = () => {
     }
   }
 
+  const deleteCenario = (index: number) => {
+    setCenarios(cenarios.filter((_, i) => i !== index))
+  }
+
   const addEstrategia = () => {
     if (selectedAcao) {
       setEstrategias([...estrategias, selectedAcao])
       setSelectedAcao('')
     }
+  }
+
+  const deleteEstrategia = (index: number) => {
+    setEstrategias(estrategias.filter((_, i) => i !== index))
   }
 
   const handleGravarOuAdicionar = () => {
@@ -70,7 +78,7 @@ const Configuracoes: React.FC = () => {
 
     const novoArray = [...simulacao, novaLinha]
     setSimulacao(novoArray)
-    setSim(novoArray) // ✅ ADICIONADO - Persiste no store
+    setSim(novoArray)
 
     setCenarios([])
     setEstrategias([])
@@ -82,7 +90,7 @@ const Configuracoes: React.FC = () => {
   const handleDeleteSimulacao = (index: number) => {
     const novoArray = simulacao.filter((_, i) => i !== index)
     setSimulacao(novoArray)
-    setSim(novoArray) // ✅ ADICIONADO - Persiste no store
+    setSim(novoArray)
   }
 
   return (
@@ -144,6 +152,7 @@ const Configuracoes: React.FC = () => {
                 <th className="border border-gray-300 p-2">Fonte</th>
                 <th className="border border-gray-300 p-2">Fator</th>
                 <th className="border border-gray-300 p-2">Cenário</th>
+                <th className="border border-gray-300 p-2">Ações</th>
               </tr>
             </thead>
             <tbody>
@@ -152,6 +161,15 @@ const Configuracoes: React.FC = () => {
                   <td className="border border-gray-300 p-2">{c.fonte}</td>
                   <td className="border border-gray-300 p-2">{c.fator}</td>
                   <td className="border border-gray-300 p-2">{c.cenario}</td>
+                  <td className="border border-gray-300 p-2 text-center">
+                    <button
+                      onClick={() => deleteCenario(i)}
+                      className="text-red-500 hover:text-red-700 cursor-pointer"
+                      title="Excluir"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -181,12 +199,22 @@ const Configuracoes: React.FC = () => {
             <thead>
               <tr>
                 <th className="border border-gray-300 p-2">Ação</th>
+                <th className="border border-gray-300 p-2">Ações</th>
               </tr>
             </thead>
             <tbody>
               {estrategias.map((e, i) => (
                 <tr key={i}>
                   <td className="border border-gray-300 p-2">{e}</td>
+                  <td className="border border-gray-300 p-2 text-center">
+                    <button
+                      onClick={() => deleteEstrategia(i)}
+                      className="text-red-500 hover:text-red-700 cursor-pointer"
+                      title="Excluir"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
