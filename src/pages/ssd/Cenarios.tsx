@@ -153,6 +153,7 @@ const Cenarios: React.FC = () => {
     let totalCapex = 0
     let totalOpex = 0
     let totalCaptada = 0
+    let totalDistribuida = 0
     const deficitList: any[] = []
 
     simulacao.forEach((sim) => {
@@ -212,6 +213,7 @@ const Cenarios: React.FC = () => {
         totalCapex += capex
         totalOpex += opex
         totalCaptada += vazaoCaptada
+        totalDistribuida += vazaoDistribuida
 
         if (!aggregated[tempo].fontes[sim.fonte]) {
           aggregated[tempo].fontes[sim.fonte] = 0
@@ -229,14 +231,10 @@ const Cenarios: React.FC = () => {
     const timeData = Object.values(aggregated)
     setTimeData(timeData)
 
-    let totalDistribuida = 0
-    let totalDemanda = 0
     let mesesComDeficit = 0
     let mesesComExcedente = 0
 
     timeData.forEach((item: any) => {
-      totalDistribuida += item.distribuida
-      totalDemanda += demandaValue
       const saldo = item.distribuida - demandaValue
 
       if (saldo < 0) {
@@ -253,10 +251,12 @@ const Cenarios: React.FC = () => {
     })
 
     const mediaCaptada = totalCaptada / timeData.length
-    const mediaDemanda = totalDemanda / timeData.length
+    const mediaDistribuida = totalDistribuida / timeData.length
+    const mediaDemanda = demandaValue
 
     setDashboardMetrics({
       mediaCaptada: mediaCaptada.toFixed(2),
+      mediaDistribuida: mediaDistribuida.toFixed(2),
       mediaDemanda: mediaDemanda.toFixed(2),
       totalCapex: totalCapex.toFixed(2),
       totalOpex: totalOpex.toFixed(2),
@@ -391,7 +391,7 @@ const Cenarios: React.FC = () => {
 
       {dashboardMetrics && (
         <div className="space-y-4">
-          <div className="grid grid-cols-4 gap-4">
+          <div className="grid grid-cols-5 gap-4">
             <Card className="bg-gradient-to-br from-blue-50 to-blue-100">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium text-gray-600">
@@ -401,6 +401,20 @@ const Cenarios: React.FC = () => {
               <CardContent>
                 <div className="text-2xl font-bold text-blue-600">
                   {formatNumber(parseFloat(dashboardMetrics.mediaCaptada))}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">m³/s</p>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gradient-to-br from-cyan-50 to-cyan-100">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-gray-600">
+                  Média Vazão Distribuída
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-cyan-600">
+                  {formatNumber(parseFloat(dashboardMetrics.mediaDistribuida))}
                 </div>
                 <p className="text-xs text-gray-500 mt-1">m³/s</p>
               </CardContent>
@@ -539,7 +553,11 @@ const Cenarios: React.FC = () => {
             </Button>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveContainer
+              width="100%"
+              height={300}
+              margin={{ left: 80, right: 30, top: 20, bottom: 20 }}
+            >
               <LineChart data={chartDataA}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="tempo" />
@@ -611,7 +629,11 @@ const Cenarios: React.FC = () => {
             </Button>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveContainer
+              width="100%"
+              height={300}
+              margin={{ left: 80, right: 30, top: 20, bottom: 20 }}
+            >
               <LineChart data={chartDataC}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="tempo" />
@@ -650,7 +672,11 @@ const Cenarios: React.FC = () => {
             </Button>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveContainer
+              width="100%"
+              height={300}
+              margin={{ left: 80, right: 30, top: 20, bottom: 20 }}
+            >
               <LineChart data={chartDataD}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="tempo" />
@@ -677,6 +703,49 @@ const Cenarios: React.FC = () => {
           </CardContent>
         </Card>
       </div>
+
+      {timeData.length > 0 && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle>Tabela Completa de Dados Processados</CardTitle>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => exportToCSV(timeData, 'dados_processados_completos')}
+              className="flex items-center gap-2"
+            >
+              <Download size={16} />
+              Exportar
+            </Button>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Tempo</TableHead>
+                    <TableHead>Vazão Captada</TableHead>
+                    <TableHead>Vazão Distribuída</TableHead>
+                    <TableHead>CAPEX</TableHead>
+                    <TableHead>OPEX</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {timeData.map((row, index) => (
+                    <TableRow key={index}>
+                      <TableCell>{row.tempo}</TableCell>
+                      <TableCell>{formatNumber(row.captada)}</TableCell>
+                      <TableCell>{formatNumber(row.distribuida)}</TableCell>
+                      <TableCell>{formatNumber(row.capex)}</TableCell>
+                      <TableCell>{formatNumber(row.opex)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }
