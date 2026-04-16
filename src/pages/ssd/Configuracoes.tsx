@@ -1,294 +1,317 @@
 import React, { useState } from 'react'
+import { Trash2 } from 'lucide-react'
+import useSimulationStore from '@/stores/useSimulationStore'
 
-type Cenario = {
-  id: number
-  nome: string
-  descricao: string
-  ativo: boolean
-}
+type Cenario = { fonte: string; fator: string; cenario: string }
+type Simulacao = { fonte: string; cenarios: string; estrategias: string }
 
-type Estrategia = {
-  id: number
-  nome: string
-  descricao: string
-  custo: number
-}
+const Configuracoes: React.FC = () => {
+  const { setSimulacao: setSim } = useSimulationStore()
 
-type Simulacao = {
-  id: number
-  nome: string
-  cenarios: Cenario[]
-  estrategias: Estrategia[]
-}
-
-const App: React.FC = () => {
-  const [fonteAgua, setFonteAgua] = useState<string>('')
-  const [fatores, setFatores] = useState<string>('')
-  const [cenariosOptions, setCenariosOptions] = useState<string[]>([
-    'Cenário 1',
-    'Cenário 2',
-    'Cenário 3',
-  ])
-  const [acoes, setAcoes] = useState<string>('')
+  // States originais
+  const [selectedFonte, setSelectedFonte] = useState<string>('')
+  const [newFator, setNewFator] = useState<string>('')
+  const [newCenario, setNewCenario] = useState<string>('')
   const [cenarios, setCenarios] = useState<Cenario[]>([])
-  const [estrategias, setEstrategias] = useState<Estrategia[]>([])
-  const [simulacoes, setSimulacoes] = useState<Simulacao[]>([])
+  const [selectedAcao, setSelectedAcao] = useState<string>('')
+  const [estrategias, setEstrategias] = useState<string[]>([])
+  const [simulacao, setSimulacao] = useState<Simulacao[]>([])
+  const [isFirstGravar, setIsFirstGravar] = useState<boolean>(true)
+
+  // 3 novos states
   const [demandaCenario, setDemandaCenario] = useState<string>('Estagnação Populacional')
-  const [consumo, setConsumo] = useState<string>('Estável - 215 L/pcd')
+  const [demandaConsumo, setDemandaConsumo] = useState<string>('Estável - 215 L/pcd')
   const [perdas, setPerdas] = useState<string>('30%')
 
+  const fontes = ['Rio Batalha', 'Sistema Aquífero Bauru', 'Sistema Aquífero Guarani']
+  const fatores = [
+    'Clima',
+    'Uso da Terra',
+    'Condutividade Hidráulica',
+    'Captações a Montante',
+    'Transmissividade moderada',
+    'Transmissividade alta',
+  ]
+  const cenariosOptions = ['Tendencial', 'Pessimista', 'Conservacionista']
+  const acoes = [
+    'Instalar Barraginhas',
+    'Uso atual',
+    'Expansão de poços',
+    'Instalar barramento a montante',
+    'Condição atual de captação',
+    'Expansão de poços no município',
+    'Mais poços na área urbana',
+    'Captações a Montante',
+    'Campo de poços',
+  ]
+
   const addCenario = () => {
-    const newCenario: Cenario = {
-      id: cenarios.length + 1,
-      nome: `Cenário ${cenarios.length + 1}`,
-      descricao: 'Descrição do cenário',
-      ativo: true,
+    if (newFator) {
+      setCenarios([...cenarios, { fonte: selectedFonte, fator: newFator, cenario: newCenario }])
+      setNewFator('')
+      setNewCenario('')
     }
-    setCenarios([...cenarios, newCenario])
   }
-
-  const deleteCenario = (id: number) => {
-    setCenarios(cenarios.filter((c) => c.id !== id))
+  const deleteCenario = (index: number) => {
+    setCenarios(cenarios.filter((_, i) => i !== index))
   }
-
   const addEstrategia = () => {
-    const newEstrategia: Estrategia = {
-      id: estrategias.length + 1,
-      nome: `Estratégia ${estrategias.length + 1}`,
-      descricao: 'Descrição da estratégia',
-      custo: 0,
+    if (selectedAcao) {
+      setEstrategias([...estrategias, selectedAcao])
+      setSelectedAcao('')
     }
-    setEstrategias([...estrategias, newEstrategia])
   }
-
-  const deleteEstrategia = (id: number) => {
-    setEstrategias(estrategias.filter((e) => e.id !== id))
+  const deleteEstrategia = (index: number) => {
+    setEstrategias(estrategias.filter((_, i) => i !== index))
   }
-
   const handleGravarOuAdicionar = () => {
-    const newSimulacao: Simulacao = {
-      id: simulacoes.length + 1,
-      nome: `Simulação ${simulacoes.length + 1}`,
-      cenarios: cenarios,
-      estrategias: estrategias,
+    const cenariosStr = cenarios.map((c) => `${c.fator} ${c.cenario}`).join(' | ')
+    const estrategiasStr = estrategias.join(' | ')
+    const novaLinha = { fonte: selectedFonte, cenarios: cenariosStr, estrategias: estrategiasStr }
+    const novoArray = [...simulacao, novaLinha]
+    setSimulacao(novoArray)
+    setSim(novoArray)
+    setCenarios([])
+    setEstrategias([])
+    if (isFirstGravar) {
+      setIsFirstGravar(false)
     }
-    setSimulacoes([...simulacoes, newSimulacao])
   }
-
-  const handleDeleteSimulacao = (id: number) => {
-    setSimulacoes(simulacoes.filter((s) => s.id !== id))
+  const handleDeleteSimulacao = (index: number) => {
+    const novoArray = simulacao.filter((_, i) => i !== index)
+    setSimulacao(novoArray)
+    setSim(novoArray)
   }
 
   return (
-    <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">Simulador de Recursos Hídricos</h1>
+    <div className="p-6 max-w-7xl mx-auto">
+      {/* Seção 1: Título da Página */}
+      <h1 className="text-3xl font-bold mb-6">Configurações</h1>
 
-      {/* Fonte de Água */}
-      <div className="mb-4 p-4 border rounded shadow">
-        <label className="block text-sm font-medium mb-2">Fonte de Água</label>
-        <input
-          type="text"
-          value={fonteAgua}
-          onChange={(e) => setFonteAgua(e.target.value)}
-          className="w-full p-2 border rounded"
-          placeholder="Digite a fonte de água"
-        />
-      </div>
-
-      {/* Fatores */}
-      <div className="mb-4 p-4 border rounded shadow">
-        <label className="block text-sm font-medium mb-2">Fatores</label>
-        <textarea
-          value={fatores}
-          onChange={(e) => setFatores(e.target.value)}
-          className="w-full p-2 border rounded"
-          placeholder="Digite os fatores"
-        />
-      </div>
-
-      {/* Cenários Options */}
-      <div className="mb-4 p-4 border rounded shadow">
-        <label className="block text-sm font-medium mb-2">Cenários Options</label>
+      {/* Seção 2: Card Fonte */}
+      <div className="bg-white p-4 rounded-lg shadow-md mb-6">
+        <label className="block text-sm font-medium mb-2">Fonte de água</label>
         <select
-          value={cenariosOptions[0]}
-          onChange={(e) => setCenariosOptions([e.target.value, ...cenariosOptions.slice(1)])}
-          className="w-full p-2 border rounded"
+          value={selectedFonte}
+          onChange={(e) => setSelectedFonte(e.target.value)}
+          className="w-full p-2 border border-gray-300 rounded-md"
         >
-          {cenariosOptions.map((option, index) => (
-            <option key={index} value={option}>
-              {option}
+          <option value="">Selecione uma fonte</option>
+          {fontes.map((fonte) => (
+            <option key={fonte} value={fonte}>
+              {fonte}
             </option>
           ))}
         </select>
       </div>
 
-      {/* Ações */}
-      <div className="mb-4 p-4 border rounded shadow">
-        <label className="block text-sm font-medium mb-2">Ações</label>
-        <input
-          type="text"
-          value={acoes}
-          onChange={(e) => setAcoes(e.target.value)}
-          className="w-full p-2 border rounded"
-          placeholder="Digite as ações"
-        />
-      </div>
-
-      {/* Cenários */}
-      <div className="mb-4 p-4 border rounded shadow">
-        <h2 className="text-lg font-semibold mb-2">Cenários</h2>
-        <button onClick={addCenario} className="bg-blue-500 text-white px-4 py-2 rounded mb-2">
-          Adicionar Cenário
-        </button>
-        <table className="w-full table-auto border-collapse border border-gray-300">
-          <thead>
-            <tr>
-              <th className="border border-gray-300 p-2">ID</th>
-              <th className="border border-gray-300 p-2">Nome</th>
-              <th className="border border-gray-300 p-2">Descrição</th>
-              <th className="border border-gray-300 p-2">Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-            {cenarios.map((cenario) => (
-              <tr key={cenario.id}>
-                <td className="border border-gray-300 p-2">{cenario.id}</td>
-                <td className="border border-gray-300 p-2">{cenario.nome}</td>
-                <td className="border border-gray-300 p-2">{cenario.descricao}</td>
-                <td className="border border-gray-300 p-2">
-                  <button
-                    onClick={() => deleteCenario(cenario.id)}
-                    className="bg-red-500 text-white px-2 py-1 rounded"
-                  >
-                    Deletar
-                  </button>
-                </td>
+      {/* Seção 3: Grid md:grid-cols-2 */}
+      <div className="grid md:grid-cols-2 gap-6 mb-6">
+        {/* Adicionar Cenário */}
+        <div className="bg-white p-4 rounded-lg shadow-md">
+          <h2 className="text-xl font-semibold mb-4">Adicionar Cenário</h2>
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-2">Fator</label>
+            <select
+              value={newFator}
+              onChange={(e) => setNewFator(e.target.value)}
+              className="w-full p-2 border border-gray-300 rounded-md"
+            >
+              <option value="">Selecione um fator</option>
+              {fatores.map((fator) => (
+                <option key={fator} value={fator}>
+                  {fator}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-2">Cenário</label>
+            <select
+              value={newCenario}
+              onChange={(e) => setNewCenario(e.target.value)}
+              className="w-full p-2 border border-gray-300 rounded-md"
+            >
+              <option value="">Selecione um cenário</option>
+              {cenariosOptions.map((cenario) => (
+                <option key={cenario} value={cenario}>
+                  {cenario}
+                </option>
+              ))}
+            </select>
+          </div>
+          <button
+            onClick={addCenario}
+            className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600"
+          >
+            Adicionar Cenário
+          </button>
+          <table className="w-full mt-4 border-collapse border border-gray-300">
+            <thead>
+              <tr>
+                <th className="border border-gray-300 p-2">Fonte</th>
+                <th className="border border-gray-300 p-2">Fator</th>
+                <th className="border border-gray-300 p-2">Cenário</th>
+                <th className="border border-gray-300 p-2">Ações</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {cenarios.map((cenario, index) => (
+                <tr key={index}>
+                  <td className="border border-gray-300 p-2">{cenario.fonte}</td>
+                  <td className="border border-gray-300 p-2">{cenario.fator}</td>
+                  <td className="border border-gray-300 p-2">{cenario.cenario}</td>
+                  <td className="border border-gray-300 p-2">
+                    <button
+                      onClick={() => deleteCenario(index)}
+                      className="text-red-500 hover:text-red-700"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
 
-      {/* Estratégias */}
-      <div className="mb-4 p-4 border rounded shadow">
-        <h2 className="text-lg font-semibold mb-2">Estratégias</h2>
-        <button onClick={addEstrategia} className="bg-blue-500 text-white px-4 py-2 rounded mb-2">
-          Adicionar Estratégia
-        </button>
-        <table className="w-full table-auto border-collapse border border-gray-300">
-          <thead>
-            <tr>
-              <th className="border border-gray-300 p-2">ID</th>
-              <th className="border border-gray-300 p-2">Nome</th>
-              <th className="border border-gray-300 p-2">Descrição</th>
-              <th className="border border-gray-300 p-2">Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-            {estrategias.map((estrategia) => (
-              <tr key={estrategia.id}>
-                <td className="border border-gray-300 p-2">{estrategia.id}</td>
-                <td className="border border-gray-300 p-2">{estrategia.nome}</td>
-                <td className="border border-gray-300 p-2">{estrategia.descricao}</td>
-                <td className="border border-gray-300 p-2">
-                  <button
-                    onClick={() => deleteEstrategia(estrategia.id)}
-                    className="bg-red-500 text-white px-2 py-1 rounded"
-                  >
-                    Deletar
-                  </button>
-                </td>
+        {/* Adicionar Estratégia */}
+        <div className="bg-white p-4 rounded-lg shadow-md">
+          <h2 className="text-xl font-semibold mb-4">Adicionar Estratégia</h2>
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-2">Ação</label>
+            <select
+              value={selectedAcao}
+              onChange={(e) => setSelectedAcao(e.target.value)}
+              className="w-full p-2 border border-gray-300 rounded-md"
+            >
+              <option value="">Selecione uma ação</option>
+              {acoes.map((acao) => (
+                <option key={acao} value={acao}>
+                  {acao}
+                </option>
+              ))}
+            </select>
+          </div>
+          <button
+            onClick={addEstrategia}
+            className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600"
+          >
+            Adicionar Estratégia
+          </button>
+          <table className="w-full mt-4 border-collapse border border-gray-300">
+            <thead>
+              <tr>
+                <th className="border border-gray-300 p-2">Estratégia</th>
+                <th className="border border-gray-300 p-2">Ações</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {estrategias.map((estrategia, index) => (
+                <tr key={index}>
+                  <td className="border border-gray-300 p-2">{estrategia}</td>
+                  <td className="border border-gray-300 p-2">
+                    <button
+                      onClick={() => deleteEstrategia(index)}
+                      className="text-red-500 hover:text-red-700"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      {/* Simulações */}
-      <div className="mb-4 p-4 border rounded shadow">
-        <h2 className="text-lg font-semibold mb-2">Simulações</h2>
+      {/* Seção 4: Single Button */}
+      <div className="mb-6">
         <button
           onClick={handleGravarOuAdicionar}
-          className="bg-green-500 text-white px-4 py-2 rounded mb-2"
+          className="bg-green-500 text-white px-6 py-3 rounded-md hover:bg-green-600"
         >
-          Gravar ou Adicionar
+          {isFirstGravar ? 'Gravar' : 'Adicionar'}
         </button>
-        <table className="w-full table-auto border-collapse border border-gray-300">
-          <thead>
-            <tr>
-              <th className="border border-gray-300 p-2">ID</th>
-              <th className="border border-gray-300 p-2">Nome</th>
-              <th className="border border-gray-300 p-2">Cenários</th>
-              <th className="border border-gray-300 p-2">Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-            {simulacoes.map((simulacao) => (
-              <tr key={simulacao.id}>
-                <td className="border border-gray-300 p-2">{simulacao.id}</td>
-                <td className="border border-gray-300 p-2">{simulacao.nome}</td>
-                <td className="border border-gray-300 p-2">{simulacao.cenarios.length}</td>
-                <td className="border border-gray-300 p-2">
-                  <button
-                    onClick={() => handleDeleteSimulacao(simulacao.id)}
-                    className="bg-red-500 text-white px-2 py-1 rounded"
-                  >
-                    Deletar
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
       </div>
 
-      {/* Nova seção: Configuração de Demanda e Perdas */}
-      <div className="mb-4">
-        <h2 className="text-lg font-semibold mb-4">Configuração de Demanda e Perdas</h2>
-        <div className="grid md:grid-cols-2 gap-4">
-          {/* Quadro Demanda de consumo */}
-          <div className="p-4 border rounded shadow">
-            <h3 className="text-md font-medium mb-2">Demanda de consumo</h3>
-            <div className="mb-2">
-              <label className="block text-sm font-medium mb-1">Cenários</label>
+      {/* Seção 5: Tabela Simulacao */}
+      {simulacao.length > 0 && (
+        <div className="bg-white p-4 rounded-lg shadow-md">
+          <h2 className="text-xl font-semibold mb-4">Simulações</h2>
+          <table className="w-full border-collapse border border-gray-300">
+            <thead>
+              <tr>
+                <th className="border border-gray-300 p-2">Fonte</th>
+                <th className="border border-gray-300 p-2">Cenários</th>
+                <th className="border border-gray-300 p-2">Estratégias</th>
+                <th className="border border-gray-300 p-2">Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {simulacao.map((sim, index) => (
+                <tr key={index}>
+                  <td className="border border-gray-300 p-2">{sim.fonte}</td>
+                  <td className="border border-gray-300 p-2">{sim.cenarios}</td>
+                  <td className="border border-gray-300 p-2">{sim.estrategias}</td>
+                  <td className="border border-gray-300 p-2">
+                    <button
+                      onClick={() => handleDeleteSimulacao(index)}
+                      className="text-red-500 hover:text-red-700"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Nova seção */}
+      <div className="mb-6">
+        <h2 className="text-2xl font-bold mb-4">Configuração de Demanda e Perdas</h2>
+        <div className="grid md:grid-cols-2 gap-6">
+          <div className="bg-white p-4 rounded-lg shadow-md">
+            <h3 className="text-lg font-semibold mb-4">Demanda de consumo</h3>
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-2">Cenários</label>
               <select
                 value={demandaCenario}
                 onChange={(e) => setDemandaCenario(e.target.value)}
-                className="w-full p-2 border rounded"
+                className="w-full p-2 border border-gray-300 rounded-md"
               >
                 <option value="Estagnação Populacional">Estagnação Populacional</option>
-                <option value="Crescimento Tendencial">Crescimento Tendencial</option>
-                <option value="Crescimento Acelerado">Crescimento Acelerado</option>
+                <option value="Crescimento Populacional">Crescimento Populacional</option>
               </select>
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Consumo</label>
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-2">Consumo</label>
               <select
-                value={consumo}
-                onChange={(e) => setConsumo(e.target.value)}
-                className="w-full p-2 border rounded"
+                value={demandaConsumo}
+                onChange={(e) => setDemandaConsumo(e.target.value)}
+                className="w-full p-2 border border-gray-300 rounded-md"
               >
-                <option value="Crescente - até 250 L/pcd">Crescente - até 250 L/pcd</option>
                 <option value="Estável - 215 L/pcd">Estável - 215 L/pcd</option>
-                <option value="Decrescente - até 180 L/pcd">Decrescente - até 180 L/pcd</option>
+                <option value="Aumento - 250 L/pcd">Aumento - 250 L/pcd</option>
               </select>
             </div>
           </div>
-
-          {/* Quadro Cenários de Perdas */}
-          <div className="p-4 border rounded shadow">
-            <h3 className="text-md font-medium mb-2">Cenários de Perdas</h3>
-            <label className="block text-sm font-medium mb-1">Perdas</label>
-            <select
-              value={perdas}
-              onChange={(e) => setPerdas(e.target.value)}
-              className="w-full p-2 border rounded"
-            >
-              <option value="30%">30%</option>
-              <option value="28%">28%</option>
-              <option value="26%">26%</option>
-              <option value="24%">24%</option>
-            </select>
+          <div className="bg-white p-4 rounded-lg shadow-md">
+            <h3 className="text-lg font-semibold mb-4">Cenários de Perdas</h3>
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-2">Perdas</label>
+              <select
+                value={perdas}
+                onChange={(e) => setPerdas(e.target.value)}
+                className="w-full p-2 border border-gray-300 rounded-md"
+              >
+                <option value="30%">30%</option>
+                <option value="20%">20%</option>
+                <option value="10%">10%</option>
+              </select>
+            </div>
           </div>
         </div>
       </div>
@@ -296,4 +319,4 @@ const App: React.FC = () => {
   )
 }
 
-export default App
+export default Configuracoes
