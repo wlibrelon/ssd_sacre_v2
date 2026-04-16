@@ -95,9 +95,19 @@ const Configuracoes: React.FC = () => {
 
   return (
     <div className="p-4">
+      {/* Título da Página */}
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold text-gray-800">
+          Configuração de cenários e estratégias para simulação
+        </h1>
+        <p className="text-gray-600 mt-2">
+          Defina os cenários e estratégias para executar as simulações de recursos hídricos
+        </p>
+      </div>
+
       {/* Top: Card Fonte */}
       <div className="mb-4 p-4 border rounded shadow">
-        <label className="block mb-2">Fonte:</label>
+        <label className="block mb-2 font-semibold">Fonte de água:</label>
         <select
           value={selectedFonte}
           onChange={(e) => setSelectedFonte(e.target.value)}
@@ -116,7 +126,7 @@ const Configuracoes: React.FC = () => {
       <div className="grid md:grid-cols-2 gap-4 mb-4">
         {/* Quadro 2: Fator and Cenário */}
         <div className="p-4 border rounded shadow">
-          <h3 className="mb-2">Adicionar Cenário</h3>
+          <h3 className="mb-2 font-semibold text-lg">Adicionar Cenário</h3>
           <label className="block mb-2">Fator:</label>
           <select
             value={newFator}
@@ -143,12 +153,15 @@ const Configuracoes: React.FC = () => {
               </option>
             ))}
           </select>
-          <button onClick={addCenario} className="px-4 py-2 bg-blue-500 text-white rounded">
+          <button
+            onClick={addCenario}
+            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          >
             Adicionar Cenário
           </button>
           <table className="w-full mt-4 border-collapse border border-gray-300">
             <thead>
-              <tr>
+              <tr className="bg-gray-100">
                 <th className="border border-gray-300 p-2">Fonte</th>
                 <th className="border border-gray-300 p-2">Fator</th>
                 <th className="border border-gray-300 p-2">Cenário</th>
@@ -178,7 +191,7 @@ const Configuracoes: React.FC = () => {
 
         {/* Quadro 3: Ações */}
         <div className="p-4 border rounded shadow">
-          <h3 className="mb-2">Adicionar Estratégia</h3>
+          <h3 className="mb-2 font-semibold text-lg">Adicionar Estratégia</h3>
           <label className="block mb-2">Ação:</label>
           <select
             value={selectedAcao}
@@ -192,12 +205,15 @@ const Configuracoes: React.FC = () => {
               </option>
             ))}
           </select>
-          <button onClick={addEstrategia} className="px-4 py-2 bg-blue-500 text-white rounded">
+          <button
+            onClick={addEstrategia}
+            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          >
             Adicionar Estratégia
           </button>
           <table className="w-full mt-4 border-collapse border border-gray-300">
             <thead>
-              <tr>
+              <tr className="bg-gray-100">
                 <th className="border border-gray-300 p-2">Ação</th>
                 <th className="border border-gray-300 p-2">Exclusão</th>
               </tr>
@@ -226,7 +242,7 @@ const Configuracoes: React.FC = () => {
       <div className="text-center mb-4">
         <button
           onClick={handleGravarOuAdicionar}
-          className="px-6 py-3 bg-green-500 text-white rounded"
+          className="px-6 py-3 bg-green-500 text-white rounded hover:bg-green-600 font-semibold"
           disabled={cenarios.length === 0 && estrategias.length === 0}
         >
           {isFirstGravar ? 'Gravar cenários e estratégias' : 'Adicionar'}
@@ -236,10 +252,10 @@ const Configuracoes: React.FC = () => {
       {/* Tabela Simulacao */}
       {simulacao.length > 0 && (
         <div className="p-4 border rounded shadow">
-          <h3 className="mb-2">Simulação</h3>
+          <h3 className="mb-4 font-semibold text-lg">Simulação</h3>
           <table className="w-full border-collapse border border-gray-300">
             <thead>
-              <tr>
+              <tr className="bg-gray-100">
                 <th className="border border-gray-300 p-2">Fonte</th>
                 <th className="border border-gray-300 p-2">Cenários</th>
                 <th className="border border-gray-300 p-2">Estratégias</th>
