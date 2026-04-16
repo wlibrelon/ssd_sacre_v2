@@ -96,14 +96,14 @@ const Cenarios: React.FC = () => {
     reader.onload = (e) => {
       const text = e.target?.result as string
       const lines = text.split('\n')
-      const headers = lines[0].split(',')
+      const headers = lines[0].split(',').map((h) => h.trim()) // ← ADICIONE .trim()
       const data = lines
         .slice(1)
         .map((line) => {
           const values = line.split(',')
           const obj: any = {}
           headers.forEach((header, index) => {
-            obj[header.trim()] = values[index]?.trim() || ''
+            obj[header.trim()] = values[index]?.trim() || '' // ← ADICIONE .trim() AQUI TAMBÉM
           })
           return obj
         })
@@ -111,6 +111,8 @@ const Cenarios: React.FC = () => {
       setCsvData(data)
       setCsvPreview(data.slice(0, 5))
       setCsvError('')
+      console.log('Headers normalizados:', headers) // ← DEBUG
+      console.log('Primeira linha de dados:', data[0]) // ← DEBUG
     }
     reader.readAsText(file)
   }
