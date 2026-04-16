@@ -152,7 +152,7 @@ const Configuracoes: React.FC = () => {
                 <th className="border border-gray-300 p-2">Fonte</th>
                 <th className="border border-gray-300 p-2">Fator</th>
                 <th className="border border-gray-300 p-2">Cenário</th>
-                <th className="border border-gray-300 p-2">Ações</th>
+                <th className="border border-gray-300 p-2">Exclusão</th>
               </tr>
             </thead>
             <tbody>
@@ -199,7 +199,7 @@ const Configuracoes: React.FC = () => {
             <thead>
               <tr>
                 <th className="border border-gray-300 p-2">Ação</th>
-                <th className="border border-gray-300 p-2">Ações</th>
+                <th className="border border-gray-300 p-2">Exclusão</th>
               </tr>
             </thead>
             <tbody>
@@ -243,7 +243,7 @@ const Configuracoes: React.FC = () => {
                 <th className="border border-gray-300 p-2">Fonte</th>
                 <th className="border border-gray-300 p-2">Cenários</th>
                 <th className="border border-gray-300 p-2">Estratégias</th>
-                <th className="border border-gray-300 p-2">Ações</th>
+                <th className="border border-gray-300 p-2">Exclusão</th>
               </tr>
             </thead>
             <tbody>
