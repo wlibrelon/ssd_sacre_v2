@@ -95,16 +95,18 @@ const Configuracoes: React.FC = () => {
       const novaConfiguracao = { demandaCenario, demandaConsumo, perdas }
       const novaLista = [...demandaPerdasList, novaConfiguracao]
 
-      // ← ADICIONAR ISTO: salvar no store
-      setSim(novaLista) // Aqui setSim já deveria estar destruturado do store
-
       setDemandaPerdasList(novaLista)
+      setDemandaPerdas(novaLista) // ← ADICIONE ESTA LINHA
+      console.log('✅ DemandaPerdas gravada no store:', novaLista) // Debug
     }
   }
   ///////////////////
 
   const handleDeleteDemandaPerdas = (index: number) => {
-    setDemandaPerdasList(demandaPerdasList.filter((_, i) => i !== index))
+    const novaLista = demandaPerdasList.filter((_, i) => i !== index)
+    setDemandaPerdasList(novaLista)
+    setDemandaPerdas(novaLista) // ← ADICIONE ESTA LINHA
+    console.log('✅ DemandaPerdas deletada do store:', novaLista) // Debug
   }
 
   return (
