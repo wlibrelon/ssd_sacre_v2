@@ -69,13 +69,30 @@ const Configuracoes: React.FC = () => {
     setEstrategias(estrategias.filter((_, i) => i !== index))
   }
 
+  // const handleGravarOuAdicionar = () => {
+  //   const cenariosStr = cenarios.map((c) => `${c.fator} ${c.cenario}`).join(' | ')
+  //   const estrategiasStr = estrategias.join(' | ')
+  //   const novaLinha = { fonte: selectedFonte, cenarios: cenariosStr, estrategias: estrategiasStr }
+  //   const novoArray = [...simulacao, novaLinha]
+  //   setSimulacao(novoArray)
+  //   setSim(novoArray)
+  //   setCenarios([])
+  //   setEstrategias([])
+  //   if (isFirstGravar) {
+  //     setIsFirstGravar(false)
+  //   }
+  // }
+
   const handleGravarOuAdicionar = () => {
     const cenariosStr = cenarios.map((c) => `${c.fator} ${c.cenario}`).join(' | ')
     const estrategiasStr = estrategias.join(' | ')
     const novaLinha = { fonte: selectedFonte, cenarios: cenariosStr, estrategias: estrategiasStr }
     const novoArray = [...simulacao, novaLinha]
-    setSimulacao(novoArray)
-    setSim(novoArray)
+
+    setSimulacao(novoArray) // Estado local
+    setSim(novoArray) // Store global ← CRÍTICO
+    console.log('✅ Cenários gravados no store:', novoArray) // DEBUG
+
     setCenarios([])
     setEstrategias([])
     if (isFirstGravar) {
@@ -90,10 +107,14 @@ const Configuracoes: React.FC = () => {
   }
 
   const handleGravarDemandaPerdas = () => {
-    // Assuming demand and losses data is available
-    const demandaPerdas = { demanda: [], perdas: [] } // Replace with actual data
-    setDemandaPerdas(demandaPerdas)
-    console.log('Demand and losses saved to store:', demandaPerdas)
+    if (demandaCenario && demandaConsumo && perdas) {
+      const novaConfiguracao = { demandaCenario, demandaConsumo, perdas }
+      const novaLista = [...demandaPerdasList, novaConfiguracao]
+
+      setDemandaPerdasList(novaLista) // Estado local
+      setDemandaPerdas(novaLista) // Store global ← CRÍTICO
+      console.log('✅ Demanda/Perdas gravadas no store:', novaLista) // DEBUG
+    }
   }
 
   const handleDeleteDemandaPerdas = (index: number) => {
