@@ -1,126 +1,112 @@
 import React, { useState } from 'react'
 import { Trash2 } from 'lucide-react'
-import { useSimulationStore } from '../stores/simulationStore'
+import useSimulationStore from '@/stores/useSimulationStore'
 
-type Cenario = {
-  id: string
-  nome: string
-  estrategias: string[]
-}
-
-type Simulacao = {
-  id: string
-  nome: string
-  cenarios: Cenario[]
-}
-
-type DemandaPerdas = {
-  id: string
-  demandaCenario: string
-  demandaConsumo: string
-  perdas: string
-}
+type Cenario = { fonte: string; fator: string; cenario: string }
+type Simulacao = { fonte: string; cenarios: string; estrategias: string }
+type DemandaPerdas = { demandaCenario: string; demandaConsumo: string; perdas: string }
 
 const Configuracoes: React.FC = () => {
-  const { simulacoes, addSimulacao, deleteSimulacao } = useSimulationStore()
-  const [nomeSimulacao, setNomeSimulacao] = useState('')
-  const [fonteSelecionada, setFonteSelecionada] = useState('')
-  const [fatorSelecionado, setFatorSelecionado] = useState('')
-  const [simulacaoSelecionada, setSimulacaoSelecionada] = useState<Simulacao | null>(null)
-  const [cenarioSelecionado, setCenarioSelecionado] = useState<Cenario | null>(null)
-  const [demandaCenario, setDemandaCenario] = useState('')
-  const [demandaConsumo, setDemandaConsumo] = useState('')
-  const [perdas, setPerdas] = useState('')
+  const { setSimulacao: setSim } = useSimulationStore()
+
+  const [selectedFonte, setSelectedFonte] = useState<string>('')
+  const [newFator, setNewFator] = useState<string>('')
+  const [newCenario, setNewCenario] = useState<string>('')
+  const [cenarios, setCenarios] = useState<Cenario[]>([])
+  const [selectedAcao, setSelectedAcao] = useState<string>('')
+  const [estrategias, setEstrategias] = useState<string[]>([])
+  const [simulacao, setSimulacao] = useState<Simulacao[]>([])
+  const [isFirstGravar, setIsFirstGravar] = useState<boolean>(true)
+
+  const [demandaCenario, setDemandaCenario] = useState<string>('Estagnação Populacional')
+  const [demandaConsumo, setDemandaConsumo] = useState<string>('Estável - 215 L/pcd')
+  const [perdas, setPerdas] = useState<string>('30%')
   const [demandaPerdasList, setDemandaPerdasList] = useState<DemandaPerdas[]>([])
 
-  const fontes = ['Fonte 1', 'Fonte 2', 'Fonte 3']
-  const fatores = ['Fator 1', 'Fator 2', 'Fator 3']
-  const cenariosOptions = ['Cenário 1', 'Cenário 2', 'Cenário 3']
-  const acoes = ['Ação 1', 'Ação 2', 'Ação 3']
+  const fontes = ['Rio Batalha', 'Sistema Aquífero Bauru', 'Sistema Aquífero Guarani']
+  const fatores = [
+    'Clima',
+    'Uso da Terra',
+    'Condutividade Hidráulica',
+    'Captações a Montante',
+    'Transmissividade moderada',
+    'Transmissividade alta',
+  ]
+  const cenariosOptions = ['Tendencial', 'Pessimista', 'Conservacionista']
+  const acoes = [
+    'Instalar Barraginhas',
+    'Uso atual',
+    'Expansão de poços',
+    'Instalar barramento a montante',
+    'Condição atual de captação',
+    'Expansão de poços no município',
+    'Mais poços na área urbana',
+    'Captações a Montante',
+    'Campo de poços',
+  ]
 
   const addCenario = () => {
-    if (simulacaoSelecionada) {
-      const newCenario: Cenario = {
-        id: Date.now().toString(),
-        nome: 'Novo Cenário',
-        estrategias: [],
-      }
-      simulacaoSelecionada.cenarios.push(newCenario)
-      setSimulacaoSelecionada({ ...simulacaoSelecionada })
+    if (newFator) {
+      setCenarios([...cenarios, { fonte: selectedFonte, fator: newFator, cenario: newCenario }])
+      setNewFator('')
+      setNewCenario('')
     }
   }
 
-  const deleteCenario = (cenarioId: string) => {
-    if (simulacaoSelecionada) {
-      simulacaoSelecionada.cenarios = simulacaoSelecionada.cenarios.filter(
-        (c) => c.id !== cenarioId,
-      )
-      setSimulacaoSelecionada({ ...simulacaoSelecionada })
+  const deleteCenario = (index: number) => {
+    setCenarios(cenarios.filter((_, i) => i !== index))
+  }
+
+  const addEstrategia = () => {
+    if (selectedAcao) {
+      setEstrategias([...estrategias, selectedAcao])
+      setSelectedAcao('')
     }
   }
 
-  const addEstrategia = (cenarioId: string, estrategia: string) => {
-    if (simulacaoSelecionada) {
-      const cenario = simulacaoSelecionada.cenarios.find((c) => c.id === cenarioId)
-      if (cenario) {
-        cenario.estrategias.push(estrategia)
-        setSimulacaoSelecionada({ ...simulacaoSelecionada })
-      }
-    }
-  }
-
-  const deleteEstrategia = (cenarioId: string, estrategiaIndex: number) => {
-    if (simulacaoSelecionada) {
-      const cenario = simulacaoSelecionada.cenarios.find((c) => c.id === cenarioId)
-      if (cenario) {
-        cenario.estrategias.splice(estrategiaIndex, 1)
-        setSimulacaoSelecionada({ ...simulacaoSelecionada })
-      }
-    }
+  const deleteEstrategia = (index: number) => {
+    setEstrategias(estrategias.filter((_, i) => i !== index))
   }
 
   const handleGravarOuAdicionar = () => {
-    if (nomeSimulacao) {
-      const newSimulacao: Simulacao = {
-        id: Date.now().toString(),
-        nome: nomeSimulacao,
-        cenarios: [],
-      }
-      addSimulacao(newSimulacao)
-      setNomeSimulacao('')
+    const cenariosStr = cenarios.map((c) => `${c.fator} ${c.cenario}`).join(' | ')
+    const estrategiasStr = estrategias.join(' | ')
+    const novaLinha = { fonte: selectedFonte, cenarios: cenariosStr, estrategias: estrategiasStr }
+    const novoArray = [...simulacao, novaLinha]
+    setSimulacao(novoArray)
+    setSim(novoArray)
+    setCenarios([])
+    setEstrategias([])
+    if (isFirstGravar) {
+      setIsFirstGravar(false)
     }
   }
 
-  const handleDeleteSimulacao = (simulacaoId: string) => {
-    deleteSimulacao(simulacaoId)
+  const handleDeleteSimulacao = (index: number) => {
+    const novoArray = simulacao.filter((_, i) => i !== index)
+    setSimulacao(novoArray)
+    setSim(novoArray)
   }
 
   const handleGravarDemandaPerdas = () => {
-    const newDemandaPerdas: DemandaPerdas = {
-      id: Date.now().toString(),
-      demandaCenario,
-      demandaConsumo,
-      perdas,
+    if (demandaCenario && demandaConsumo && perdas) {
+      setDemandaPerdasList([...demandaPerdasList, { demandaCenario, demandaConsumo, perdas }])
     }
-    setDemandaPerdasList([...demandaPerdasList, newDemandaPerdas])
-    setDemandaCenario('')
-    setDemandaConsumo('')
-    setPerdas('')
   }
 
-  const handleDeleteDemandaPerdas = (id: string) => {
-    setDemandaPerdasList(demandaPerdasList.filter((item) => item.id !== id))
+  const handleDeleteDemandaPerdas = (index: number) => {
+    setDemandaPerdasList(demandaPerdasList.filter((_, i) => i !== index))
   }
 
   return (
-    <div className="p-6 bg-gray-100 min-h-screen">
-      <h1 className="text-2xl font-bold mb-6">Configurações</h1>
+    <div className="p-6 max-w-7xl mx-auto">
+      <h1 className="text-3xl font-bold mb-6">Configurações</h1>
 
-      <div className="mb-6">
-        <label className="block text-sm font-medium mb-2">Fonte</label>
+      <div className="bg-white p-4 rounded-lg shadow-md mb-6">
+        <label className="block text-sm font-medium mb-2">Fonte de água</label>
         <select
-          value={fonteSelecionada}
-          onChange={(e) => setFonteSelecionada(e.target.value)}
+          value={selectedFonte}
+          onChange={(e) => setSelectedFonte(e.target.value)}
           className="w-full p-2 border border-gray-300 rounded-md"
         >
           <option value="">Selecione uma fonte</option>
@@ -132,135 +118,63 @@ const Configuracoes: React.FC = () => {
         </select>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 mb-6">
-        <div>
-          <label className="block text-sm font-medium mb-2">Fator</label>
-          <select
-            value={fatorSelecionado}
-            onChange={(e) => setFatorSelecionado(e.target.value)}
-            className="w-full p-2 border border-gray-300 rounded-md"
-          >
-            <option value="">Selecione um fator</option>
-            {fatores.map((fator) => (
-              <option key={fator} value={fator}>
-                {fator}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium mb-2">Nome da Simulação</label>
-          <input
-            type="text"
-            value={nomeSimulacao}
-            onChange={(e) => setNomeSimulacao(e.target.value)}
-            className="w-full p-2 border border-gray-300 rounded-md"
-            placeholder="Digite o nome da simulação"
-          />
-        </div>
-      </div>
-
-      <button
-        onClick={handleGravarOuAdicionar}
-        className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 mb-6"
-      >
-        Gravar ou Adicionar
-      </button>
-
-      <div className="mb-6">
-        <h2 className="text-xl font-semibold mb-4">Simulações</h2>
-        <table className="w-full table-auto border-collapse border border-gray-300">
-          <thead>
-            <tr>
-              <th className="border border-gray-300 p-2">Nome</th>
-              <th className="border border-gray-300 p-2">Cenários</th>
-              <th className="border border-gray-300 p-2">Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-            {simulacoes.map((simulacao) => (
-              <tr key={simulacao.id}>
-                <td className="border border-gray-300 p-2">{simulacao.nome}</td>
-                <td className="border border-gray-300 p-2">
-                  {simulacao.cenarios.map((cenario) => (
-                    <div key={cenario.id}>{cenario.nome}</div>
-                  ))}
-                </td>
-                <td className="border border-gray-300 p-2">
-                  <button
-                    onClick={() => handleDeleteSimulacao(simulacao.id)}
-                    className="text-red-500 hover:text-red-700"
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="mb-6">
-        <h2 className="text-xl font-semibold mb-4">Configuração de Demanda e Perdas</h2>
-        <div className="grid grid-cols-2 gap-4 mb-4">
-          <div>
-            <label className="block text-sm font-medium mb-2">Demanda Cenário</label>
-            <input
-              type="text"
-              value={demandaCenario}
-              onChange={(e) => setDemandaCenario(e.target.value)}
+      <div className="grid md:grid-cols-2 gap-6 mb-6">
+        <div className="bg-white p-4 rounded-lg shadow-md">
+          <h2 className="text-xl font-semibold mb-4">Adicionar Cenário</h2>
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-2">Fator</label>
+            <select
+              value={newFator}
+              onChange={(e) => setNewFator(e.target.value)}
               className="w-full p-2 border border-gray-300 rounded-md"
-              placeholder="Digite a demanda do cenário"
-            />
+            >
+              <option value="">Selecione um fator</option>
+              {fatores.map((fator) => (
+                <option key={fator} value={fator}>
+                  {fator}
+                </option>
+              ))}
+            </select>
           </div>
-          <div>
-            <label className="block text-sm font-medium mb-2">Demanda Consumo</label>
-            <input
-              type="text"
-              value={demandaConsumo}
-              onChange={(e) => setDemandaConsumo(e.target.value)}
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-2">Cenário</label>
+            <select
+              value={newCenario}
+              onChange={(e) => setNewCenario(e.target.value)}
               className="w-full p-2 border border-gray-300 rounded-md"
-              placeholder="Digite a demanda de consumo"
-            />
+            >
+              <option value="">Selecione um cenário</option>
+              {cenariosOptions.map((cenario) => (
+                <option key={cenario} value={cenario}>
+                  {cenario}
+                </option>
+              ))}
+            </select>
           </div>
-        </div>
-        <div className="mb-4">
-          <label className="block text-sm font-medium mb-2">Perdas</label>
-          <input
-            type="text"
-            value={perdas}
-            onChange={(e) => setPerdas(e.target.value)}
-            className="w-full p-2 border border-gray-300 rounded-md"
-            placeholder="Digite as perdas"
-          />
-        </div>
-        <div className="mt-4">
           <button
-            onClick={handleGravarDemandaPerdas}
+            onClick={addCenario}
             className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600"
           >
-            Gravar Demanda e Perdas
+            Adicionar Cenário
           </button>
-        </div>
-        {demandaPerdasList.length > 0 && (
-          <table className="w-full table-auto border-collapse border border-gray-300 mt-4">
+          <table className="w-full mt-4 border-collapse border border-gray-300">
             <thead>
               <tr>
-                <th className="border border-gray-300 p-2">Demanda Cenário</th>
-                <th className="border border-gray-300 p-2">Demanda Consumo</th>
-                <th className="border border-gray-300 p-2">Perdas</th>
+                <th className="border border-gray-300 p-2">Fonte</th>
+                <th className="border border-gray-300 p-2">Fator</th>
+                <th className="border border-gray-300 p-2">Cenário</th>
                 <th className="border border-gray-300 p-2">Ações</th>
               </tr>
             </thead>
             <tbody>
-              {demandaPerdasList.map((item) => (
-                <tr key={item.id}>
-                  <td className="border border-gray-300 p-2">{item.demandaCenario}</td>
-                  <td className="border border-gray-300 p-2">{item.demandaConsumo}</td>
-                  <td className="border border-gray-300 p-2">{item.perdas}</td>
+              {cenarios.map((cenario, index) => (
+                <tr key={index}>
+                  <td className="border border-gray-300 p-2">{cenario.fonte}</td>
+                  <td className="border border-gray-300 p-2">{cenario.fator}</td>
+                  <td className="border border-gray-300 p-2">{cenario.cenario}</td>
                   <td className="border border-gray-300 p-2">
                     <button
-                      onClick={() => handleDeleteDemandaPerdas(item.id)}
+                      onClick={() => deleteCenario(index)}
                       className="text-red-500 hover:text-red-700"
                     >
                       <Trash2 size={16} />
@@ -270,6 +184,186 @@ const Configuracoes: React.FC = () => {
               ))}
             </tbody>
           </table>
+        </div>
+
+        <div className="bg-white p-4 rounded-lg shadow-md">
+          <h2 className="text-xl font-semibold mb-4">Adicionar Estratégia</h2>
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-2">Ação</label>
+            <select
+              value={selectedAcao}
+              onChange={(e) => setSelectedAcao(e.target.value)}
+              className="w-full p-2 border border-gray-300 rounded-md"
+            >
+              <option value="">Selecione uma ação</option>
+              {acoes.map((acao) => (
+                <option key={acao} value={acao}>
+                  {acao}
+                </option>
+              ))}
+            </select>
+          </div>
+          <button
+            onClick={addEstrategia}
+            className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600"
+          >
+            Adicionar Estratégia
+          </button>
+          <table className="w-full mt-4 border-collapse border border-gray-300">
+            <thead>
+              <tr>
+                <th className="border border-gray-300 p-2">Estratégia</th>
+                <th className="border border-gray-300 p-2">Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {estrategias.map((estrategia, index) => (
+                <tr key={index}>
+                  <td className="border border-gray-300 p-2">{estrategia}</td>
+                  <td className="border border-gray-300 p-2">
+                    <button
+                      onClick={() => deleteEstrategia(index)}
+                      className="text-red-500 hover:text-red-700"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="mb-6">
+        <button
+          onClick={handleGravarOuAdicionar}
+          className="bg-green-500 text-white px-6 py-3 rounded-md hover:bg-green-600"
+        >
+          {isFirstGravar ? 'Gravar' : 'Adicionar'}
+        </button>
+      </div>
+
+      {simulacao.length > 0 && (
+        <div className="bg-white p-4 rounded-lg shadow-md">
+          <h2 className="text-xl font-semibold mb-4">Simulações</h2>
+          <table className="w-full border-collapse border border-gray-300">
+            <thead>
+              <tr>
+                <th className="border border-gray-300 p-2">Fonte</th>
+                <th className="border border-gray-300 p-2">Cenários</th>
+                <th className="border border-gray-300 p-2">Estratégias</th>
+                <th className="border border-gray-300 p-2">Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {simulacao.map((sim, index) => (
+                <tr key={index}>
+                  <td className="border border-gray-300 p-2">{sim.fonte}</td>
+                  <td className="border border-gray-300 p-2">{sim.cenarios}</td>
+                  <td className="border border-gray-300 p-2">{sim.estrategias}</td>
+                  <td className="border border-gray-300 p-2">
+                    <button
+                      onClick={() => handleDeleteSimulacao(index)}
+                      className="text-red-500 hover:text-red-700"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <div className="mb-6">
+        <h2 className="text-2xl font-bold mb-4">Configuração de Demanda e Perdas</h2>
+        <div className="grid md:grid-cols-2 gap-6 mb-4">
+          <div className="bg-white p-4 rounded-lg shadow-md">
+            <h3 className="text-lg font-semibold mb-4">Demanda de consumo</h3>
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-2">Cenários</label>
+              <select
+                value={demandaCenario}
+                onChange={(e) => setDemandaCenario(e.target.value)}
+                className="w-full p-2 border border-gray-300 rounded-md"
+              >
+                <option value="Estagnação Populacional">Estagnação Populacional</option>
+                <option value="Crescimento Tendencial">Crescimento Tendencial</option>
+                <option value="Crescimento Acelerado">Crescimento Acelerado</option>
+              </select>
+            </div>
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-2">Consumo</label>
+              <select
+                value={demandaConsumo}
+                onChange={(e) => setDemandaConsumo(e.target.value)}
+                className="w-full p-2 border border-gray-300 rounded-md"
+              >
+                <option value="Crescente - até 250 L/pcd">Crescente - até 250 L/pcd</option>
+                <option value="Estável - 215 L/pcd">Estável - 215 L/pcd</option>
+                <option value="Decrescente - até 180 L/pcd">Decrescente - até 180 L/pcd</option>
+              </select>
+            </div>
+          </div>
+          <div className="bg-white p-4 rounded-lg shadow-md">
+            <h3 className="text-lg font-semibold mb-4">Cenários de Perdas</h3>
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-2">Perdas</label>
+              <select
+                value={perdas}
+                onChange={(e) => setPerdas(e.target.value)}
+                className="w-full p-2 border border-gray-300 rounded-md"
+              >
+                <option value="30%">30%</option>
+                <option value="28%">28%</option>
+                <option value="26%">26%</option>
+                <option value="24%">24%</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-4 mb-4">
+          <button
+            onClick={handleGravarDemandaPerdas}
+            className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600"
+          >
+            Gravar Demanda e Perdas
+          </button>
+        </div>
+
+        {demandaPerdasList.length > 0 && (
+          <div className="mt-4">
+            <table className="w-full border-collapse border border-gray-300">
+              <thead>
+                <tr>
+                  <th className="border border-gray-300 p-2">Cenário de Demanda</th>
+                  <th className="border border-gray-300 p-2">Consumo</th>
+                  <th className="border border-gray-300 p-2">Perdas</th>
+                  <th className="border border-gray-300 p-2">Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {demandaPerdasList.map((item, index) => (
+                  <tr key={index}>
+                    <td className="border border-gray-300 p-2">{item.demandaCenario}</td>
+                    <td className="border border-gray-300 p-2">{item.demandaConsumo}</td>
+                    <td className="border border-gray-300 p-2">{item.perdas}</td>
+                    <td className="border border-gray-300 p-2 text-center">
+                      <button
+                        onClick={() => handleDeleteDemandaPerdas(index)}
+                        className="text-red-500 hover:text-red-700"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>
