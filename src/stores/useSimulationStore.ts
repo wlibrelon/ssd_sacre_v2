@@ -22,23 +22,58 @@
 
 // export default useSimulationStore
 
+// import { create } from 'zustand'
+
+// type DemandaPerdas = { demandaCenario: string; demandaConsumo: string; perdas: string }
+
+// interface SimulationStore {
+//   simulacao: any[]
+//   setSimulacao: (data: any[]) => void
+//   demandaPerdasList: DemandaPerdas[] // ← ADICIONAR
+//   setDemandaPerdas: (data: DemandaPerdas[]) => void // ← ADICIONAR
+// }
+
+// const useSimulationStore = create<SimulationStore>((set) => ({
+//   simulacao: [],
+//   setSimulacao: (data) => set({ simulacao: data }),
+
+//   // ← ADICIONAR ISTO
+//   demandaPerdasList: [],
+//   setDemandaPerdas: (data) => set({ demandaPerdasList: data }),
+// }))
+
+// export default useSimulationStore
+
 import { create } from 'zustand'
 
+// ✅ Type para dados de demanda e perdas
 type DemandaPerdas = { demandaCenario: string; demandaConsumo: string; perdas: string }
 
+// ✅ Interface COMPLETA com TUDO
 interface SimulationStore {
+  // Dados de simulação
+  csvData: any[]
   simulacao: any[]
+
+  // Dados de demanda e perdas
+  demandaPerdasList: DemandaPerdas[]
+
+  // Setters
+  setCsvData: (data: any[]) => void
   setSimulacao: (data: any[]) => void
-  demandaPerdasList: DemandaPerdas[] // ← ADICIONAR
-  setDemandaPerdas: (data: DemandaPerdas[]) => void // ← ADICIONAR
+  setDemandaPerdas: (data: DemandaPerdas[]) => void
 }
 
+// ✅ Store com TUDO inicializado
 const useSimulationStore = create<SimulationStore>((set) => ({
+  // Estados
+  csvData: [],
   simulacao: [],
-  setSimulacao: (data) => set({ simulacao: data }),
-
-  // ← ADICIONAR ISTO
   demandaPerdasList: [],
+
+  // Setters
+  setCsvData: (data) => set({ csvData: data }),
+  setSimulacao: (data) => set({ simulacao: data }),
   setDemandaPerdas: (data) => set({ demandaPerdasList: data }),
 }))
 

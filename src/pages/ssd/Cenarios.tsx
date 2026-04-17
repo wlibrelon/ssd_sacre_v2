@@ -55,7 +55,8 @@ const formatNumber = (value: number): string => {
 }
 
 const Cenarios: React.FC = () => {
-  const { simulacao, demandaPerdasList = [] } = useSimulationStore()
+  //  const { simulacao, demandaPerdasList = [] } = useSimulationStore()
+  const { simulacao, demandaPerdasList = [], setDemandaPerdas } = useSimulationStore()
   const [csvData, setCsvData] = useState<any[]>([])
   const [csvPreview, setCsvPreview] = useState<any[]>([])
   const [csvError, setCsvError] = useState<string>('')
