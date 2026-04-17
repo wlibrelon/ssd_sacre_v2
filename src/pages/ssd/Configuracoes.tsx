@@ -284,6 +284,7 @@ const Configuracoes: React.FC = () => {
               >
                 <option value="Estagnação Populacional">Estagnação Populacional</option>
                 <option value="Crescimento Populacional">Crescimento Populacional</option>
+                <option value="Crescimento Acelerado">Crescimento Acelerado</option>
               </select>
             </div>
             <div className="mb-4">
@@ -293,8 +294,9 @@ const Configuracoes: React.FC = () => {
                 onChange={(e) => setDemandaConsumo(e.target.value)}
                 className="w-full p-2 border border-gray-300 rounded-md"
               >
+                <option value="Crescente - até 250 L/pcd">Crescente - até 250 L/pcd</option>
                 <option value="Estável - 215 L/pcd">Estável - 215 L/pcd</option>
-                <option value="Aumento - 250 L/pcd">Aumento - 250 L/pcd</option>
+                <option value="Decrescente - até 180 L/pcd">Decrescente - até 180 L/pcd</option>
               </select>
             </div>
           </div>
@@ -308,8 +310,9 @@ const Configuracoes: React.FC = () => {
                 className="w-full p-2 border border-gray-300 rounded-md"
               >
                 <option value="30%">30%</option>
-                <option value="20%">20%</option>
-                <option value="10%">10%</option>
+                <option value="28%">20%</option>
+                <option value="26%">10%</option>
+                <option value="24%">10%</option>
               </select>
             </div>
           </div>
