@@ -323,6 +323,36 @@ const Cenarios: React.FC = () => {
 
       <Card>
         <CardHeader>
+          <CardTitle>Parâmetros Globais</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {demandaPerdasList && demandaPerdasList.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Cenário de Demanda</TableHead>
+                  <TableHead>Consumo</TableHead>
+                  <TableHead>Perdas</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {demandaPerdasList.map((item, index) => (
+                  <TableRow key={index}>
+                    <TableCell>{item.demandaCenario}</TableCell>
+                    <TableCell>{item.demandaConsumo}</TableCell>
+                    <TableCell>{item.perdas}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <p className="text-gray-500">Nenhuma configuração de demanda e perdas gravada</p>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle>Importação de dados para simulação</CardTitle>
         </CardHeader>
         <CardContent>
