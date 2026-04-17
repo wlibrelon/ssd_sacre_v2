@@ -32,6 +32,7 @@ import {
   ReferenceLine,
 } from 'recharts'
 
+const { simulacao, demandaPerdasList = [] } = useSimulationStore()
 const PERDAS = { atual: 0.3, meta: 0.15 }
 const DEMANDAS = { tendencial: 100, acelerada: 120, reduzida: 80 }
 

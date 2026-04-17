@@ -7,7 +7,8 @@ type Simulacao = { fonte: string; cenarios: string; estrategias: string }
 type DemandaPerdas = { demandaCenario: string; demandaConsumo: string; perdas: string }
 
 const Configuracoes: React.FC = () => {
-  const { setSimulacao: setSim } = useSimulationStore()
+  //  const { setSimulacao: setSim } = useSimulationStore() // essa linha levava apenas os dados de cenário. embaixo leva tbm as demandas e perdas
+  const { setSimulacao: setSim, setDemandaPerdas } = useSimulationStore()
 
   const [selectedFonte, setSelectedFonte] = useState<string>('')
   const [newFator, setNewFator] = useState<string>('')
@@ -88,11 +89,19 @@ const Configuracoes: React.FC = () => {
     setSim(novoArray)
   }
 
+  ////////// ajuste para gravara a tabela e ser vista em outra página
   const handleGravarDemandaPerdas = () => {
     if (demandaCenario && demandaConsumo && perdas) {
-      setDemandaPerdasList([...demandaPerdasList, { demandaCenario, demandaConsumo, perdas }])
+      const novaConfiguracao = { demandaCenario, demandaConsumo, perdas }
+      const novaLista = [...demandaPerdasList, novaConfiguracao]
+
+      // ← ADICIONAR ISTO: salvar no store
+      setSim(novaLista) // Aqui setSim já deveria estar destruturado do store
+
+      setDemandaPerdasList(novaLista)
     }
   }
+  ///////////////////
 
   const handleDeleteDemandaPerdas = (index: number) => {
     setDemandaPerdasList(demandaPerdasList.filter((_, i) => i !== index))
