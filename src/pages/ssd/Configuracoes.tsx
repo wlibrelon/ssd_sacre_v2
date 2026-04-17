@@ -89,19 +89,13 @@ const Configuracoes: React.FC = () => {
     setSim(novoArray)
   }
 
-  ////////// ajuste para gravara a tabela e ser vista em outra página
   const handleGravarDemandaPerdas = () => {
-    if (demandaCenario && demandaConsumo && perdas) {
-      const novaConfiguracao = { demandaCenario, demandaConsumo, perdas }
-      const novaLista = [...demandaPerdasList, novaConfiguracao]
-
-      setDemandaPerdasList(novaLista)
-      setDemandaPerdas(novaLista) // ← ADICIONE ESTA LINHA
-      console.log('✅ DemandaPerdas gravada no store:', novaLista) // Debug
-    }
-  }
-  ///////////////////
-
+    // Assuming demand and losses data is available
+    const demandaPerdas = { demanda: [], perdas: [] }; // Replace with actual data
+    setDemandaPerdas(demandaPerdas);
+    console.log('Demand and losses saved to store:', demandaPerdas);
+  };
+  
   const handleDeleteDemandaPerdas = (index: number) => {
     const novaLista = demandaPerdasList.filter((_, i) => i !== index)
     setDemandaPerdasList(novaLista)
@@ -381,4 +375,12 @@ const Configuracoes: React.FC = () => {
   )
 }
 
-export default Configuracoes
+export default function Configuracoes() {
+  const { setSimulacao, setDemandaPerdas } = useSimulationStore();
+
+  const handleGravarOuAdicionar = () => {
+    // Assuming scenarios data is available, e.g., from state or props
+    const scenarios = []; // Replace with actual scenarios data
+    setSimulacao(scenarios);
+    console.log('Scenarios saved to store:', scenarios);
+  };
