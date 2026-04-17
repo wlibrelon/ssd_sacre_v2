@@ -326,32 +326,29 @@ const Cenarios: React.FC = () => {
         <CardHeader>
           <CardTitle>Parâmetros Globais</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-2">
-          <div>
-            <label>Perdas: Atual 30%, Meta 15%</label>
-            <MySelect
-              options={[
-                { value: 'atual', label: 'Atual (30%)' },
-                { value: 'meta', label: 'Meta (15%)' },
-              ]}
-              value={globalPerdas}
-              onChange={setGlobalPerdas}
-              placeholder="Selecione Perdas"
-            />
-          </div>
-          <div>
-            <label>Demanda: Tendencial 100, Acelerada 120, Reduzida 80</label>
-            <MySelect
-              options={[
-                { value: 'tendencial', label: 'Tendencial (100)' },
-                { value: 'acelerada', label: 'Acelerada (120)' },
-                { value: 'reduzida', label: 'Reduzida (80)' },
-              ]}
-              value={globalDemanda}
-              onChange={setGlobalDemanda}
-              placeholder="Selecione Demanda"
-            />
-          </div>
+        <CardContent>
+          {demandaPerdasList && demandaPerdasList.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Cenário de Demanda</TableHead>
+                  <TableHead>Consumo</TableHead>
+                  <TableHead>Perdas</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {demandaPerdasList.map((item, index) => (
+                  <TableRow key={index}>
+                    <TableCell>{item.demandaCenario}</TableCell>
+                    <TableCell>{item.demandaConsumo}</TableCell>
+                    <TableCell>{item.perdas}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <p className="text-gray-500">Nenhuma configuração de demanda e perdas gravada</p>
+          )}
         </CardContent>
       </Card>
 
