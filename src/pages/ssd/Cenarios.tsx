@@ -297,7 +297,7 @@ const Cenarios: React.FC = () => {
     <div className="p-4 space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle>Tabela de Simulação</CardTitle>
+          <CardTitle>Cenários para Simulação</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
@@ -318,39 +318,6 @@ const Cenarios: React.FC = () => {
               ))}
             </TableBody>
           </Table>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Parâmetros Globais</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          <div>
-            <label>Perdas: Atual 30%, Meta 15%</label>
-            <MySelect
-              options={[
-                { value: 'atual', label: 'Atual (30%)' },
-                { value: 'meta', label: 'Meta (15%)' },
-              ]}
-              value={globalPerdas}
-              onChange={setGlobalPerdas}
-              placeholder="Selecione Perdas"
-            />
-          </div>
-          <div>
-            <label>Demanda: Tendencial 100, Acelerada 120, Reduzida 80</label>
-            <MySelect
-              options={[
-                { value: 'tendencial', label: 'Tendencial (100)' },
-                { value: 'acelerada', label: 'Acelerada (120)' },
-                { value: 'reduzida', label: 'Reduzida (80)' },
-              ]}
-              value={globalDemanda}
-              onChange={setGlobalDemanda}
-              placeholder="Selecione Demanda"
-            />
-          </div>
         </CardContent>
       </Card>
 

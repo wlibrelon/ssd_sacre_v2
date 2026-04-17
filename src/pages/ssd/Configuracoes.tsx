@@ -100,7 +100,7 @@ const Configuracoes: React.FC = () => {
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
-      <h1 className="text-3xl font-bold mb-6">Configurações</h1>
+      <h1 className="text-3xl font-bold mb-6">Configuração de cenários e Estratégias de ações</h1>
 
       <div className="bg-white p-4 rounded-lg shadow-md mb-6">
         <label className="block text-sm font-medium mb-2">Fonte de água</label>
@@ -238,9 +238,9 @@ const Configuracoes: React.FC = () => {
       <div className="mb-6">
         <button
           onClick={handleGravarOuAdicionar}
-          className="bg-green-500 text-white px-6 py-3 rounded-md hover:bg-green-600"
+          className="bg-blue-500 text-white px-6 py-3 rounded-md hover:bg-blue-600"
         >
-          {isFirstGravar ? 'Gravar' : 'Adicionar'}
+          {isFirstGravar ? 'Gravar Cenários' : 'Adicionar Cenários'}
         </button>
       </div>
 
