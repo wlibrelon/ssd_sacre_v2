@@ -91,11 +91,11 @@ const Configuracoes: React.FC = () => {
 
   const handleGravarDemandaPerdas = () => {
     // Assuming demand and losses data is available
-    const demandaPerdas = { demanda: [], perdas: [] }; // Replace with actual data
-    setDemandaPerdas(demandaPerdas);
-    console.log('Demand and losses saved to store:', demandaPerdas);
-  };
-  
+    const demandaPerdas = { demanda: [], perdas: [] } // Replace with actual data
+    setDemandaPerdas(demandaPerdas)
+    console.log('Demand and losses saved to store:', demandaPerdas)
+  }
+
   const handleDeleteDemandaPerdas = (index: number) => {
     const novaLista = demandaPerdasList.filter((_, i) => i !== index)
     setDemandaPerdasList(novaLista)
@@ -375,12 +375,4 @@ const Configuracoes: React.FC = () => {
   )
 }
 
-export default function Configuracoes() {
-  const { setSimulacao, setDemandaPerdas } = useSimulationStore();
-
-  const handleGravarOuAdicionar = () => {
-    // Assuming scenarios data is available, e.g., from state or props
-    const scenarios = []; // Replace with actual scenarios data
-    setSimulacao(scenarios);
-    console.log('Scenarios saved to store:', scenarios);
-  };
+export default Configuracoes
