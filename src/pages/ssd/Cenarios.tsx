@@ -32,7 +32,6 @@ import {
   ReferenceLine,
 } from 'recharts'
 
-const { simulacao, demandaPerdasList = [] } = useSimulationStore()
 const PERDAS = { atual: 0.3, meta: 0.15 }
 const DEMANDAS = { tendencial: 100, acelerada: 120, reduzida: 80 }
 
@@ -56,6 +55,7 @@ const formatNumber = (value: number): string => {
 }
 
 const Cenarios: React.FC = () => {
+  const { simulacao, demandaPerdasList = [] } = useSimulationStore()
   const { simulacao } = useSimulationStore()
   const [csvData, setCsvData] = useState<any[]>([])
   const [csvPreview, setCsvPreview] = useState<any[]>([])
