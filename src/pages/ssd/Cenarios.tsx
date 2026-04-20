@@ -56,28 +56,6 @@ const formatNumber = (value: number): string => {
 }
 
 const Cenarios: React.FC = () => {
-  useEffect(() => {
-    fetch('/cenarios.csv')
-      .then((response) => response.text())
-      .then((text) => {
-        console.log('Conteúdo do CSV:', text)
-        const lines = text.split('\n')
-        const headers = lines[0].split(',')
-        const data = []
-        lines.slice(1).forEach((line) => {
-          const values = line.split(',')
-          const obj = {}
-          headers.forEach((header, index) => {
-            obj[header] = values[index]
-          })
-          data.push(obj)
-        })
-        setCsvData(data)
-        console.log('Dados analisados:', data)
-      })
-      .catch((error) => console.error('Erro ao carregar CSV:', error))
-  }, [])
-
   const [demandaCenario, setDemandaCenario] = useState<string>('Estagnação Populacional')
   const [demandaConsumo, setDemandaConsumo] = useState<string>('Estável - 215 L/pcd')
   const [perdas, setPerdas] = useState<string>('30%')
@@ -128,6 +106,27 @@ const Cenarios: React.FC = () => {
     link.click()
     document.body.removeChild(link)
   }
+  useEffect(() => {
+    fetch('/cenarios.csv')
+      .then((response) => response.text())
+      .then((text) => {
+        console.log('Conteúdo do CSV:', text)
+        const lines = text.split('\n')
+        const headers = lines[0].split(',')
+        const data = []
+        lines.slice(1).forEach((line) => {
+          const values = line.split(',')
+          const obj = {}
+          headers.forEach((header, index) => {
+            obj[header] = values[index]
+          })
+          data.push(obj)
+        })
+        setCsvData(data)
+        console.log('Dados analisados:', data)
+      })
+      .catch((error) => console.error('Erro ao carregar CSV:', error))
+  }, [])
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
