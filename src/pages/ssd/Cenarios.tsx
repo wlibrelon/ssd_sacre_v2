@@ -55,9 +55,10 @@ const formatNumber = (value: number): string => {
 }
 
 const Cenarios: React.FC = () => {
-  const [selectedCenarioSim, setSelectedCenarioSim] = useState<string>('')
-  const [selectedDemandaConsumo, setSelectedDemandaConsumo] = useState<string>('')
-  const [selectedPerdasValue, setSelectedPerdasValue] = useState<string>('')
+  const [selectedCenarioSim, setSelectedCenarioSim] = useState<string>('Estagnação Populacional')
+  const [selectedDemandaConsumo, setSelectedDemandaConsumo] =
+    useState<string>('Estável - 215 L/pcd')
+  const [selectedPerdasValue, setSelectedPerdasValue] = useState<string>('Perdas de 30%')
 
   const { simulacao, demandaPerdasList = [], setDemandaPerdas } = useSimulationStore()
   const [csvData, setCsvData] = useState<any[]>([])
