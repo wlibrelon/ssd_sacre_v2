@@ -1,14 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import Papa from 'papaparse'
-import { Card } from '@/components/ui/card'
-import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
-} from '@/components/ui/table'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card' // Assuming Shadcn UI is set up
 
 interface CenarioData {
   Fonte: string
@@ -16,34 +8,23 @@ interface CenarioData {
   estrategia: string
 }
 
-const CenariosTable: React.FC = () => {
+const CenariosComponent: React.FC = () => {
   const [data, setData] = useState<CenarioData[]>([])
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    const loadCSV = async () => {
+    const fetchData = async () => {
       try {
-        console.log('Starting to load cenarios.csv')
         const response = await fetch('/cenarios.csv')
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`)
         }
         const csvText = await response.text()
-        console.log('CSV text loaded:', csvText.substring(0, 100)) // Log first 100 chars for debug
         Papa.parse<CenarioData>(csvText, {
           header: true,
-          skipEmptyLines: true,
           complete: (results) => {
-            console.log('Parsed data:', results.data)
-            // Filter out rows where all fields are empty
-            const filteredData = results.data.filter(
-              (row) =>
-                row.Fonte.trim() !== '' ||
-                row.cenario.trim() !== '' ||
-                row.estrategia.trim() !== '',
-            )
-            setData(filteredData)
-            console.log('Filtered data set:', filteredData)
+            console.log('CSV parsed successfully:', results.data)
+            setData(results.data)
           },
           error: (error) => {
             console.error('Error parsing CSV:', error)
@@ -51,11 +32,11 @@ const CenariosTable: React.FC = () => {
           },
         })
       } catch (err) {
-        console.error('Error loading CSV:', err)
-        setError('Error loading CSV')
+        console.error('Error fetching CSV:', err)
+        setError('Error fetching CSV')
       }
     }
-    loadCSV()
+    fetchData()
   }, [])
 
   if (error) {
@@ -64,26 +45,31 @@ const CenariosTable: React.FC = () => {
 
   return (
     <Card>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Fonte</TableHead>
-            <TableHead>cenario</TableHead>
-            <TableHead>estrategia</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {data.map((row, index) => (
-            <TableRow key={index}>
-              <TableCell>{row.Fonte}</TableCell>
-              <TableCell>{row.cenario}</TableCell>
-              <TableCell>{row.estrategia}</TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+      <CardHeader>
+        <CardTitle>Cenarios Data</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <table>
+          <thead>
+            <tr>
+              <th>Fonte</th>
+              <th>Cenario</th>
+              <th>Estrategia</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.map((row, index) => (
+              <tr key={index}>
+                <td>{row.Fonte}</td>
+                <td>{row.cenario}</td>
+                <td>{row.estrategia}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </CardContent>
     </Card>
   )
 }
 
-export default CenariosTable
+export default CenariosComponent
