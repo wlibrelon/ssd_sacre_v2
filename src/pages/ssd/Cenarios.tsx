@@ -1,3 +1,4 @@
+import Papa from 'papaparse'
 import React, { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -362,7 +363,7 @@ const Cenarios: React.FC = () => {
               <div className="bg-white p-4 rounded-lg shadow-md">
                 <h3 className="text-lg font-semibold mb-4">Cenários de Perdas</h3>
                 <div className="mb-4">
-                  <label className="block text-sm font-medium mb-2">Perdas</label>
+                  <label className="block text-sm font-medium mb-2">Índice de Perdas</label>
                   <select
                     value={perdas}
                     onChange={(e) => setPerdas(e.target.value)}
@@ -776,4 +777,54 @@ const Cenarios: React.FC = () => {
   )
 }
 
+const [loadedFromFile, setLoadedFromFile] = useState(false)
+const [availableOptions, setAvailableOptions] = useState<string[]>([])
+const [selectedScenario, setSelectedScenario] = useState<string>('')
+
+useEffect(() => {
+  const loadCsv = async () => {
+    try {
+      const response = await fetch('/cenarios.csv')
+      const csvText = await response.text()
+      Papa.parse(csvText, {
+        header: true,
+        complete: (results: any) => {
+          const allData = results.data.filter(
+            (row: any) => row.Fonte && row.cenario && row.estrategia,
+          )
+          setCsvData(allData)
+          setLoadedFromFile(true)
+          // Gerar opções únicas concatenadas
+          const uniqueOptions = Array.from(
+            new Set(allData.map((row: any) => `${row.Fonte} | ${row.cenario} | ${row.estrategia}`)),
+          )
+          setAvailableOptions(uniqueOptions as string[])
+          console.log('✅ CSV carregado automaticamente:', uniqueOptions.length, 'opções')
+        },
+        error: (error: any) => {
+          console.error('❌ Erro ao parsear CSV:', error)
+        },
+      })
+    } catch (error) {
+      console.error('❌ Erro ao buscar CSV:', error)
+    }
+  }
+  loadCsv()
+}, [])
+
+const handleScenarioChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+  const selected = e.target.value
+  setSelectedScenario(selected)
+  if (selected) {
+    const [fonte, cenario, estrategia] = selected.split(' | ')
+    const filtered = csvData.filter(
+      (row: any) =>
+        normalize(row.Fonte) === normalize(fonte) &&
+        normalize(row.cenario) === normalize(cenario) &&
+        normalize(row.estrategia) === normalize(estrategia),
+    )
+    setCsvData(filtered)
+    console.log(`✅ Filtrado: ${filtered.length} registros para ${selected}`)
+  }
+}
 export default Cenarios
