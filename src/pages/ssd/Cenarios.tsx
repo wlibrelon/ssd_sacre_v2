@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import Papa from 'papaparse'
 import React, { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -56,6 +57,21 @@ const formatNumber = (value: number): string => {
 }
 
 const Cenarios: React.FC = () => {
+  useEffect(() => {
+    fetch('/cenarios.csv')
+      .then((r) => r.text())
+      .then((csv) => {
+        Papa.parse(csv, {
+          header: true,
+          complete: (results: any) => {
+            setCsvData(results.data)
+            console.log('✅ CSV cenarios.csv carregado:', results.data.length, 'registros')
+          },
+          error: (err: any) => console.error('❌ Erro ao carregar CSV:', err),
+        })
+      })
+  }, [])
+
   const [demandaCenario, setDemandaCenario] = useState<string>('Estagnação Populacional')
   const [demandaConsumo, setDemandaConsumo] = useState<string>('Estável - 215 L/pcd')
   const [perdas, setPerdas] = useState<string>('30%')
@@ -304,26 +320,26 @@ const Cenarios: React.FC = () => {
         <CardHeader>
           <CardTitle>Cenários para Simulação</CardTitle>
         </CardHeader>
-        // <CardContent>
-          // <Table>
-          //   <TableHeader>
-          //     <TableRow>
-          //       <TableHead>Fonte</TableHead>
-          //       <TableHead>Cenários</TableHead>
-          //       <TableHead>Estratégias</TableHead>
-          //     </TableRow>
-          //   </TableHeader>
-          //   <TableBody>
-          //     {simulacao.map((sim, index) => (
-          //       <TableRow key={index}>
-          //         <TableCell>{sim.fonte}</TableCell>
-          //         <TableCell>{sim.cenarios}</TableCell>
-          //         <TableCell>{sim.estrategias}</TableCell>
-          //       </TableRow>
-          //     ))}
-          //   </TableBody>
-          // </Table>
-        // </CardContent>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Fonte</TableHead>
+                <TableHead>Cenários</TableHead>
+                <TableHead>Estratégias</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {simulacao.map((sim, index) => (
+                <TableRow key={index}>
+                  <TableCell>{sim.fonte}</TableCell>
+                  <TableCell>{sim.cenarios}</TableCell>
+                  <TableCell>{sim.estrategias}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
       </Card>
 
       <Card>
