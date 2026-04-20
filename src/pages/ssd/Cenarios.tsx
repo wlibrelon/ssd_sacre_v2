@@ -326,30 +326,120 @@ const Cenarios: React.FC = () => {
         <CardHeader>
           <CardTitle>Parâmetros Globais</CardTitle>
         </CardHeader>
-        <CardContent>
-          {demandaPerdasList && demandaPerdasList.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Cenário de Demanda</TableHead>
-                  <TableHead>Consumo</TableHead>
-                  <TableHead>Perdas</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {demandaPerdasList.map((item, index) => (
-                  <TableRow key={index}>
-                    <TableCell>{item.demandaCenario}</TableCell>
-                    <TableCell>{item.demandaConsumo}</TableCell>
-                    <TableCell>{item.perdas}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          ) : (
-            <p className="text-gray-500">Nenhuma configuração de demanda e perdas gravada</p>
+        <div className="mb-6">
+          <h2 className="text-2xl font-bold mb-4">Configuração de Demanda e Perdas</h2>
+          <div className="grid md:grid-cols-2 gap-6 mb-4">
+            <div className="bg-white p-4 rounded-lg shadow-md">
+              <h3 className="text-lg font-semibold mb-4">Demanda de consumo</h3>
+              <div className="mb-4">
+                <label className="block text-sm font-medium mb-2">Cenários</label>
+                <select
+                  value={demandaCenario}
+                  onChange={(e) => setDemandaCenario(e.target.value)}
+                  className="w-full p-2 border border-gray-300 rounded-md"
+                >
+                  <option value="Estagnação Populacional">Estagnação Populacional</option>
+                  <option value="Crescimento Tendencial">Crescimento Tendencial</option>
+                  <option value="Crescimento Acelerado">Crescimento Acelerado</option>
+                </select>
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium mb-2">Consumo</label>
+                <select
+                  value={demandaConsumo}
+                  onChange={(e) => setDemandaConsumo(e.target.value)}
+                  className="w-full p-2 border border-gray-300 rounded-md"
+                >
+                  <option value="Crescente - até 250 L/pcd">Crescente - até 250 L/pcd</option>
+                  <option value="Estável - 215 L/pcd">Estável - 215 L/pcd</option>
+                  <option value="Decrescente - até 180 L/pcd">Decrescente - até 180 L/pcd</option>
+                </select>
+              </div>
+            </div>
+            <div className="bg-white p-4 rounded-lg shadow-md">
+              <h3 className="text-lg font-semibold mb-4">Cenários de Perdas</h3>
+              <div className="mb-4">
+                <label className="block text-sm font-medium mb-2">Perdas</label>
+                <select
+                  value={perdas}
+                  onChange={(e) => setPerdas(e.target.value)}
+                  className="w-full p-2 border border-gray-300 rounded-md"
+                >
+                  <option value="30%">30%</option>
+                  <option value="28%">28%</option>
+                  <option value="26%">26%</option>
+                  <option value="24%">24%</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-4 mb-4">
+            <button
+              onClick={handleGravarDemandaPerdas}
+              className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600"
+            >
+              Gravar Demanda e Perdas
+            </button>
+          </div>
+
+          {demandaPerdasList.length > 0 && (
+            <div className="mt-4">
+              <table className="w-full border-collapse border border-gray-300">
+                <thead>
+                  <tr>
+                    <th className="border border-gray-300 p-2">Cenário de Demanda</th>
+                    <th className="border border-gray-300 p-2">Consumo</th>
+                    <th className="border border-gray-300 p-2">Perdas</th>
+                    <th className="border border-gray-300 p-2">Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {demandaPerdasList.map((item, index) => (
+                    <tr key={index}>
+                      <td className="border border-gray-300 p-2">{item.demandaCenario}</td>
+                      <td className="border border-gray-300 p-2">{item.demandaConsumo}</td>
+                      <td className="border border-gray-300 p-2">{item.perdas}</td>
+                      <td className="border border-gray-300 p-2 text-center">
+                        <button
+                          onClick={() => handleDeleteDemandaPerdas(index)}
+                          className="text-red-500 hover:text-red-700"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
-        </CardContent>
+        </div>
+
+        // <CardContent>
+        //   {demandaPerdasList && demandaPerdasList.length > 0 ? (
+        //     <Table>
+        //       <TableHeader>
+        //         <TableRow>
+        //           <TableHead>Cenário de Demanda</TableHead>
+        //           <TableHead>Consumo</TableHead>
+        //           <TableHead>Perdas</TableHead>
+        //         </TableRow>
+        //       </TableHeader>
+        //       <TableBody>
+        //         {demandaPerdasList.map((item, index) => (
+        //           <TableRow key={index}>
+        //             <TableCell>{item.demandaCenario}</TableCell>
+        //             <TableCell>{item.demandaConsumo}</TableCell>
+        //             <TableCell>{item.perdas}</TableCell>
+        //           </TableRow>
+        //         ))}
+        //       </TableBody>
+        //     </Table>
+        //   ) : (
+        //     <p className="text-gray-500">Nenhuma configuração de demanda e perdas gravada</p>
+        //   )}
+        // </CardContent>
       </Card>
 
       <Card>
