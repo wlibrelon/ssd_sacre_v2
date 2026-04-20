@@ -304,7 +304,7 @@ const Cenarios: React.FC = () => {
         <CardHeader>
           <CardTitle>Cenários para Simulação</CardTitle>
         </CardHeader>
-        <CardContent>
+        // <CardContent>
           // <Table>
           //   <TableHeader>
           //     <TableRow>
@@ -323,7 +323,7 @@ const Cenarios: React.FC = () => {
           //     ))}
           //   </TableBody>
           // </Table>
-        </CardContent>
+        // </CardContent>
       </Card>
 
       <Card>
