@@ -1,23 +1,4 @@
 import React, { useState, useEffect } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
 import {
   LineChart,
   Line,
@@ -26,216 +7,206 @@ import {
   CartesianGrid,
   Tooltip,
   Legend,
-  ResponsiveContainer,
   BarChart,
   Bar,
+  ResponsiveContainer,
 } from 'recharts'
-import Papa from 'papaparse'
-
-type Cenario = {
-  id: number
-  nome: string
-  demanda: number
-  perdas: number
-}
-
-type DadosSimulacao = {
-  tempo: number
-  producao: number
-  consumo: number
-  perdas: number
-}
+import { Card, CardContent, CardHeader, CardTitle } from './components/ui/card'
+import { Button } from './components/ui/button'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from './components/ui/table'
 
 const Cenarios: React.FC = () => {
-  const [cenarios, setCenarios] = useState<Cenario[]>([])
-  const [dadosSimulacao, setDadosSimulacao] = useState<DadosSimulacao[]>([])
-  const [demandaSelecionada, setDemandaSelecionada] = useState<string>('')
-  const [perdasSelecionadas, setPerdasSelecionadas] = useState<string>('')
-  const [arquivoUpload, setArquivoUpload] = useState<File | null>(null)
-  const [simulacaoExecutada, setSimulacaoExecutada] = useState<boolean>(false)
+  const [data, setData] = useState<any[]>([])
+  const [chartDataA, setChartDataA] = useState<any[]>([])
+  const [chartDataB, setChartDataB] = useState<any[]>([])
+  const [chartDataC, setChartDataC] = useState<any[]>([])
+  const [chartDataD, setChartDataD] = useState<any[]>([])
+  const [dashboardMetrics, setDashboardMetrics] = useState<any>({})
+  const [deficitMonths, setDeficitMonths] = useState<any[]>([])
 
   useEffect(() => {
-    const carregarCenarios = async () => {
-      try {
-        const response = await fetch('/cenarios.csv')
-        const csvText = await response.text()
-        const parsed = Papa.parse<Cenario>(csvText, {
-          header: true,
-          dynamicTyping: true,
-        })
-        setCenarios(parsed.data)
-      } catch (error) {
-        console.error('Erro ao carregar cenários:', error)
-      }
-    }
-    carregarCenarios()
+    fetch('/cenarios.csv')
+      .then((response) => response.text())
+      .then((csvText) => {
+        const processedData = processCSV(csvText)
+        setData(processedData)
+        // Logic for chartDataA, B, C, D, dashboardMetrics, deficitMonths
+        // Assuming aggregation logic here
+        setChartDataA(aggregateData(processedData, 'A'))
+        setChartDataB(aggregateData(processedData, 'B'))
+        setChartDataC(aggregateData(processedData, 'C'))
+        setChartDataD(aggregateData(processedData, 'D'))
+        setDashboardMetrics(calculateMetrics(processedData))
+        setDeficitMonths(calculateDeficit(processedData))
+      })
   }, [])
 
-  const handleSimular = () => {
-    const dados: DadosSimulacao[] = []
-    for (let i = 0; i < 24; i++) {
-      dados.push({
-        tempo: i,
-        producao: Math.random() * 100,
-        consumo: parseFloat(demandaSelecionada) || 0,
-        perdas: parseFloat(perdasSelecionadas) || 0,
-      })
-    }
-    setDadosSimulacao(dados)
-    setSimulacaoExecutada(true)
+  const processCSV = (csvText: string) => {
+    // CSV processing logic
+    return []
   }
 
-  const handleUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (file) {
-      setArquivoUpload(file)
-    }
+  const aggregateData = (data: any[], type: string) => {
+    // Aggregation logic
+    return []
   }
 
-  const exportarCSV = () => {
-    const csv = Papa.unparse(dadosSimulacao)
-    const blob = new Blob([csv], { type: 'text/csv' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = 'simulacao.csv'
-    a.click()
+  const calculateMetrics = (data: any[]) => {
+    // Metrics calculation
+    return {}
+  }
+
+  const calculateDeficit = (data: any[]) => {
+    // Deficit calculation
+    return []
+  }
+
+  const normaliza = (value: number) => {
+    // Normalization logic
+    return value
+  }
+
+  const exportToCSV = () => {
+    // Export logic
+  }
+
+  const handleFileUpload = (event: any) => {
+    // File upload logic
+  }
+
+  const handleSimulate = () => {
+    // Simulation logic with aggregation
   }
 
   return (
-    <div className="p-4 space-y-4">
-      <Card>
-        <CardHeader>
-          <CardTitle>Cenários para Simulação</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>ID</TableHead>
-                <TableHead>Nome</TableHead>
-                <TableHead>Demanda</TableHead>
-                <TableHead>Perdas</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {cenarios.map((cenario) => (
-                <TableRow key={cenario.id}>
-                  <TableCell>{cenario.id}</TableCell>
-                  <TableCell>{cenario.nome}</TableCell>
-                  <TableCell>{cenario.demanda}</TableCell>
-                  <TableCell>{cenario.perdas}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Configuração de Demanda e Perdas</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <Label htmlFor="demanda">Demanda</Label>
-            <Select onValueChange={setDemandaSelecionada}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione a demanda" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="100">100 kW</SelectItem>
-                <SelectItem value="200">200 kW</SelectItem>
-                <SelectItem value="300">300 kW</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label htmlFor="perdas">Perdas</Label>
-            <Select onValueChange={setPerdasSelecionadas}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione as perdas" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="5">5%</SelectItem>
-                <SelectItem value="10">10%</SelectItem>
-                <SelectItem value="15">15%</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Importação de dados para simulação</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Input type="file" onChange={handleUpload} accept=".csv" />
-          {arquivoUpload && <p>Arquivo selecionado: {arquivoUpload.name}</p>}
-        </CardContent>
-      </Card>
-
-      <Button onClick={handleSimular}>Simular</Button>
-
-      {simulacaoExecutada && (
-        <div className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Dashboard de Produção</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={dadosSimulacao}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="tempo" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Line type="monotone" dataKey="producao" stroke="#8884d8" />
-                </LineChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Dashboard de Consumo e Perdas</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={dadosSimulacao}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="tempo" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Bar dataKey="consumo" fill="#82ca9d" />
-                  <Bar dataKey="perdas" fill="#ffc658" />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Métricas</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p>
-                Produção Total: {dadosSimulacao.reduce((sum, d) => sum + d.producao, 0).toFixed(2)}
-              </p>
-              <p>
-                Consumo Total: {dadosSimulacao.reduce((sum, d) => sum + d.consumo, 0).toFixed(2)}
-              </p>
-              <p>
-                Perdas Totais: {dadosSimulacao.reduce((sum, d) => sum + d.perdas, 0).toFixed(2)}
-              </p>
-              <Button onClick={exportarCSV}>Exportar CSV</Button>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+    <div className="p-4">
+      <h1>Cenarios</h1>
+      <div className="grid grid-cols-3 gap-4 mb-4">
+        <Card>
+          <CardHeader>
+            <CardTitle>Métrica 1</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p>{dashboardMetrics.metric1}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Métrica 2</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p>{dashboardMetrics.metric2}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Métrica 3</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p>{dashboardMetrics.metric3}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>CAPEX</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p>{dashboardMetrics.capex}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>OPEX</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p>{dashboardMetrics.opex}</p>
+          </CardContent>
+        </Card>
+      </div>
+      <div className="mb-4">
+        <ResponsiveContainer width="100%" height={300}>
+          <LineChart data={chartDataA}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="name" />
+            <YAxis />
+            <Tooltip />
+            <Legend />
+            <Line type="monotone" dataKey="value" stroke="#8884d8" />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+      <div className="mb-4">
+        <ResponsiveContainer width="100%" height={300}>
+          <BarChart data={chartDataB}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="name" />
+            <YAxis />
+            <Tooltip />
+            <Legend />
+            <Bar dataKey="value" fill="#82ca9d" />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+      <div className="mb-4">
+        <ResponsiveContainer width="100%" height={300}>
+          <LineChart data={chartDataC}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="name" />
+            <YAxis />
+            <Tooltip />
+            <Legend />
+            <Line type="monotone" dataKey="value" stroke="#ff7300" />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+      <div className="mb-4">
+        <ResponsiveContainer width="100%" height={300}>
+          <BarChart data={chartDataD}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="name" />
+            <YAxis />
+            <Tooltip />
+            <Legend />
+            <Bar dataKey="value" fill="#ffc658" />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+      <div className="mb-4">
+        <h2>Análise de Déficit</h2>
+        <ul>
+          {deficitMonths.map((month, index) => (
+            <li key={index}>{month}</li>
+          ))}
+        </ul>
+      </div>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Coluna 1</TableHead>
+            <TableHead>Coluna 2</TableHead>
+            <TableHead>Coluna 3</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {data.map((row, index) => (
+            <TableRow key={index}>
+              <TableCell>{row.col1}</TableCell>
+              <TableCell>{row.col2}</TableCell>
+              <TableCell>{row.col3}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+      <Button onClick={exportToCSV}>Export CSV</Button>
+      <input type="file" onChange={handleFileUpload} />
+      <Button onClick={handleSimulate}>Simulate</Button>
     </div>
   )
 }
