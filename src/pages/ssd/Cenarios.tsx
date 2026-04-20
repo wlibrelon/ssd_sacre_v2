@@ -55,10 +55,9 @@ const formatNumber = (value: number): string => {
 }
 
 const Cenarios: React.FC = () => {
-  const [selectedCenarioSim, setSelectedCenarioSim] = useState<string>('Estagnação Populacional')
-  const [selectedDemandaConsumo, setSelectedDemandaConsumo] =
-    useState<string>('Estável - 215 L/pcd')
-  const [selectedPerdasValue, setSelectedPerdasValue] = useState<string>('Perdas de 30%')
+  const [demandaCenario, setDemandaCenario] = useState<string>('Estagnação Populacional')
+  const [demandaConsumo, setDemandaConsumo] = useState<string>('Estável - 215 L/pcd')
+  const [perdas, setPerdas] = useState<string>('30%')
 
   const { simulacao, demandaPerdasList = [], setDemandaPerdas } = useSimulationStore()
   const [csvData, setCsvData] = useState<any[]>([])
@@ -328,53 +327,53 @@ const Cenarios: React.FC = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle>Parâmetros Globais</CardTitle>
+          <CardTitle>Configuração de Demanda e Perdas</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-6">
-          {/* ✅ SEÇÃO 1: Seleção de Cenários para Simulação */}
-          <div>
-            <h3 className="text-lg font-semibold mb-4">Cenários para Simulação</h3>
-            <MySelect
-              options={simulacao.map((sim) => ({
-                value: `${sim.fonte} | ${sim.cenarios} | ${sim.estrategias}`,
-                label: `${sim.fonte} | ${sim.cenarios} | ${sim.estrategias}`,
-              }))}
-              value={selectedCenarioSim || ''}
-              onChange={setSelectedCenarioSim}
-              placeholder="Selecione um cenário de simulação"
-            />
-          </div>
-
-          {/* Separador visual */}
-          <div className="border-t border-gray-300 my-4"></div>
-
-          {/* ✅ SEÇÃO 2: Seleção de Demanda e Perdas */}
-          <div>
-            <h3 className="text-lg font-semibold mb-4">Demanda e Perdas</h3>
-            <div className="grid md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-2">Demanda/Consumo</label>
-                <MySelect
-                  options={demandaPerdasList.map((item) => ({
-                    value: `${item.demandaCenario} | ${item.demandaConsumo}`,
-                    label: `${item.demandaCenario} | ${item.demandaConsumo}`,
-                  }))}
-                  value={selectedDemandaConsumo || ''}
-                  onChange={setSelectedDemandaConsumo}
-                  placeholder="Selecione demanda/consumo"
-                />
+        <CardContent>
+          <div className="mb-6">
+            <div className="grid md:grid-cols-2 gap-6 mb-4">
+              <div className="bg-white p-4 rounded-lg shadow-md">
+                <h3 className="text-lg font-semibold mb-4">Demanda de consumo</h3>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium mb-2">Cenários</label>
+                  <select
+                    value={demandaCenario}
+                    onChange={(e) => setDemandaCenario(e.target.value)}
+                    className="w-full p-2 border border-gray-300 rounded-md"
+                  >
+                    <option value="Estagnação Populacional">Estagnação Populacional</option>
+                    <option value="Crescimento Tendencial">Crescimento Tendencial</option>
+                    <option value="Crescimento Acelerado">Crescimento Acelerado</option>
+                  </select>
+                </div>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium mb-2">Consumo</label>
+                  <select
+                    value={demandaConsumo}
+                    onChange={(e) => setDemandaConsumo(e.target.value)}
+                    className="w-full p-2 border border-gray-300 rounded-md"
+                  >
+                    <option value="Crescente - até 250 L/pcd">Crescente - até 250 L/pcd</option>
+                    <option value="Estável - 215 L/pcd">Estável - 215 L/pcd</option>
+                    <option value="Decrescente - até 180 L/pcd">Decrescente - até 180 L/pcd</option>
+                  </select>
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">Perdas</label>
-                <MySelect
-                  options={demandaPerdasList.map((item) => ({
-                    value: item.perdas,
-                    label: item.perdas,
-                  }))}
-                  value={selectedPerdasValue || ''}
-                  onChange={setSelectedPerdasValue}
-                  placeholder="Selecione perdas"
-                />
+              <div className="bg-white p-4 rounded-lg shadow-md">
+                <h3 className="text-lg font-semibold mb-4">Cenários de Perdas</h3>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium mb-2">Perdas</label>
+                  <select
+                    value={perdas}
+                    onChange={(e) => setPerdas(e.target.value)}
+                    className="w-full p-2 border border-gray-300 rounded-md"
+                  >
+                    <option value="30%">30%</option>
+                    <option value="28%">28%</option>
+                    <option value="26%">26%</option>
+                    <option value="24%">24%</option>
+                  </select>
+                </div>
               </div>
             </div>
           </div>
