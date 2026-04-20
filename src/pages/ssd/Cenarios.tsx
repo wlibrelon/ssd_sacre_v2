@@ -58,18 +58,24 @@ const formatNumber = (value: number): string => {
 const Cenarios: React.FC = () => {
   useEffect(() => {
     fetch('/cenarios.csv')
-      .then((r) => r.text())
-      .then((csv) => {
-        Papa.parse(csv, {
-          header: true,
-          complete: (results: any) => {
-            setCsvData(results.data)
-            console.log('✅ CSV cenarios.csv carregado:', results.data.length, 'registros')
-          },
-          error: (err: any) => console.error('❌ Erro ao carregar CSV:', err),
+      .then((response) => response.text())
+      .then((text) => {
+        console.log('Conteúdo do CSV:', text)
+        const lines = text.split('\n')
+        const headers = lines[0].split(',')
+        const data = []
+        lines.slice(1).forEach((line) => {
+          const values = line.split(',')
+          const obj = {}
+          headers.forEach((header, index) => {
+            obj[header] = values[index]
+          })
+          data.push(obj)
         })
+        setCsvData(data)
+        console.log('Dados analisados:', data)
       })
-      .catch((err) => console.error('❌ Erro ao buscar arquivo:', err))
+      .catch((error) => console.error('Erro ao carregar CSV:', error))
   }, [])
 
   const [demandaCenario, setDemandaCenario] = useState<string>('Estagnação Populacional')
