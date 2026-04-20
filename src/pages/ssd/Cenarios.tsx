@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import Papa from 'papaparse'
 import React, { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -58,7 +58,7 @@ const formatNumber = (value: number): string => {
 
 const Cenarios: React.FC = () => {
   useEffect(() => {
-    fetch('public/cenarios.csv')
+    fetch('/cenarios.csv')
       .then((r) => r.text())
       .then((csv) => {
         Papa.parse(csv, {
