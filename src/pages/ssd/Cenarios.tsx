@@ -55,7 +55,10 @@ const formatNumber = (value: number): string => {
 }
 
 const Cenarios: React.FC = () => {
-  //  const { simulacao, demandaPerdasList = [] } = useSimulationStore()
+  const [selectedCenarioSim, setSelectedCenarioSim] = useState<string>('')
+  const [selectedDemandaConsumo, setSelectedDemandaConsumo] = useState<string>('')
+  const [selectedPerdasValue, setSelectedPerdasValue] = useState<string>('')
+
   const { simulacao, demandaPerdasList = [], setDemandaPerdas } = useSimulationStore()
   const [csvData, setCsvData] = useState<any[]>([])
   const [csvPreview, setCsvPreview] = useState<any[]>([])
