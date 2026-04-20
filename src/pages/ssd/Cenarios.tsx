@@ -300,31 +300,31 @@ const Cenarios: React.FC = () => {
 
   return (
     <div className="p-4 space-y-4">
-      // <Card>
-      //   <CardHeader>
-      //     <CardTitle>Cenários para Simulação</CardTitle>
-      //   </CardHeader>
-      //   <CardContent>
-      //     <Table>
-      //       <TableHeader>
-      //         <TableRow>
-      //           <TableHead>Fonte</TableHead>
-      //           <TableHead>Cenários</TableHead>
-      //           <TableHead>Estratégias</TableHead>
-      //         </TableRow>
-      //       </TableHeader>
-      //       <TableBody>
-      //         {simulacao.map((sim, index) => (
-      //           <TableRow key={index}>
-      //             <TableCell>{sim.fonte}</TableCell>
-      //             <TableCell>{sim.cenarios}</TableCell>
-      //             <TableCell>{sim.estrategias}</TableCell>
-      //           </TableRow>
-      //         ))}
-      //       </TableBody>
-      //     </Table>
-      //   </CardContent>
-      // </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>Cenários para Simulação</CardTitle>
+        </CardHeader>
+        <CardContent>
+          // <Table>
+          //   <TableHeader>
+          //     <TableRow>
+          //       <TableHead>Fonte</TableHead>
+          //       <TableHead>Cenários</TableHead>
+          //       <TableHead>Estratégias</TableHead>
+          //     </TableRow>
+          //   </TableHeader>
+          //   <TableBody>
+          //     {simulacao.map((sim, index) => (
+          //       <TableRow key={index}>
+          //         <TableCell>{sim.fonte}</TableCell>
+          //         <TableCell>{sim.cenarios}</TableCell>
+          //         <TableCell>{sim.estrategias}</TableCell>
+          //       </TableRow>
+          //     ))}
+          //   </TableBody>
+          // </Table>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
