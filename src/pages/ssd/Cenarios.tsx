@@ -58,7 +58,7 @@ const formatNumber = (value: number): string => {
 
 const Cenarios: React.FC = () => {
   useEffect(() => {
-    fetch('/public/cenarios.csv')
+    fetch('/cenarios.csv') // ← Correto
       .then((r) => r.text())
       .then((csv) => {
         Papa.parse(csv, {
@@ -70,6 +70,7 @@ const Cenarios: React.FC = () => {
           error: (err: any) => console.error('❌ Erro ao carregar CSV:', err),
         })
       })
+      .catch((err) => console.error('❌ Erro ao buscar arquivo:', err))
   }, [])
 
   const [demandaCenario, setDemandaCenario] = useState<string>('Estagnação Populacional')
