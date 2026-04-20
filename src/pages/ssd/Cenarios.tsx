@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import Papa from 'papaparse'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import { Card } from '@/components/ui/card'
 import {
   Table,
   TableHeader,
@@ -10,69 +10,80 @@ import {
   TableCell,
 } from '@/components/ui/table'
 
-interface CsvRow {
+interface CenarioData {
   Fonte: string
   cenario: string
   estrategia: string
 }
 
-const CenariosComponent: React.FC = () => {
-  const [csvData, setCsvData] = useState<CsvRow[]>([])
-  const [csvError, setCsvError] = useState<string>('')
+const CenariosTable: React.FC = () => {
+  const [data, setData] = useState<CenarioData[]>([])
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    const loadCsv = async () => {
+    const loadCSV = async () => {
       try {
+        console.log('Starting to load cenarios.csv')
         const response = await fetch('/cenarios.csv')
         if (!response.ok) {
-          throw new Error('Erro ao carregar o arquivo CSV')
+          throw new Error(`HTTP error! status: ${response.status}`)
         }
         const csvText = await response.text()
-        Papa.parse<CsvRow>(csvText, {
+        console.log('CSV text loaded:', csvText.substring(0, 100)) // Log first 100 chars for debug
+        Papa.parse<CenarioData>(csvText, {
           header: true,
+          skipEmptyLines: true,
           complete: (results) => {
-            setCsvData(results.data)
+            console.log('Parsed data:', results.data)
+            // Filter out rows where all fields are empty
+            const filteredData = results.data.filter(
+              (row) =>
+                row.Fonte.trim() !== '' ||
+                row.cenario.trim() !== '' ||
+                row.estrategia.trim() !== '',
+            )
+            setData(filteredData)
+            console.log('Filtered data set:', filteredData)
           },
           error: (error) => {
-            setCsvError('Erro ao processar o CSV: ' + error.message)
+            console.error('Error parsing CSV:', error)
+            setError('Error parsing CSV')
           },
         })
-      } catch (error) {
-        setCsvError('Erro ao carregar o arquivo: ' + (error as Error).message)
+      } catch (err) {
+        console.error('Error loading CSV:', err)
+        setError('Error loading CSV')
       }
     }
-    loadCsv()
+    loadCSV()
   }, [])
+
+  if (error) {
+    return <div>Error: {error}</div>
+  }
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Cenários para Simulação</CardTitle>
-      </CardHeader>
-      <CardContent>
-        {csvError && <p className="text-red-500">{csvError}</p>}
-        <p>Total de registros: {csvData.length}</p>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Fonte</TableHead>
-              <TableHead>Cenário</TableHead>
-              <TableHead>Estratégia</TableHead>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Fonte</TableHead>
+            <TableHead>cenario</TableHead>
+            <TableHead>estrategia</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {data.map((row, index) => (
+            <TableRow key={index}>
+              <TableCell>{row.Fonte}</TableCell>
+              <TableCell>{row.cenario}</TableCell>
+              <TableCell>{row.estrategia}</TableCell>
             </TableRow>
-          </TableHeader>
-          <TableBody>
-            {csvData.map((row, index) => (
-              <TableRow key={index}>
-                <TableCell>{row.Fonte}</TableCell>
-                <TableCell>{row.cenario}</TableCell>
-                <TableCell>{row.estrategia}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </CardContent>
+          ))}
+        </TableBody>
+      </Table>
     </Card>
   )
 }
 
-export default CenariosComponent
+export default CenariosTable
