@@ -58,7 +58,7 @@ const formatNumber = (value: number): string => {
 
 const Cenarios: React.FC = () => {
   useEffect(() => {
-    fetch('/cenarios.csv')
+    fetch('/public/cenarios.csv')
       .then((r) => r.text())
       .then((csv) => {
         Papa.parse(csv, {
