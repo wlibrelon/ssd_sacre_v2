@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react'
 import Papa from 'papaparse'
-import React, { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Select,
