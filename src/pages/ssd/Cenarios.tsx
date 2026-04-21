@@ -10,75 +10,76 @@ import {
 } from '@/components/ui/table'
 
 interface Cenario {
-  Fonte: string
-  Cenario: string
-  Estrategia: string
+  fonte: string
+  cenario: string
+  estrategia: string
 }
 
-interface ParsingStats {
-  linesRead: number
-  valid: number
-  discarded: number
+interface Stats {
+  totalRows: number
+  validRows: number
+  invalidRows: number
 }
 
 const CenariosComponent: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
   const [data, setData] = useState<Cenario[]>([])
-  const [stats, setStats] = useState<ParsingStats>({ linesRead: 0, valid: 0, discarded: 0 })
+  const [stats, setStats] = useState<Stats>({ totalRows: 0, validRows: 0, invalidRows: 0 })
 
   useEffect(() => {
     const loadCSV = async () => {
       try {
-        console.log('Starting to load cenarios.csv')
         const response = await fetch('/cenarios.csv')
         if (!response.ok) {
-          throw new Error(`Failed to fetch CSV: ${response.statusText}`)
+          throw new Error(`Failed to load CSV: ${response.statusText}`)
         }
-        const text = await response.text()
-        console.log('CSV text loaded, length:', text.length)
-
-        const lines = text
-          .split('\n')
-          .map((line) => line.trim())
-          .filter((line) => line.length > 0)
-        console.log('Lines after split and filter:', lines.length)
-
+        let text = await response.text()
+        // Handle BOM if present
+        if (text.charCodeAt(0) === 0xfeff) {
+          text = text.slice(1)
+        }
+        // Parse CSV manually
+        const lines = text.split(/\r?\n/).filter((line) => line.trim() !== '')
         const parsedData: Cenario[] = []
-        let linesRead = lines.length
-        let valid = 0
-        let discarded = 0
-
-        // Assume first line is header, skip it
-        for (let i = 1; i < lines.length; i++) {
-          const fields = lines[i].split(',').map((field) => field.trim())
-          if (fields.length === 3 && fields.every((field) => field.length > 0)) {
+        let totalRows = lines.length
+        let validRows = 0
+        let invalidRows = 0
+        for (const line of lines) {
+          const fields = line.split(',').map((field) => field.trim())
+          if (fields.length === 3 && fields.every((field) => field !== '')) {
             parsedData.push({
-              Fonte: fields[0],
-              Cenario: fields[1],
-              Estrategia: fields[2],
+              fonte: fields[0],
+              cenario: fields[1],
+              estrategia: fields[2],
             })
-            valid++
-            console.log(`Parsed valid line ${i}:`, fields)
+            validRows++
           } else {
-            discarded++
-            console.log(`Discarded invalid line ${i}:`, fields)
+            invalidRows++
+            console.error(`Invalid line: ${line}`)
           }
         }
-
         setData(parsedData)
-        setStats({ linesRead, valid, discarded })
-        console.log('Parsing complete. Data:', parsedData)
+        setStats({ totalRows, validRows, invalidRows })
+        console.log('CSV loaded successfully:', parsedData)
       } catch (err) {
-        console.error('Error loading CSV:', err)
-        setError(err instanceof Error ? err.message : 'Unknown error')
+        const errorMessage = err instanceof Error ? err.message : 'Unknown error'
+        setError(errorMessage)
+        console.error('Error loading CSV:', errorMessage)
       } finally {
         setLoading(false)
       }
     }
-
     loadCSV()
   }, [])
+
+  if (loading) {
+    return <div>Loading...</div>
+  }
+
+  if (error) {
+    return <div>Error: {error}</div>
+  }
 
   return (
     <Card>
@@ -86,13 +87,11 @@ const CenariosComponent: React.FC = () => {
         <CardTitle>Cenários - Projeto SACRE</CardTitle>
       </CardHeader>
       <CardContent>
-        {loading && <p>Loading...</p>}
-        {error && <p>Error: {error}</p>}
-        <div>
-          <h3>Parsing Statistics</h3>
-          <p>Lines Read: {stats.linesRead}</p>
-          <p>Valid: {stats.valid}</p>
-          <p>Discarded: {stats.discarded}</p>
+        <div className="mb-4">
+          <h3>Stats</h3>
+          <p>Total Rows: {stats.totalRows}</p>
+          <p>Valid Rows: {stats.validRows}</p>
+          <p>Invalid Rows: {stats.invalidRows}</p>
         </div>
         <Table>
           <TableHeader>
@@ -105,9 +104,9 @@ const CenariosComponent: React.FC = () => {
           <TableBody>
             {data.map((item, index) => (
               <TableRow key={index}>
-                <TableCell>{item.Fonte}</TableCell>
-                <TableCell>{item.Cenario}</TableCell>
-                <TableCell>{item.Estrategia}</TableCell>
+                <TableCell>{item.fonte}</TableCell>
+                <TableCell>{item.cenario}</TableCell>
+                <TableCell>{item.estrategia}</TableCell>
               </TableRow>
             ))}
           </TableBody>
