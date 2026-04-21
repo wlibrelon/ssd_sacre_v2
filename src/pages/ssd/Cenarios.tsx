@@ -13,7 +13,6 @@ type Scenario = {
   Fonte: string
   cenario: string
   estrategia: string
-  scenario_key?: string
 }
 
 type SimulationRecord = {
@@ -38,13 +37,10 @@ const CenariosComponent: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true)
   const [error, setError] = useState<string>('')
   const [loadingSimulation, setLoadingSimulation] = useState<boolean>(false)
-  const [debugLog, setDebugLog] = useState<string[]>([])
 
-  // ===== CARREGAMENTO ORIGINAL DE cenarios.csv =====
   useEffect(() => {
     const fetchCsv = async () => {
       try {
-        console.log('Carregando cenarios.csv...')
         const response = await fetch('/cenarios.csv')
         if (!response.ok) {
           throw new Error('Failed to fetch CSV')
@@ -55,7 +51,6 @@ const CenariosComponent: React.FC = () => {
 
         const parsedScenarios: Scenario[] = []
 
-        // Pular header (linha 0)
         for (let i = 1; i < lines.length; i++) {
           const line = lines[i]
           const parts = line.split(',').map((p) => p.trim())
@@ -73,7 +68,6 @@ const CenariosComponent: React.FC = () => {
           }
         }
 
-        console.log('Cenários carregados:', parsedScenarios.length)
         setScenarios(parsedScenarios)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Unknown error')
@@ -85,7 +79,6 @@ const CenariosComponent: React.FC = () => {
     fetchCsv()
   }, [])
 
-  // ===== IMPORTAÇÃO E FILTRAGEM COM CONSTRUÇÃO DINÂMICA DE scenario_key =====
   const handleImportSimulation = async () => {
     if (!selectedScenario) {
       alert('Selecione um cenário antes de importar dados')
@@ -93,27 +86,18 @@ const CenariosComponent: React.FC = () => {
     }
 
     setLoadingSimulation(true)
-    setDebugLog([])
-    const logs: string[] = []
 
     try {
-      logs.push('===== INICIANDO IMPORTAÇÃO =====')
-      logs.push(`Cenário selecionado: ${selectedScenario}`)
-
       const response = await fetch('/Dados_Simulacao_novo.csv')
       if (!response.ok) {
         throw new Error('Failed to fetch simulation data')
       }
 
       const text = await response.text()
-      logs.push(`Arquivo obtido, tamanho: ${text.length}`)
-
       const cleanedText = text.replace(/^\ufeff/, '')
       const lines = cleanedText.split('\n').filter((line) => line.trim() !== '')
-      logs.push(`Total de linhas: ${lines.length}`)
 
       const headers = lines[0].split(',').map((h) => h.trim())
-      logs.push(`Headers: ${headers.join(', ')}`)
 
       const parsed: any[] = []
 
@@ -126,54 +110,18 @@ const CenariosComponent: React.FC = () => {
         parsed.push(record)
       }
 
-      logs.push(`Total de registros parseados: ${parsed.length}`)
-
-      // ===== CONSTRUIR scenario_key DINAMICAMENTE =====
-      logs.push('\n===== CONSTRUINDO scenario_key DINAMICAMENTE =====')
-
-      const parsedWithKey: SimulationRecord[] = parsed.map((record) => {
-        const scenario_key = `${record.Fonte} | ${record.cenario} | ${record.estrategia}`
-        return {
-          ...record,
-          scenario_key,
-        }
-      })
-
-      logs.push(`scenario_key construído para ${parsedWithKey.length} registros`)
-      logs.push('Primeiros 3 scenario_keys construídos:')
-      for (let i = 0; i < Math.min(3, parsedWithKey.length); i++) {
-        logs.push(`  Record ${i}: "${parsedWithKey[i].scenario_key}"`)
-      }
+      // Construir scenario_key dinamicamente
+      const parsedWithKey: SimulationRecord[] = parsed.map((record) => ({
+        ...record,
+        scenario_key: `${record.Fonte} | ${record.cenario} | ${record.estrategia}`,
+      }))
 
       setSimulationData(parsedWithKey)
 
-      // ===== FILTRAGEM USANDO scenario_key =====
-      logs.push('\n===== INICIANDO FILTRAGEM =====')
-      logs.push(`Filtrando por: "${selectedScenario}"`)
-
-      logs.push('\n--- Analisando primeiros 3 registros ---')
-      for (let i = 0; i < Math.min(3, parsedWithKey.length); i++) {
-        const record = parsedWithKey[i]
-        const match = record.scenario_key === selectedScenario
-        logs.push(`\nRecord ${i}:`)
-        logs.push(`  scenario_key: "${record.scenario_key}"`)
-        logs.push(`  Match: ${match}`)
-      }
-      logs.push('\n--- Fim da análise de amostra ---')
-
+      // Filtrar
       const filtered = parsedWithKey.filter((record) => record.scenario_key === selectedScenario)
-
-      logs.push(`\nTotal de registros filtrados: ${filtered.length}`)
-      logs.push('===== FILTRAGEM CONCLUÍDA =====\n')
-
       setFilteredData(filtered)
-      setDebugLog(logs)
-
-      console.log(logs.join('\n'))
     } catch (err) {
-      console.error('Erro ao importar:', err)
-      logs.push(`ERRO: ${err instanceof Error ? err.message : 'Unknown error'}`)
-      setDebugLog(logs)
       alert('Erro ao importar dados de simulação')
     } finally {
       setLoadingSimulation(false)
@@ -224,7 +172,7 @@ const CenariosComponent: React.FC = () => {
       {simulationData.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Resultado da Filtragem</CardTitle>
+            <CardTitle>Resultado</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-lg font-bold">
@@ -236,19 +184,6 @@ const CenariosComponent: React.FC = () => {
                 <span className="text-red-600">✗ Nenhum registro encontrado</span>
               )}
             </p>
-          </CardContent>
-        </Card>
-      )}
-
-      {debugLog.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Debug Log</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <pre className="text-xs bg-gray-100 p-4 rounded overflow-auto max-h-96 whitespace-pre-wrap">
-              {debugLog.join('\n')}
-            </pre>
           </CardContent>
         </Card>
       )}
