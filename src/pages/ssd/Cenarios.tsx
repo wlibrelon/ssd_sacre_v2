@@ -10,164 +10,142 @@ import {
 } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 
-type Cenario = {
-  Fonte: string
-  cenario: string
-  estrategia: string
+type Scenario = {
+  scenario_key: string
+  [key: string]: any
 }
 
 type SimulationRecord = {
-  Tempo: string
-  Fonte: string
-  cenario: string
-  estrategia: string
-  Vazao_Captada: number
-  Demanda: number
-  CAPEX: number
-  OPEX: number
-  Aceitacao_Social: number
+  scenario_key: string
+  Tempo?: string
+  Fonte?: string
+  cenario?: string
+  estrategia?: string
+  Vazao_Captada?: number
+  Demanda?: number
+  CAPEX?: number
+  OPEX?: number
+  Aceitacao_Social?: number
   [key: string]: any
 }
 
 const CenariosComponent: React.FC = () => {
-  const [cenarios, setCenarios] = useState<Cenario[]>([])
-  const [loading, setLoading] = useState<boolean>(true)
-  const [error, setError] = useState<string>('')
-
-  // Armazenar seleção em 3 campos separados
-  const [selectedFonte, setSelectedFonte] = useState<string>('')
-  const [selectedCenario, setSelectedCenario] = useState<string>('')
-  const [selectedEstrategia, setSelectedEstrategia] = useState<string>('')
-  const [selectedDisplay, setSelectedDisplay] = useState<string>('')
-
+  const [scenarios, setScenarios] = useState<Scenario[]>([])
+  const [selectedScenario, setSelectedScenario] = useState<string>('')
   const [simulationData, setSimulationData] = useState<SimulationRecord[]>([])
   const [filteredData, setFilteredData] = useState<SimulationRecord[]>([])
+  const [loading, setLoading] = useState<boolean>(true)
+  const [error, setError] = useState<string>('')
   const [loadingSimulation, setLoadingSimulation] = useState<boolean>(false)
   const [debugLog, setDebugLog] = useState<string[]>([])
 
   // Carregar cenarios.csv ao montar o componente
   useEffect(() => {
-    const fetchCenarios = async () => {
+    const loadScenarios = async () => {
       try {
-        console.log('Carregando cenarios.csv com PapaParse...')
+        console.log('Carregando cenarios.csv...')
         const response = await fetch('/cenarios.csv')
+        if (!response.ok) {
+          throw new Error('Failed to load cenarios.csv')
+        }
         const text = await response.text()
+        // Remove BOM se presente
+        const cleanText = text.replace(/^\ufeff/, '')
 
-        Papa.parse(text, {
+        Papa.parse(cleanText, {
           header: true,
           skipEmptyLines: true,
+          transformHeader: (header: string) => header.trim(),
           complete: (results) => {
-            const parsed = results.data as Cenario[]
-            console.log('Cenários parseados:', parsed)
-            setCenarios(parsed)
+            const data: Scenario[] = results.data as Scenario[]
+            console.log('Cenários carregados:', data.length)
+            setScenarios(data)
             setLoading(false)
           },
-          error: (error) => {
-            console.error('Erro ao fazer parse de cenarios.csv:', error)
+          error: (err) => {
+            console.error('Erro ao fazer parse de cenarios.csv:', err)
             setError('Erro ao carregar cenários')
             setLoading(false)
           },
         })
       } catch (err) {
-        setError('Erro ao buscar cenarios.csv')
+        setError(err instanceof Error ? err.message : 'Unknown error')
         setLoading(false)
       }
     }
 
-    fetchCenarios()
+    loadScenarios()
   }, [])
 
-  const handleSelectChange = (displayValue: string) => {
-    // Encontrar o cenário correspondente
-    const selected = cenarios.find(
-      (c) => `${c.Fonte} | ${c.cenario} | ${c.estrategia}` === displayValue,
-    )
-
-    if (selected) {
-      setSelectedFonte(selected.Fonte)
-      setSelectedCenario(selected.cenario)
-      setSelectedEstrategia(selected.estrategia)
-      setSelectedDisplay(displayValue)
-
-      console.log('Selecionado:')
-      console.log(`  Fonte: "${selected.Fonte}"`)
-      console.log(`  cenario: "${selected.cenario}"`)
-      console.log(`  estrategia: "${selected.estrategia}"`)
-    }
-  }
-
   const handleImportSimulation = async () => {
-    if (!selectedFonte || !selectedCenario || !selectedEstrategia) {
+    if (!selectedScenario) {
       alert('Selecione um cenário antes de importar dados')
       return
     }
 
     setLoadingSimulation(true)
+    setDebugLog([])
     const logs: string[] = []
 
     try {
       logs.push('===== INICIANDO IMPORTAÇÃO =====')
-      logs.push(`Fonte selecionada: "${selectedFonte}"`)
-      logs.push(`cenario selecionado: "${selectedCenario}"`)
-      logs.push(`estrategia selecionada: "${selectedEstrategia}"`)
+      logs.push(`Cenário selecionado: "${selectedScenario}"`)
 
       const response = await fetch('/Dados_Simulacao_novo.csv')
-      const text = await response.text()
+      if (!response.ok) {
+        throw new Error('Failed to load Dados_Simulacao_novo.csv')
+      }
 
-      Papa.parse(text, {
+      const text = await response.text()
+      logs.push(`Arquivo obtido, tamanho: ${text.length} bytes`)
+
+      // Remove BOM se presente
+      const cleanText = text.replace(/^\ufeff/, '')
+
+      Papa.parse(cleanText, {
         header: true,
         skipEmptyLines: true,
+        transformHeader: (header: string) => header.trim(),
         complete: (results) => {
           const parsed = results.data as SimulationRecord[]
           logs.push(`Total de registros parseados: ${parsed.length}`)
 
-          // EXECUTAR FILTRAGEM COM MATCH EXATO
+          // EXECUTAR FILTRAGEM COM scenario_key
           logs.push('\n===== INICIANDO FILTRAGEM =====')
 
           // Debug dos primeiros 3 registros
           logs.push('--- Analisando primeiros 3 registros ---')
           for (let i = 0; i < Math.min(3, parsed.length); i++) {
             const record = parsed[i]
-            const matchFonte = record.Fonte === selectedFonte
-            const matchCenario = record.cenario === selectedCenario
-            const matchEstrategia = record.estrategia === selectedEstrategia
-
+            const match = record.scenario_key === selectedScenario
             logs.push(`\nRecord ${i}:`)
-            logs.push(`  Fonte: "${record.Fonte}" === "${selectedFonte}" ? ${matchFonte}`)
-            logs.push(`  cenario: "${record.cenario}" === "${selectedCenario}" ? ${matchCenario}`)
-            logs.push(
-              `  estrategia: "${record.estrategia}" === "${selectedEstrategia}" ? ${matchEstrategia}`,
-            )
-            logs.push(`  MATCH GERAL: ${matchFonte && matchCenario && matchEstrategia}`)
+            logs.push(`  scenario_key: "${record.scenario_key}"`)
+            logs.push(`  Match: "${record.scenario_key}" === "${selectedScenario}" ? ${match}`)
           }
           logs.push('\n--- Fim da análise de amostra ---')
 
           // Executar filtro
-          const filtered = parsed.filter((record) => {
-            return (
-              record.Fonte === selectedFonte &&
-              record.cenario === selectedCenario &&
-              record.estrategia === selectedEstrategia
-            )
-          })
+          const filtered = parsed.filter((record) => record.scenario_key === selectedScenario)
 
           logs.push(`\nTotal de registros filtrados: ${filtered.length}`)
           logs.push('===== FILTRAGEM CONCLUÍDA =====\n')
 
+          setSimulationData(parsed)
           setFilteredData(filtered)
           setDebugLog(logs)
 
           console.log(logs.join('\n'))
         },
-        error: (error) => {
-          logs.push(`ERRO: ${error.message}`)
+        error: (err) => {
+          logs.push(`ERRO: ${err.message}`)
           setDebugLog(logs)
-          console.error('Erro ao fazer parse de Dados_Simulacao_novo.csv:', error)
+          console.error('Erro ao fazer parse:', err)
           alert('Erro ao importar dados de simulação')
         },
       })
     } catch (err) {
-      logs.push(`ERRO: ${err instanceof Error ? err.message : 'Unknown error'}`)
+      const errorMsg = err instanceof Error ? err.message : 'Unknown error'
+      logs.push(`ERRO: ${errorMsg}`)
       setDebugLog(logs)
       alert('Erro ao buscar arquivo de simulação')
     } finally {
@@ -176,11 +154,11 @@ const CenariosComponent: React.FC = () => {
   }
 
   if (loading) {
-    return <div>Carregando cenários...</div>
+    return <div className="p-4">Carregando cenários...</div>
   }
 
   if (error) {
-    return <div>Erro: {error}</div>
+    return <div className="p-4 text-red-600">Erro: {error}</div>
   }
 
   return (
@@ -190,19 +168,16 @@ const CenariosComponent: React.FC = () => {
           <CardTitle>Cenários para simulação</CardTitle>
         </CardHeader>
         <CardContent>
-          <Select value={selectedDisplay} onValueChange={handleSelectChange}>
+          <Select value={selectedScenario} onValueChange={setSelectedScenario}>
             <SelectTrigger>
               <SelectValue placeholder="Selecione um cenário" />
             </SelectTrigger>
             <SelectContent>
-              {cenarios.map((scenario, index) => {
-                const displayValue = `${scenario.Fonte} | ${scenario.cenario} | ${scenario.estrategia}`
-                return (
-                  <SelectItem key={index} value={displayValue}>
-                    {displayValue}
-                  </SelectItem>
-                )
-              })}
+              {scenarios.map((scenario, index) => (
+                <SelectItem key={index} value={scenario.scenario_key}>
+                  {scenario.scenario_key}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </CardContent>
@@ -210,7 +185,7 @@ const CenariosComponent: React.FC = () => {
 
       <Button
         onClick={handleImportSimulation}
-        disabled={loadingSimulation || !selectedFonte}
+        disabled={loadingSimulation || !selectedScenario}
         className="w-full"
       >
         {loadingSimulation ? 'Carregando...' : 'Importar Dados de Simulação'}
