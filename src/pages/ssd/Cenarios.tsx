@@ -10,10 +10,9 @@ import {
 import { Button } from '@/components/ui/button'
 
 type Scenario = {
-  fonte: string
+  Fonte: string
   cenario: string
   estrategia: string
-  display: string
 }
 
 type SimulationRecord = {
@@ -26,6 +25,7 @@ type SimulationRecord = {
   CAPEX: number
   OPEX: number
   Aceitacao_Social: number
+  [key: string]: any
 }
 
 const CenariosComponent: React.FC = () => {
@@ -36,6 +36,7 @@ const CenariosComponent: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true)
   const [error, setError] = useState<string>('')
   const [loadingSimulation, setLoadingSimulation] = useState<boolean>(false)
+  const [debugLog, setDebugLog] = useState<string[]>([])
 
   useEffect(() => {
     const fetchCsv = async () => {
@@ -50,17 +51,23 @@ const CenariosComponent: React.FC = () => {
         const lines = cleanedText.split('\n').filter((line) => line.trim() !== '')
 
         const parsedScenarios: Scenario[] = []
-        lines.forEach((line) => {
-          const parts = line.split(',')
-          if (parts.length >= 3) {
-            const fonte = parts[0].trim().normalize('NFD')
-            const cenario = parts[1].trim().normalize('NFD')
-            const estrategia = parts[2].trim().normalize('NFD')
-            const display = `${fonte} | ${cenario} | ${estrategia}`
-            parsedScenarios.push({ fonte, cenario, estrategia, display })
-          }
-        })
 
+        // Pular header
+        for (let i = 1; i < lines.length; i++) {
+          const line = lines[i]
+          // Split apenas uma vez para cada coluna (sem split indiscriminado)
+          const parts = line.split(',', 3) // Pega apenas os 3 primeiros campos
+
+          if (parts.length === 3) {
+            parsedScenarios.push({
+              Fonte: parts[0].trim(),
+              cenario: parts[1].trim(),
+              estrategia: parts[2].trim(),
+            })
+          }
+        }
+
+        console.log('Cenários parseados:', parsedScenarios)
         setScenarios(parsedScenarios)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Unknown error')
@@ -79,9 +86,12 @@ const CenariosComponent: React.FC = () => {
     }
 
     setLoadingSimulation(true)
+    setDebugLog([])
+    const logs: string[] = []
+
     try {
-      console.log('===== INICIANDO IMPORTAÇÃO =====')
-      console.log('Cenário selecionado:', selectedScenario)
+      logs.push('===== INICIANDO IMPORTAÇÃO =====')
+      logs.push(`Cenário selecionado: ${selectedScenario}`)
 
       const response = await fetch('/Dados_Simulacao_novo.csv')
       if (!response.ok) {
@@ -89,78 +99,93 @@ const CenariosComponent: React.FC = () => {
       }
 
       const text = await response.text()
-      console.log('Arquivo obtido, tamanho:', text.length)
+      logs.push(`Arquivo obtido, tamanho: ${text.length}`)
 
       const cleanedText = text.replace(/^\ufeff/, '')
       const lines = cleanedText.split('\n').filter((line) => line.trim() !== '')
-      console.log('Total de linhas:', lines.length)
+      logs.push(`Total de linhas: ${lines.length}`)
 
       const headers = lines[0].split(',').map((h) => h.trim())
-      console.log('Headers encontrados:', headers)
+      logs.push(`Headers: ${headers.join(', ')}`)
 
       const parsed: SimulationRecord[] = []
 
       for (let i = 1; i < lines.length; i++) {
-        const parts = lines[i].split(',').map((p) => p.trim())
+        const parts = lines[i].split(',')
         const record: any = {}
         headers.forEach((header, index) => {
-          record[header] = isNaN(Number(parts[index])) ? parts[index] : Number(parts[index])
+          record[header] = isNaN(Number(parts[index])) ? parts[index].trim() : Number(parts[index])
         })
         parsed.push(record)
       }
 
-      console.log('Total de registros parseados:', parsed.length)
+      logs.push(`Total de registros parseados: ${parsed.length}`)
       setSimulationData(parsed)
 
       // EXECUTAR FILTRAGEM
-      filterData(parsed)
+      filterData(parsed, logs)
     } catch (err) {
       console.error('Erro ao importar:', err)
+      logs.push(`ERRO: ${err instanceof Error ? err.message : 'Unknown error'}`)
       alert('Erro ao importar dados de simulação')
     } finally {
       setLoadingSimulation(false)
+      setDebugLog(logs)
     }
   }
 
-  const filterData = (data: SimulationRecord[]) => {
-    console.log('\n===== INICIANDO FILTRAGEM =====')
-    console.log('selectedScenario recebido:', selectedScenario)
+  const filterData = (data: SimulationRecord[], logs: string[]) => {
+    logs.push('\n===== INICIANDO FILTRAGEM =====')
+    logs.push(`selectedScenario recebido: "${selectedScenario}"`)
 
-    // Extrair e normalizar selectedScenario
-    const [selFonte, selCenario, selEstrategia] = selectedScenario
-      .split(' | ')
-      .map((s) => s.trim().normalize('NFD').toLowerCase())
+    // CRÍTICO: Split apenas em ' | ' uma única vez, pegando os 3 primeiros campos
+    const parts = selectedScenario.split(' | ', 3)
 
-    console.log('Filtrado por:', { selFonte, selCenario, selEstrategia })
+    if (parts.length !== 3) {
+      logs.push(`ERRO: selectedScenario não tem exatamente 3 partes. Recebido: ${parts.length}`)
+      logs.push(`Partes: ${parts.map((p, i) => `[${i}]="${p}"`).join(', ')}`)
+      setFilteredData([])
+      return
+    }
+
+    const [selFonte, selCenario, selEstrategia] = parts.map((s) => s.trim())
+
+    logs.push(`Filtrando por:`)
+    logs.push(`  Fonte: "${selFonte}"`)
+    logs.push(`  cenario: "${selCenario}"`)
+    logs.push(`  estrategia: "${selEstrategia}"`)
 
     // Debug dos primeiros 3 registros
-    console.log('\n--- Analisando primeiros 3 registros ---')
+    logs.push('\n--- Analisando primeiros 3 registros ---')
     for (let i = 0; i < Math.min(3, data.length); i++) {
       const record = data[i]
-      const recFonte = record.Fonte.trim().normalize('NFD').toLowerCase()
-      const recCenario = record.cenario.trim().normalize('NFD').toLowerCase()
-      const recEstrategia = record.estrategia.trim().normalize('NFD').toLowerCase()
+      const recFonte = record.Fonte.trim()
+      const recCenario = record.cenario.trim()
+      const recEstrategia = record.estrategia.trim()
 
-      console.log(`Record ${i}:`, {
-        original: `${record.Fonte} | ${record.cenario} | ${record.estrategia}`,
-        normalized: `${recFonte} | ${recCenario} | ${recEstrategia}`,
-        matches:
-          recFonte === selFonte && recCenario === selCenario && recEstrategia === selEstrategia,
-      })
+      const matchFonte = recFonte === selFonte
+      const matchCenario = recCenario === selCenario
+      const matchEstrategia = recEstrategia === selEstrategia
+
+      logs.push(`\nRecord ${i}:`)
+      logs.push(`  Fonte: "${recFonte}" === "${selFonte}" ? ${matchFonte}`)
+      logs.push(`  cenario: "${recCenario}" === "${selCenario}" ? ${matchCenario}`)
+      logs.push(`  estrategia: "${recEstrategia}" === "${selEstrategia}" ? ${matchEstrategia}`)
+      logs.push(`  MATCH GERAL: ${matchFonte && matchCenario && matchEstrategia}`)
     }
-    console.log('--- Fim da análise de amostra ---\n')
+    logs.push('\n--- Fim da análise de amostra ---')
 
     // Executar filtro
     const filtered = data.filter((record) => {
-      const recFonte = record.Fonte.trim().normalize('NFD').toLowerCase()
-      const recCenario = record.cenario.trim().normalize('NFD').toLowerCase()
-      const recEstrategia = record.estrategia.trim().normalize('NFD').toLowerCase()
-
-      return recFonte === selFonte && recCenario === selCenario && recEstrategia === selEstrategia
+      return (
+        record.Fonte.trim() === selFonte &&
+        record.cenario.trim() === selCenario &&
+        record.estrategia.trim() === selEstrategia
+      )
     })
 
-    console.log('Total de registros filtrados:', filtered.length)
-    console.log('===== FILTRAGEM CONCLUÍDA =====\n')
+    logs.push(`\nTotal de registros filtrados: ${filtered.length}`)
+    logs.push('===== FILTRAGEM CONCLUÍDA =====\n')
 
     setFilteredData(filtered)
   }
@@ -186,8 +211,11 @@ const CenariosComponent: React.FC = () => {
             </SelectTrigger>
             <SelectContent>
               {scenarios.map((scenario, index) => (
-                <SelectItem key={index} value={scenario.display}>
-                  {scenario.display}
+                <SelectItem
+                  key={index}
+                  value={`${scenario.Fonte} | ${scenario.cenario} | ${scenario.estrategia}`}
+                >
+                  {`${scenario.Fonte} | ${scenario.cenario} | ${scenario.estrategia}`}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -218,6 +246,19 @@ const CenariosComponent: React.FC = () => {
                 <span className="text-red-600">✗ Nenhum registro encontrado</span>
               )}
             </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {debugLog.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Debug Log</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <pre className="text-xs bg-gray-100 p-4 rounded overflow-auto max-h-96">
+              {debugLog.join('\n')}
+            </pre>
           </CardContent>
         </Card>
       )}
