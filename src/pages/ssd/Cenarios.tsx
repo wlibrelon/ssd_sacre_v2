@@ -92,13 +92,15 @@ const CenariosComponent: React.FC = () => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Cenarios - Dr. Warlen Librelon - Projeto SACRE</CardTitle>
+        <CardTitle>Cenarios para simulação</CardTitle>
       </CardHeader>
       <CardContent>
+        //{' '}
         <div className="mb-4">
-          <p>Total Rows: {stats.totalRows}</p>
-          <p>Valid Rows: {stats.validRows}</p>
-          <p>Invalid Rows: {stats.invalidRows}</p>
+          // <p>Total Rows: {stats.totalRows}</p>
+          // <p>Valid Rows: {stats.validRows}</p>
+          // <p>Invalid Rows: {stats.invalidRows}</p>
+          //{' '}
         </div>
         <Select value={selectedScenario} onValueChange={setSelectedScenario}>
           <SelectTrigger>
