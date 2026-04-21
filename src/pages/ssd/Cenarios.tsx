@@ -80,16 +80,24 @@ const CenariosComponent: React.FC = () => {
 
     setLoadingSimulation(true)
     try {
-      console.log('Fetching Dados_Simulacao_novo.csv...')
+      console.log('===== INICIANDO IMPORTAÇÃO =====')
+      console.log('Cenário selecionado:', selectedScenario)
+
       const response = await fetch('/Dados_Simulacao_novo.csv')
       if (!response.ok) {
         throw new Error('Failed to fetch simulation data')
       }
+
       const text = await response.text()
+      console.log('Arquivo obtido, tamanho:', text.length)
+
       const cleanedText = text.replace(/^\ufeff/, '')
       const lines = cleanedText.split('\n').filter((line) => line.trim() !== '')
+      console.log('Total de linhas:', lines.length)
 
       const headers = lines[0].split(',').map((h) => h.trim())
+      console.log('Headers encontrados:', headers)
+
       const parsed: SimulationRecord[] = []
 
       for (let i = 1; i < lines.length; i++) {
@@ -101,11 +109,13 @@ const CenariosComponent: React.FC = () => {
         parsed.push(record)
       }
 
+      console.log('Total de registros parseados:', parsed.length)
       setSimulationData(parsed)
+
+      // EXECUTAR FILTRAGEM
       filterData(parsed)
-      console.log('Simulation data loaded:', parsed.length, 'records')
     } catch (err) {
-      console.error('Error loading simulation data:', err)
+      console.error('Erro ao importar:', err)
       alert('Erro ao importar dados de simulação')
     } finally {
       setLoadingSimulation(false)
@@ -113,15 +123,46 @@ const CenariosComponent: React.FC = () => {
   }
 
   const filterData = (data: SimulationRecord[]) => {
-    const [fonte, cenario, estrategia] = selectedScenario.split(' | ').map((s) => s.trim())
-    const filtered = data.filter(
-      (record) =>
-        record.Fonte.normalize('NFD') === fonte &&
-        record.cenario.normalize('NFD') === cenario &&
-        record.estrategia.normalize('NFD') === estrategia,
-    )
+    console.log('\n===== INICIANDO FILTRAGEM =====')
+    console.log('selectedScenario recebido:', selectedScenario)
+
+    // Extrair e normalizar selectedScenario
+    const [selFonte, selCenario, selEstrategia] = selectedScenario
+      .split(' | ')
+      .map((s) => s.trim().normalize('NFD').toLowerCase())
+
+    console.log('Filtrado por:', { selFonte, selCenario, selEstrategia })
+
+    // Debug dos primeiros 3 registros
+    console.log('\n--- Analisando primeiros 3 registros ---')
+    for (let i = 0; i < Math.min(3, data.length); i++) {
+      const record = data[i]
+      const recFonte = record.Fonte.trim().normalize('NFD').toLowerCase()
+      const recCenario = record.cenario.trim().normalize('NFD').toLowerCase()
+      const recEstrategia = record.estrategia.trim().normalize('NFD').toLowerCase()
+
+      console.log(`Record ${i}:`, {
+        original: `${record.Fonte} | ${record.cenario} | ${record.estrategia}`,
+        normalized: `${recFonte} | ${recCenario} | ${recEstrategia}`,
+        matches:
+          recFonte === selFonte && recCenario === selCenario && recEstrategia === selEstrategia,
+      })
+    }
+    console.log('--- Fim da análise de amostra ---\n')
+
+    // Executar filtro
+    const filtered = data.filter((record) => {
+      const recFonte = record.Fonte.trim().normalize('NFD').toLowerCase()
+      const recCenario = record.cenario.trim().normalize('NFD').toLowerCase()
+      const recEstrategia = record.estrategia.trim().normalize('NFD').toLowerCase()
+
+      return recFonte === selFonte && recCenario === selCenario && recEstrategia === selEstrategia
+    })
+
+    console.log('Total de registros filtrados:', filtered.length)
+    console.log('===== FILTRAGEM CONCLUÍDA =====\n')
+
     setFilteredData(filtered)
-    console.log('Filtered records:', filtered.length)
   }
 
   if (loading) {
@@ -162,13 +203,21 @@ const CenariosComponent: React.FC = () => {
         {loadingSimulation ? 'Carregando...' : 'Importar Dados de Simulação'}
       </Button>
 
-      {filteredData.length > 0 && (
+      {simulationData.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Dados Filtrados</CardTitle>
+            <CardTitle>Resultado da Filtragem</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm font-semibold">{filteredData.length} registros encontrados</p>
+            <p className="text-lg font-bold">
+              {filteredData.length > 0 ? (
+                <span className="text-green-600">
+                  ✓ {filteredData.length} registros encontrados
+                </span>
+              ) : (
+                <span className="text-red-600">✗ Nenhum registro encontrado</span>
+              )}
+            </p>
           </CardContent>
         </Card>
       )}
