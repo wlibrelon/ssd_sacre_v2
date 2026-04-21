@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
 import {
   Select,
   SelectContent,
@@ -8,14 +7,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Button } from '@/components/ui/button'
 
-interface Scenario {
-  Fonte: string
+type Scenario = {
+  fonte: string
   cenario: string
   estrategia: string
+  display: string
 }
 
-interface SimulationData {
+type SimulationRecord = {
   Tempo: string
   Fonte: string
   cenario: string
@@ -27,90 +28,115 @@ interface SimulationData {
   Aceitacao_Social: number
 }
 
-const SimulationComponent: React.FC = () => {
+const CenariosComponent: React.FC = () => {
   const [scenarios, setScenarios] = useState<Scenario[]>([])
   const [selectedScenario, setSelectedScenario] = useState<string>('')
-  const [simulationData, setSimulationData] = useState<SimulationData[]>([])
-  const [filteredData, setFilteredData] = useState<SimulationData[]>([])
-  const [loadingSimulation, setLoadingSimulation] = useState<boolean>(false)
+  const [simulationData, setSimulationData] = useState<SimulationRecord[]>([])
+  const [filteredData, setFilteredData] = useState<SimulationRecord[]>([])
+  const [loading, setLoading] = useState<boolean>(true)
   const [error, setError] = useState<string>('')
+  const [loadingSimulation, setLoadingSimulation] = useState<boolean>(false)
 
   useEffect(() => {
-    loadScenarios()
+    const fetchCsv = async () => {
+      try {
+        console.log('Fetching cenarios.csv...')
+        const response = await fetch('/cenarios.csv')
+        if (!response.ok) {
+          throw new Error('Failed to fetch CSV')
+        }
+        const text = await response.text()
+        const cleanedText = text.replace(/^\ufeff/, '')
+        const lines = cleanedText.split('\n').filter((line) => line.trim() !== '')
+
+        const parsedScenarios: Scenario[] = []
+        lines.forEach((line) => {
+          const parts = line.split(',')
+          if (parts.length >= 3) {
+            const fonte = parts[0].trim().normalize('NFD')
+            const cenario = parts[1].trim().normalize('NFD')
+            const estrategia = parts[2].trim().normalize('NFD')
+            const display = `${fonte} | ${cenario} | ${estrategia}`
+            parsedScenarios.push({ fonte, cenario, estrategia, display })
+          }
+        })
+
+        setScenarios(parsedScenarios)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Unknown error')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchCsv()
   }, [])
 
-  const loadScenarios = async () => {
-    try {
-      const response = await fetch('/scenarios.csv')
-      const text = await response.text()
-      const parsed = parseCSV(text)
-      setScenarios(parsed as Scenario[])
-      console.log('Scenarios loaded:', parsed)
-    } catch (err) {
-      setError('Failed to load scenarios')
-      console.error('Error loading scenarios:', err)
-    }
-  }
-
-  const parseCSV = (csvText: string): any[] => {
-    // Remove BOM if present
-    const text = csvText.replace(/^\ufeff/, '')
-    // Normalize accents
-    const normalized = text.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-    const lines = normalized.split('\n')
-    const headers = lines[0].split(',').map((h) => h.trim())
-    const data = lines.slice(1).map((line) => {
-      const values = line.split(',').map((v) => v.trim())
-      const obj: any = {}
-      headers.forEach((h, i) => {
-        obj[h] = isNaN(Number(values[i])) ? values[i] : Number(values[i])
-      })
-      return obj
-    })
-    return data
-  }
-
   const handleImportSimulation = async () => {
+    if (!selectedScenario) {
+      alert('Selecione um cenário antes de importar dados')
+      return
+    }
+
     setLoadingSimulation(true)
-    setError('')
     try {
+      console.log('Fetching Dados_Simulacao_novo.csv...')
       const response = await fetch('/Dados_Simulacao_novo.csv')
+      if (!response.ok) {
+        throw new Error('Failed to fetch simulation data')
+      }
       const text = await response.text()
-      const parsed = parseCSV(text) as SimulationData[]
+      const cleanedText = text.replace(/^\ufeff/, '')
+      const lines = cleanedText.split('\n').filter((line) => line.trim() !== '')
+
+      const headers = lines[0].split(',').map((h) => h.trim())
+      const parsed: SimulationRecord[] = []
+
+      for (let i = 1; i < lines.length; i++) {
+        const parts = lines[i].split(',').map((p) => p.trim())
+        const record: any = {}
+        headers.forEach((header, index) => {
+          record[header] = isNaN(Number(parts[index])) ? parts[index] : Number(parts[index])
+        })
+        parsed.push(record)
+      }
+
       setSimulationData(parsed)
-      console.log('Simulation data loaded:', parsed)
       filterData(parsed)
+      console.log('Simulation data loaded:', parsed.length, 'records')
     } catch (err) {
-      setError('Failed to load simulation data')
       console.error('Error loading simulation data:', err)
+      alert('Erro ao importar dados de simulação')
     } finally {
       setLoadingSimulation(false)
     }
   }
 
-  const filterData = (data: SimulationData[]) => {
-    if (!selectedScenario) {
-      setFilteredData([])
-      return
-    }
+  const filterData = (data: SimulationRecord[]) => {
+    const [fonte, cenario, estrategia] = selectedScenario.split(' | ').map((s) => s.trim())
     const filtered = data.filter(
-      (item) => `${item.Fonte} | ${item.cenario} | ${item.estrategia}` === selectedScenario,
+      (record) =>
+        record.Fonte.normalize('NFD') === fonte &&
+        record.cenario.normalize('NFD') === cenario &&
+        record.estrategia.normalize('NFD') === estrategia,
     )
     setFilteredData(filtered)
-    console.log('Filtered data:', filtered)
+    console.log('Filtered records:', filtered.length)
   }
 
-  useEffect(() => {
-    if (simulationData.length > 0) {
-      filterData(simulationData)
-    }
-  }, [selectedScenario])
+  if (loading) {
+    return <div>Carregando...</div>
+  }
+
+  if (error) {
+    return <div>Erro: {error}</div>
+  }
 
   return (
-    <div className="p-4">
+    <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle>Seleção de Cenário</CardTitle>
+          <CardTitle>Cenários para simulação</CardTitle>
         </CardHeader>
         <CardContent>
           <Select value={selectedScenario} onValueChange={setSelectedScenario}>
@@ -119,26 +145,35 @@ const SimulationComponent: React.FC = () => {
             </SelectTrigger>
             <SelectContent>
               {scenarios.map((scenario, index) => (
-                <SelectItem
-                  key={index}
-                  value={`${scenario.Fonte} | ${scenario.cenario} | ${scenario.estrategia}`}
-                >
-                  {`${scenario.Fonte} | ${scenario.cenario} | ${scenario.estrategia}`}
+                <SelectItem key={index} value={scenario.display}>
+                  {scenario.display}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </CardContent>
       </Card>
-      <Button onClick={handleImportSimulation} disabled={loadingSimulation} className="mt-4">
+
+      <Button
+        onClick={handleImportSimulation}
+        disabled={loadingSimulation || !selectedScenario}
+        className="w-full"
+      >
         {loadingSimulation ? 'Carregando...' : 'Importar Dados de Simulação'}
       </Button>
+
       {filteredData.length > 0 && (
-        <p className="mt-4">{filteredData.length} registros encontrados</p>
+        <Card>
+          <CardHeader>
+            <CardTitle>Dados Filtrados</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm font-semibold">{filteredData.length} registros encontrados</p>
+          </CardContent>
+        </Card>
       )}
-      {error && <p className="mt-4 text-red-500">{error}</p>}
     </div>
   )
 }
 
-export default SimulationComponent
+export default CenariosComponent
