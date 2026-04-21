@@ -95,29 +95,77 @@ const CenariosComponent: React.FC = () => {
         <CardTitle>Cenarios para simulação</CardTitle>
       </CardHeader>
       <CardContent>
-        //{' '}
-        <div className="mb-4">
-          // <p>Total Rows: {stats.totalRows}</p>
-          // <p>Valid Rows: {stats.validRows}</p>
-          // <p>Invalid Rows: {stats.invalidRows}</p>
-          //{' '}
-        </div>
-        <Select value={selectedScenario} onValueChange={setSelectedScenario}>
-          <SelectTrigger>
-            <SelectValue placeholder="Select a scenario" />
-          </SelectTrigger>
-          <SelectContent>
-            {scenarios.map((scenario, index) => (
-              <SelectItem key={index} value={scenario.display}>
-                {scenario.display}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {selectedScenario && <p>Selected: {selectedScenario}</p>}
+        <Combobox
+          options={scenarios.map((s) => ({ value: s.id, label: s.name }))}
+          value={selectedScenario}
+          onChange={(value) => setSelectedScenario(value)}
+          placeholder="Select a scenario"
+        />
       </CardContent>
     </Card>
   )
 }
 
 export default CenariosComponent
+
+// import React, { useState, useEffect } from 'react';
+// import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+// import { Combobox } from '@/components/ui/combobox'; // Assuming a Combobox component
+// import { normalizeString } from '@/utils/stringUtils'; // Utility for robust parsing with accentuation
+
+// interface Scenario {
+//   id: string;
+//   name: string;
+// }
+
+// interface CenariosComponentProps {
+//   // Add any props if needed
+// }
+
+// const CenariosComponent: React.FC<CenariosComponentProps> = () => {
+//   const [scenarios, setScenarios] = useState<Scenario[]>([]);
+//   const [selectedScenario, setSelectedScenario] = useState<string>('');
+
+//   // Robust parsing function with accentuation handling
+//   const parseScenarios = (data: any[]): Scenario[] => {
+//     return data.map(item => ({
+//       id: item.id,
+//       name: normalizeString(item.name), // Normalize for accentuation
+//     }));
+//   };
+
+//   useEffect(() => {
+//     // Fetch or load scenarios
+//     const fetchScenarios = async () => {
+//       // Example: const response = await fetch('/api/scenarios');
+//       // const data = await response.json();
+//       // setScenarios(parseScenarios(data));
+//       // For demo, using static data
+//       const mockData = [
+//         { id: '1', name: 'Cenário A' },
+//         { id: '2', name: 'Cenário B' },
+//         { id: '3', name: 'Cenário C' },
+//       ];
+//       setScenarios(parseScenarios(mockData));
+//     };
+//     fetchScenarios();
+//   }, []);
+
+//   return (
+//     <Card>
+//       <CardHeader>
+//         <CardTitle>Scenarios</CardTitle>
+//       </CardHeader>
+//       <CardContent>
+//         <Combobox
+//           options={scenarios.map(s => ({ value: s.id, label: s.name }))}
+//           value={selectedScenario}
+//           onChange={(value) => setSelectedScenario(value)}
+//           placeholder="Select a scenario"
+//         />
+//       </CardContent>
+//     </Card>
+//   );
+// };
+
+// export default CenariosComponent;
