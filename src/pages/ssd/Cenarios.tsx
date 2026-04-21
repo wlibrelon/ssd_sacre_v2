@@ -95,12 +95,25 @@ const CenariosComponent: React.FC = () => {
         <CardTitle>Cenarios para simulação</CardTitle>
       </CardHeader>
       <CardContent>
-        <Combobox
-          options={scenarios.map((s) => ({ value: s.id, label: s.name }))}
-          value={selectedScenario}
-          onChange={(value) => setSelectedScenario(value)}
-          placeholder="Select a scenario"
-        />
+        //{' '}
+        <div className="mb-4">
+          <p>Total Rows: {stats.totalRows}</p>
+          <p>Valid Rows: {stats.validRows}</p>
+          <p>Invalid Rows: {stats.invalidRows}</p>{' '}
+        </div>
+        <Select value={selectedScenario} onValueChange={setSelectedScenario}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select a scenario" />
+          </SelectTrigger>
+          <SelectContent>
+            {scenarios.map((scenario, index) => (
+              <SelectItem key={index} value={scenario.display}>
+                {scenario.display}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {selectedScenario && <p>Selected: {selectedScenario}</p>}
       </CardContent>
     </Card>
   )
