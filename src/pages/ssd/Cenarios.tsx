@@ -314,15 +314,6 @@ const CenariosComponent: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* ===== BOTÃO EXECUTAR =====*/}
-      <Button
-        onClick={handleImportSimulation}
-        disabled={loadingSimulation || !selectedScenario}
-        className="w-full"
-      >
-        {loadingSimulation ? 'Carregando...' : 'Executar a Simulação'}
-      </Button>
-
       {/* ===== SEÇÃO: CONFIGURAÇÃO DE DEMANDA E PERDAS =====*/}
       <div className="space-y-4 mt-8">
         <h2 className="text-xl font-bold">Configuração de Demanda e Perdas</h2>
@@ -396,6 +387,15 @@ const CenariosComponent: React.FC = () => {
           </Card>
         </div>
       </div>
+
+      {/* ===== BOTÃO EXECUTAR =====*/}
+      <Button
+        onClick={handleImportSimulation}
+        disabled={loadingSimulation || !selectedScenario}
+        className="w-full"
+      >
+        {loadingSimulation ? 'Carregando...' : 'Executar a Simulação'}
+      </Button>
 
       {/* ===== CARDS DE RESUMO (aparecem após importação) =====*/}
       {showSummary && filteredData.length > 0 && (
