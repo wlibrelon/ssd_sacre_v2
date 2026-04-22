@@ -29,7 +29,7 @@ type SimulationRecord = {
   Fonte: string
   cenario: string
   estrategia: string
-  Vazao_Captada: number
+  Volume_Captado: number
   Demanda: number
   CAPEX: number
   OPEX: number
@@ -272,7 +272,10 @@ const CenariosComponent: React.FC = () => {
   }
 
   // ===== CÁLCULOS DE RESUMO =====
-  const totalVazaoCaptada = filteredData.reduce((sum, item) => sum + (item.Vazao_Captada || 0), 0)
+  const totalVolume_Captado = filteredData.reduce(
+    (sum, item) => sum + (item.Volume_Captado || 0),
+    0,
+  )
   const totalDemanda = filteredData.reduce((sum, item) => sum + (item.Demanda || 0), 0)
   const totalCapex = filteredData.reduce((sum, item) => sum + (item.CAPEX || 0), 0)
   const totalOpex = filteredData.reduce((sum, item) => sum + (item.OPEX || 0), 0)
@@ -417,9 +420,9 @@ const CenariosComponent: React.FC = () => {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-green-600">
-                  {formatNumber(totalVazaoCaptada)}
+                  {formatNumber(totalVolume_Captado)}
                 </div>
-                <p className="text-xs text-gray-500 mt-2">m³/s</p>
+                <p className="text-xs text-gray-500 mt-2">m³</p>
               </CardContent>
             </Card>
 
@@ -430,7 +433,7 @@ const CenariosComponent: React.FC = () => {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-blue-600">{formatNumber(totalDemanda)}</div>
-                <p className="text-xs text-gray-500 mt-2">m³/s</p>
+                <p className="text-xs text-gray-500 mt-2">m³</p>
               </CardContent>
             </Card>
 
