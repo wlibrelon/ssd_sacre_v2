@@ -8,6 +8,14 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 
 type Scenario = {
   Fonte: string
@@ -29,6 +37,16 @@ type SimulationRecord = {
   [key: string]: any
 }
 
+type DemandaRow = {
+  cenario_demanda: string
+  Demanda_1000m3_mes: number
+}
+
+type PerdasRow = {
+  cenario_perdas: string
+  perdas_pct: number
+}
+
 const CenariosComponent: React.FC = () => {
   const [scenarios, setScenarios] = useState<Scenario[]>([])
   const [selectedScenario, setSelectedScenario] = useState<string>('')
@@ -43,6 +61,13 @@ const CenariosComponent: React.FC = () => {
   const [demandaCenario, setDemandaCenario] = useState<string>('')
   const [demandaConsumo, setDemandaConsumo] = useState<string>('')
   const [indicePerda, setIndicePerda] = useState<string>('')
+
+  // ===== NOVOS ESTADOS PARA DADOS FILTRADOS =====
+  const [demandaFilteredData, setDemandaFilteredData] = useState<DemandaRow[]>([])
+  const [perdasFilteredData, setPerdasFilteredData] = useState<PerdasRow[]>([])
+  const [demandaRecordsCount, setDemandaRecordsCount] = useState<number>(0)
+  const [perdasRecordsCount, setPerdasRecordsCount] = useState<number>(0)
+  const [showDemandaPerdas, setShowDemandaPerdas] = useState<boolean>(false)
 
   // ===== FUNÇÃO DE NORMALIZAÇÃO AGRESSIVA =====
   const normalizeString = (str: string): string => {
@@ -106,8 +131,14 @@ const CenariosComponent: React.FC = () => {
     fetchCsv()
   }, [])
 
-  // ===== IMPORTAÇÃO E FILTRAGEM (SILENCIOSA) =====
+  // ===== IMPORTAÇÃO E FILTRAGEM COM TRÊS CSVS =====
   const handleImportSimulation = async () => {
+    // Validação pré-importação
+    if (!demandaCenario || !demandaConsumo || !indicePerda) {
+      alert('Selecione todos os campos de demanda e perdas')
+      return
+    }
+
     if (!selectedScenario) {
       alert('Selecione um cenário antes de executar a simulação')
       return
@@ -115,32 +146,36 @@ const CenariosComponent: React.FC = () => {
 
     setLoadingSimulation(true)
     setShowSummary(false)
+    setShowDemandaPerdas(false)
+    setDemandaFilteredData([])
+    setPerdasFilteredData([])
 
     try {
-      const response = await fetch('/Dados_Simulacao_novo.csv')
-      if (!response.ok) {
+      // ===== 1. DADOS_SIMULACAO_NOVO.CSV (IDÊNTICO AO ORIGINAL) =====
+      const responseSimulacao = await fetch('/Dados_Simulacao_novo.csv')
+      if (!responseSimulacao.ok) {
         throw new Error('Failed to fetch simulation data')
       }
 
-      const text = await response.text()
-      const cleanedText = text.replace(/^\ufeff/, '')
-      const lines = cleanedText.split('\n').filter((line) => line.trim() !== '')
+      const textSimulacao = await responseSimulacao.text()
+      const cleanedTextSimulacao = textSimulacao.replace(/^\ufeff/, '')
+      const linesSimulacao = cleanedTextSimulacao.split('\n').filter((line) => line.trim() !== '')
 
-      const headers = lines[0].split(',').map((h) => h.trim())
+      const headersSimulacao = linesSimulacao[0].split(',').map((h) => h.trim())
 
-      const parsed: any[] = []
+      const parsedSimulacao: any[] = []
 
-      for (let i = 1; i < lines.length; i++) {
-        const parts = lines[i].split(',')
+      for (let i = 1; i < linesSimulacao.length; i++) {
+        const parts = linesSimulacao[i].split(',')
         const record: any = {}
-        headers.forEach((header, index) => {
+        headersSimulacao.forEach((header, index) => {
           record[header] = isNaN(Number(parts[index])) ? parts[index].trim() : Number(parts[index])
         })
-        parsed.push(record)
+        parsedSimulacao.push(record)
       }
 
       // Construir scenario_key dinamicamente
-      const parsedWithKey: SimulationRecord[] = parsed.map((record) => ({
+      const parsedWithKey: SimulationRecord[] = parsedSimulacao.map((record) => ({
         ...record,
         scenario_key: `${record.Fonte} | ${record.cenario} | ${record.estrategia}`,
       }))
@@ -149,14 +184,87 @@ const CenariosComponent: React.FC = () => {
 
       // Filtragem silenciosa com normalização
       const selectedNormalized = normalizeString(selectedScenario)
-      const filtered = parsedWithKey.filter((record) => {
+      const filteredSimulacao = parsedWithKey.filter((record) => {
         const recordNormalized = normalizeString(record.scenario_key)
         return recordNormalized === selectedNormalized
       })
 
-      setFilteredData(filtered)
+      setFilteredData(filteredSimulacao)
       setShowSummary(true)
+
+      // ===== 2. CENARIOS_DEMANDA.CSV (NOVO) =====
+      const responseDemanda = await fetch('/cenarios_demanda.csv')
+      if (!responseDemanda.ok) {
+        throw new Error('Failed to fetch demanda data')
+      }
+
+      const textDemanda = await responseDemanda.text()
+      const cleanedTextDemanda = textDemanda.replace(/^\ufeff/, '')
+      const linesDemanda = cleanedTextDemanda.split('\n').filter((line) => line.trim() !== '')
+
+      const headersDemanda = linesDemanda[0].split(',').map((h) => h.trim())
+
+      const parsedDemanda: any[] = []
+
+      for (let i = 1; i < linesDemanda.length; i++) {
+        const parts = linesDemanda[i].split(',')
+        const record: any = {}
+        headersDemanda.forEach((header, index) => {
+          record[header] = isNaN(Number(parts[index])) ? parts[index].trim() : Number(parts[index])
+        })
+        parsedDemanda.push(record)
+      }
+
+      // Filtrar por cenario_demanda concatenado
+      const filterKeyDemanda = normalizeString(`${demandaCenario} | ${demandaConsumo}`)
+      const filteredDemanda: DemandaRow[] = parsedDemanda
+        .filter((record) => normalizeString(record.cenario_demanda) === filterKeyDemanda)
+        .map((record) => ({
+          cenario_demanda: record.cenario_demanda,
+          Demanda_1000m3_mes: Number(record.Demanda_1000m3_mes),
+        }))
+
+      setDemandaFilteredData(filteredDemanda)
+      setDemandaRecordsCount(filteredDemanda.length)
+
+      // ===== 3. CENARIOS_PERDAS.CSV (NOVO) =====
+      const responsePerdas = await fetch('/cenarios_perdas.csv')
+      if (!responsePerdas.ok) {
+        throw new Error('Failed to fetch perdas data')
+      }
+
+      const textPerdas = await responsePerdas.text()
+      const cleanedTextPerdas = textPerdas.replace(/^\ufeff/, '')
+      const linesPerdas = cleanedTextPerdas.split('\n').filter((line) => line.trim() !== '')
+
+      const headersPerdas = linesPerdas[0].split(',').map((h) => h.trim())
+
+      const parsedPerdas: any[] = []
+
+      for (let i = 1; i < linesPerdas.length; i++) {
+        const parts = linesPerdas[i].split(',')
+        const record: any = {}
+        headersPerdas.forEach((header, index) => {
+          record[header] = isNaN(Number(parts[index])) ? parts[index].trim() : Number(parts[index])
+        })
+        parsedPerdas.push(record)
+      }
+
+      // Filtrar por cenario_perdas
+      const filterKeyPerdas = normalizeString(indicePerda)
+      const filteredPerdas: PerdasRow[] = parsedPerdas
+        .filter((record) => normalizeString(record.cenario_perdas) === filterKeyPerdas)
+        .map((record) => ({
+          cenario_perdas: record.cenario_perdas,
+          perdas_pct: Number(record.perdas_pct),
+        }))
+
+      setPerdasFilteredData(filteredPerdas)
+      setPerdasRecordsCount(filteredPerdas.length)
+
+      setShowDemandaPerdas(true)
     } catch (err) {
+      console.error('Erro ao importar:', err)
       alert('Erro ao executar a simulação')
     } finally {
       setLoadingSimulation(false)
@@ -202,7 +310,8 @@ const CenariosComponent: React.FC = () => {
           </Select>
         </CardContent>
       </Card>
-      {/* ===== BOTÃO IMPORTAR =====*/}
+
+      {/* ===== BOTÃO EXECUTAR =====*/}
       <Button
         onClick={handleImportSimulation}
         disabled={loadingSimulation || !selectedScenario}
@@ -210,6 +319,7 @@ const CenariosComponent: React.FC = () => {
       >
         {loadingSimulation ? 'Carregando...' : 'Executar a Simulação'}
       </Button>
+
       {/* ===== SEÇÃO: CONFIGURAÇÃO DE DEMANDA E PERDAS =====*/}
       <div className="space-y-4 mt-8">
         <h2 className="text-xl font-bold">Configuração de Demanda e Perdas</h2>
@@ -283,6 +393,7 @@ const CenariosComponent: React.FC = () => {
           </Card>
         </div>
       </div>
+
       {/* ===== CARDS DE RESUMO (aparecem após importação) =====*/}
       {showSummary && filteredData.length > 0 && (
         <div className="space-y-4 mt-8">
@@ -349,15 +460,87 @@ const CenariosComponent: React.FC = () => {
           </div>
         </div>
       )}
-      // {/* ===== BOTÃO SALVAR CONFIGURAÇÃO (no fim da página) =====*/}
-      // //{' '}
-      <div className="mt-12 pt-8 border-t">
-        // //{' '}
-        <Button className="w-full bg-green-600 hover:bg-green-700" size="lg">
-          // Salvar Configuração // //{' '}
-        </Button>
-        // //{' '}
-      </div>
+
+      {/* ===== CARDS DE DEMANDA E PERDAS FILTRADOS =====*/}
+      {showDemandaPerdas && (
+        <div className="space-y-4 mt-8">
+          <h2 className="text-xl font-bold">Dados Filtrados de Demanda e Perdas</h2>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Card: Dados de Demanda */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Dados de Demanda Filtrados</CardTitle>
+                <p className="text-xs text-gray-500 mt-2">
+                  Total de registros: {demandaRecordsCount}
+                </p>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Cenário Demanda</TableHead>
+                      <TableHead>Demanda (1000m³/mês)</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {demandaFilteredData.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={2} className="text-center py-4 text-gray-500">
+                          Nenhum registro encontrado
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      demandaFilteredData.map((row, index) => (
+                        <TableRow key={index}>
+                          <TableCell>{row.cenario_demanda}</TableCell>
+                          <TableCell>{formatNumber(row.Demanda_1000m3_mes)}</TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+
+            {/* Card: Dados de Perdas */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Dados de Perdas Filtrados</CardTitle>
+                <p className="text-xs text-gray-500 mt-2">
+                  Total de registros: {perdasRecordsCount}
+                </p>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Cenário Perdas</TableHead>
+                      <TableHead>Perdas (%)</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {perdasFilteredData.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={2} className="text-center py-4 text-gray-500">
+                          Nenhum registro encontrado
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      perdasFilteredData.map((row, index) => (
+                        <TableRow key={index}>
+                          <TableCell>{row.cenario_perdas}</TableCell>
+                          <TableCell>{formatNumber(row.perdas_pct)}</TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
