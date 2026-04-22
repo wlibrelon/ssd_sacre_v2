@@ -355,11 +355,11 @@ const CenariosComponent: React.FC = () => {
                     <SelectValue placeholder="Selecione consumo" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Crescente - até 250 L/pcd">
+                    <SelectItem value="Consumo crescente (até 250 L/pcd)">
                       Crescente - até 250 L/pcd
                     </SelectItem>
-                    <SelectItem value="Estável - 215 L/pcd">Estável - 215 L/pcd</SelectItem>
-                    <SelectItem value="Decrescente - até 180 L/pcd">
+                    <SelectItem value="Consumo estável (215 L/pcd)">Estável - 215 L/pcd</SelectItem>
+                    <SelectItem value="Consumo decrescente (até 180 L/pcd)">
                       Decrescente - até 180 L/pcd
                     </SelectItem>
                   </SelectContent>
@@ -382,10 +382,10 @@ const CenariosComponent: React.FC = () => {
                     <SelectValue placeholder="Selecione índice" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="30%">30%</SelectItem>
-                    <SelectItem value="28%">28%</SelectItem>
-                    <SelectItem value="26%">26%</SelectItem>
-                    <SelectItem value="24%">24%</SelectItem>
+                    <SelectItem value="Perdas → 30%">30%</SelectItem>
+                    <SelectItem value="Perdas → 28%">28%</SelectItem>
+                    <SelectItem value="Perdas → 26%">26%</SelectItem>
+                    <SelectItem value="Perdas → 24%">24%</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
