@@ -37,23 +37,20 @@ const CenariosComponent: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true)
   const [error, setError] = useState<string>('')
   const [loadingSimulation, setLoadingSimulation] = useState<boolean>(false)
-  const [debugLog, setDebugLog] = useState<string[]>([])
+
+  // ===== NOVOS ESTADOS PARA DEMANDA E PERDAS =====
+  const [demandaCenario, setDemandaCenario] = useState<string>('')
+  const [demandaConsumo, setDemandaConsumo] = useState<string>('')
+  const [indicePerda, setIndicePerda] = useState<string>('')
 
   // ===== FUNÇÃO DE NORMALIZAÇÃO AGRESSIVA =====
   const normalizeString = (str: string): string => {
-    // Remove BOM
     let normalized = str.replace(/\ufeff/g, '')
-    // Remove non-breaking spaces
     normalized = normalized.replace(/\u00a0/g, '')
-    // Remove tabs
     normalized = normalized.replace(/\t/g, '')
-    // Remove zero-width characters
     normalized = normalized.replace(/[\u200b-\u200d]/g, '')
-    // Apply NFD normalization
     normalized = normalized.normalize('NFD')
-    // Convert to lowercase
     normalized = normalized.toLowerCase()
-    // Trim
     normalized = normalized.trim()
     return normalized
   }
@@ -62,7 +59,6 @@ const CenariosComponent: React.FC = () => {
   useEffect(() => {
     const fetchCsv = async () => {
       try {
-        console.log('Fetching cenarios.csv...')
         const response = await fetch('/cenarios.csv')
         if (!response.ok) {
           throw new Error('Failed to fetch CSV')
@@ -73,7 +69,6 @@ const CenariosComponent: React.FC = () => {
 
         const parsedScenarios: Scenario[] = []
 
-        // Pular header (linha 0)
         for (let i = 1; i < lines.length; i++) {
           const line = lines[i]
           const parts = line.split(',').map((p) => p.trim())
@@ -91,7 +86,6 @@ const CenariosComponent: React.FC = () => {
           }
         }
 
-        console.log('Cenários parseados:', parsedScenarios)
         setScenarios(parsedScenarios)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Unknown error')
@@ -103,7 +97,7 @@ const CenariosComponent: React.FC = () => {
     fetchCsv()
   }, [])
 
-  // ===== IMPORTAÇÃO E FILTRAGEM COM CONSTRUÇÃO DINÂMICA DE scenario_key =====
+  // ===== IMPORTAÇÃO E FILTRAGEM (SILENCIOSA) =====
   const handleImportSimulation = async () => {
     if (!selectedScenario) {
       alert('Selecione um cenário antes de importar dados')
@@ -111,27 +105,18 @@ const CenariosComponent: React.FC = () => {
     }
 
     setLoadingSimulation(true)
-    setDebugLog([])
-    const logs: string[] = []
 
     try {
-      logs.push('===== INICIANDO IMPORTAÇÃO =====')
-      logs.push(`Cenário selecionado: ${selectedScenario}`)
-
       const response = await fetch('/Dados_Simulacao_novo.csv')
       if (!response.ok) {
         throw new Error('Failed to fetch simulation data')
       }
 
       const text = await response.text()
-      logs.push(`Arquivo obtido, tamanho: ${text.length}`)
-
       const cleanedText = text.replace(/^\ufeff/, '')
       const lines = cleanedText.split('\n').filter((line) => line.trim() !== '')
-      logs.push(`Total de linhas: ${lines.length}`)
 
       const headers = lines[0].split(',').map((h) => h.trim())
-      logs.push(`Headers: ${headers.join(', ')}`)
 
       const parsed: any[] = []
 
@@ -144,81 +129,27 @@ const CenariosComponent: React.FC = () => {
         parsed.push(record)
       }
 
-      logs.push(`Total de registros parseados: ${parsed.length}`)
-
-      // ===== CONSTRUIR scenario_key DINAMICAMENTE COM NORMALIZAÇÃO =====
-      logs.push('\n===== CONSTRUINDO scenario_key DINAMICAMENTE =====')
-
-      const parsedWithKey: SimulationRecord[] = parsed.map((record) => {
-        const scenario_key = `${record.Fonte} | ${record.cenario} | ${record.estrategia}`
-        return {
-          ...record,
-          scenario_key,
-        }
-      })
-
-      logs.push(`scenario_key construído para ${parsedWithKey.length} registros`)
-      logs.push('Primeiros 3 scenario_keys construídos:')
-      for (let i = 0; i < Math.min(3, parsedWithKey.length); i++) {
-        logs.push(`  Record ${i}: "${parsedWithKey[i].scenario_key}"`)
-      }
+      // Construir scenario_key dinamicamente
+      const parsedWithKey: SimulationRecord[] = parsed.map((record) => ({
+        ...record,
+        scenario_key: `${record.Fonte} | ${record.cenario} | ${record.estrategia}`,
+      }))
 
       setSimulationData(parsedWithKey)
 
-      // ===== FILTRAGEM USANDO scenario_key COM NORMALIZAÇÃO AGRESSIVA =====
-      filterData(parsedWithKey, logs)
+      // Filtragem silenciosa com normalização
+      const selectedNormalized = normalizeString(selectedScenario)
+      const filtered = parsedWithKey.filter((record) => {
+        const recordNormalized = normalizeString(record.scenario_key)
+        return recordNormalized === selectedNormalized
+      })
+
+      setFilteredData(filtered)
     } catch (err) {
-      console.error('Erro ao importar:', err)
-      logs.push(`ERRO: ${err instanceof Error ? err.message : 'Unknown error'}`)
-      setDebugLog(logs)
       alert('Erro ao importar dados de simulação')
     } finally {
       setLoadingSimulation(false)
     }
-  }
-
-  const filterData = (data: SimulationRecord[], logs: string[]) => {
-    logs.push('\n===== INICIANDO FILTRAGEM COM NORMALIZAÇÃO AGRESSIVA =====')
-
-    // Normalizar selectedScenario
-    const selectedNormalized = normalizeString(selectedScenario)
-    logs.push(`selectedScenario ORIGINAL: "${selectedScenario}"`)
-    logs.push(`selectedScenario NORMALIZADO: "${selectedNormalized}"`)
-
-    logs.push('\n--- Analisando primeiros 3 registros com normalização ---')
-    for (let i = 0; i < Math.min(3, data.length); i++) {
-      const record = data[i]
-      const scenarioKeyNormalized = normalizeString(record.scenario_key)
-      const match = scenarioKeyNormalized === selectedNormalized
-
-      logs.push(`\nRecord ${i}:`)
-      logs.push(`  scenario_key ORIGINAL: "${record.scenario_key}"`)
-      logs.push(`  scenario_key NORMALIZADO: "${scenarioKeyNormalized}"`)
-      logs.push(`  Match (normalizado): ${match}`)
-
-      // Detectar caracteres especiais
-      const specialChars = record.scenario_key.match(/[\ufeff\u00a0\t\u200b-\u200d]/g)
-      if (specialChars) {
-        logs.push(
-          `  ⚠️ Caracteres especiais encontrados: ${specialChars.map((c) => `U+${c.charCodeAt(0).toString(16).toUpperCase()}`).join(', ')}`,
-        )
-      }
-    }
-    logs.push('\n--- Fim da análise de amostra ---')
-
-    // Executar filtro com normalização
-    const filtered = data.filter((record) => {
-      const recordNormalized = normalizeString(record.scenario_key)
-      return recordNormalized === selectedNormalized
-    })
-
-    logs.push(`\nTotal de registros filtrados: ${filtered.length}`)
-    logs.push('===== FILTRAGEM CONCLUÍDA =====\n')
-
-    setFilteredData(filtered)
-    setDebugLog(logs)
-
-    console.log(logs.join('\n'))
   }
 
   if (loading) {
@@ -231,6 +162,7 @@ const CenariosComponent: React.FC = () => {
 
   return (
     <div className="space-y-4 p-4">
+      {/* ===== CARD DE SELEÇÃO DE CENÁRIOS =====*/}
       <Card>
         <CardHeader>
           <CardTitle>Cenários para simulação</CardTitle>
@@ -254,6 +186,7 @@ const CenariosComponent: React.FC = () => {
         </CardContent>
       </Card>
 
+      {/* ===== BOTÃO IMPORTAR =====*/}
       <Button
         onClick={handleImportSimulation}
         disabled={loadingSimulation || !selectedScenario}
@@ -262,37 +195,79 @@ const CenariosComponent: React.FC = () => {
         {loadingSimulation ? 'Carregando...' : 'Importar Dados de Simulação'}
       </Button>
 
-      {simulationData.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Resultado da Filtragem</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-lg font-bold">
-              {filteredData.length > 0 ? (
-                <span className="text-green-600">
-                  ✓ {filteredData.length} registros encontrados
-                </span>
-              ) : (
-                <span className="text-red-600">✗ Nenhum registro encontrado</span>
-              )}
-            </p>
-          </CardContent>
-        </Card>
-      )}
+      {/* ===== SEÇÃO: CONFIGURAÇÃO DE DEMANDA E PERDAS =====*/}
+      <div className="space-y-4 mt-8">
+        <h2 className="text-xl font-bold">Configuração de Demanda e Perdas</h2>
 
-      {debugLog.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Debug Log</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <pre className="text-xs bg-gray-100 p-4 rounded overflow-auto max-h-96 whitespace-pre-wrap font-mono">
-              {debugLog.join('\n')}
-            </pre>
-          </CardContent>
-        </Card>
-      )}
+        {/* CARDS LADO A LADO */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* CARD 1: DEMANDA DE CONSUMO */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Demanda de consumo</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Combobox: Cenários */}
+              <div>
+                <label className="block text-sm font-medium mb-2">Cenários</label>
+                <Select value={demandaCenario} onValueChange={setDemandaCenario}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um cenário" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Estagnação populacional">Estagnação populacional</SelectItem>
+                    <SelectItem value="Crescimento tendencial">Crescimento tendencial</SelectItem>
+                    <SelectItem value="Crescimento acelerado">Crescimento acelerado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Combobox: Consumo */}
+              <div>
+                <label className="block text-sm font-medium mb-2">Consumo</label>
+                <Select value={demandaConsumo} onValueChange={setDemandaConsumo}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione consumo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Crescente - até 250 L/pcd">
+                      Crescente - até 250 L/pcd
+                    </SelectItem>
+                    <SelectItem value="Estável - 215 L/pcd">Estável - 215 L/pcd</SelectItem>
+                    <SelectItem value="Decrescente - até 180 L/pcd">
+                      Decrescente - até 180 L/pcd
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* CARD 2: CENÁRIOS DE PERDAS */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Cenários de perdas</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {/* Combobox: Índice de Perdas */}
+              <div>
+                <label className="block text-sm font-medium mb-2">Índice de perdas</label>
+                <Select value={indicePerda} onValueChange={setIndicePerda}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione índice" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="30%">30%</SelectItem>
+                    <SelectItem value="28%">28%</SelectItem>
+                    <SelectItem value="26%">26%</SelectItem>
+                    <SelectItem value="24%">24%</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   )
 }
