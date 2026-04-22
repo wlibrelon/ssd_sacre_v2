@@ -1,546 +1,432 @@
-import React, { useState, useEffect } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import React, { useState, useEffect, ChangeEvent } from 'react'
+import Papa from 'papaparse'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { Button } from '@/components/ui/button'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  ScatterChart,
+  Scatter,
+  BarChart,
+  Bar,
+} from 'recharts'
 
-type Scenario = {
-  Fonte: string
-  cenario: string
-  estrategia: string
-}
+type Record = { [key: string]: string }
 
 type SimulationRecord = {
-  scenario_key: string
-  Tempo: string
-  Fonte: string
-  cenario: string
-  estrategia: string
-  Volume_Captado: number
-  Demanda: number
-  CAPEX: number
-  OPEX: number
-  Aceitacao_Social: number
-  [key: string]: any
-}
-
-type DemandaRow = {
-  cenario_demanda: string
-  Demanda_1000m3_mes: number
-}
-
-type PerdasRow = {
-  cenario_perdas: string
+  mes: number
+  vazao_captada: number
+  demanda_1000m3_mes: number
   perdas_pct: number
+  demanda_m3_mes: number
+  deficit: number
+  superavit: number
 }
 
 const CenariosComponent: React.FC = () => {
-  const [scenarios, setScenarios] = useState<Scenario[]>([])
-  const [selectedScenario, setSelectedScenario] = useState<string>('')
-  const [simulationData, setSimulationData] = useState<SimulationRecord[]>([])
-  const [filteredData, setFilteredData] = useState<SimulationRecord[]>([])
-  const [loading, setLoading] = useState<boolean>(true)
-  const [error, setError] = useState<string>('')
-  const [loadingSimulation, setLoadingSimulation] = useState<boolean>(false)
-  const [showSummary, setShowSummary] = useState<boolean>(false)
+  // Cenários states
+  const [cenariosData, setCenariosData] = useState<Record[]>([])
+  const [cenariosColumns, setCenariosColumns] = useState<string[]>([])
+  const [vazaoColumn, setVazaoColumn] = useState('')
+  const [normalizeFactor, setNormalizeFactor] = useState(30)
 
-  // ===== NOVOS ESTADOS PARA DEMANDA E PERDAS =====
-  const [demandaCenario, setDemandaCenario] = useState<string>('')
-  const [demandaConsumo, setDemandaConsumo] = useState<string>('')
-  const [indicePerda, setIndicePerda] = useState<string>('')
+  // Demanda states
+  const [demandaData, setDemandaData] = useState<Record[]>([])
+  const [demandaColumns, setDemandaColumns] = useState<string[]>([])
+  const [demandaColumn, setDemandaColumn] = useState('')
 
-  // ===== NOVOS ESTADOS PARA DADOS FILTRADOS =====
-  const [demandaFilteredData, setDemandaFilteredData] = useState<DemandaRow[]>([])
-  const [perdasFilteredData, setPerdasFilteredData] = useState<PerdasRow[]>([])
-  const [demandaRecordsCount, setDemandaRecordsCount] = useState<number>(0)
-  const [perdasRecordsCount, setPerdasRecordsCount] = useState<number>(0)
-  const [showDemandaPerdas, setShowDemandaPerdas] = useState<boolean>(false)
+  // Perdas states
+  const [perdasData, setPerdasData] = useState<Record[]>([])
+  const [perdasColumns, setPerdasColumns] = useState<string[]>([])
+  const [perdasColumn, setPerdasColumn] = useState('')
 
-  // ===== FUNÇÃO DE NORMALIZAÇÃO AGRESSIVA =====
-  const normalizeString = (str: string): string => {
-    let normalized = str.replace(/\ufeff/g, '')
-    normalized = normalized.replace(/\u00a0/g, '')
-    normalized = normalized.replace(/\t/g, '')
-    normalized = normalized.replace(/[\u200b-\u200d]/g, '')
-    normalized = normalized.normalize('NFD')
-    normalized = normalized.toLowerCase()
-    normalized = normalized.trim()
-    return normalized
+  // Filtered data states (kept for original structure)
+  const [filteredData, setFilteredData] = useState<any[]>([])
+  const [demandaFilteredData, setDemandaFilteredData] = useState<any[]>([])
+  const [perdasFilteredData, setPerdasFilteredData] = useState<any[]>([])
+
+  // Dashboard
+  const [showDashboard, setShowDashboard] = useState(false)
+  const [mergedSimulationData, setMergedSimulationData] = useState<SimulationRecord[]>([])
+
+  const handleCenariosUpload = (file: File) => {
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: (results: any) => {
+        const data = results.data as Record[]
+        setCenariosData(data)
+      },
+    })
   }
 
-  // ===== FUNÇÃO PARA FORMATAR NÚMEROS =====
-  const formatNumber = (num: number): string => {
-    return new Intl.NumberFormat('pt-BR', {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2,
-    }).format(num)
+  const handleDemandaUpload = (file: File) => {
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: (results: any) => {
+        const data = results.data as Record[]
+        setDemandaData(data)
+      },
+    })
   }
 
-  // ===== CARREGAMENTO ORIGINAL DE cenarios.csv =====
+  const handlePerdasUpload = (file: File) => {
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: (results: any) => {
+        const data = results.data as Record[]
+        setPerdasData(data)
+      },
+    })
+  }
+
   useEffect(() => {
-    const fetchCsv = async () => {
-      try {
-        const response = await fetch('/cenarios.csv')
-        if (!response.ok) {
-          throw new Error('Failed to fetch CSV')
-        }
-        const text = await response.text()
-        const cleanedText = text.replace(/^\ufeff/, '')
-        const lines = cleanedText.split('\n').filter((line) => line.trim() !== '')
-
-        const parsedScenarios: Scenario[] = []
-
-        for (let i = 1; i < lines.length; i++) {
-          const line = lines[i]
-          const parts = line.split(',').map((p) => p.trim())
-
-          if (parts.length >= 3) {
-            const Fonte = parts[0].normalize('NFD')
-            const cenario = parts[1].normalize('NFD')
-            const estrategia = parts[2].normalize('NFD')
-
-            parsedScenarios.push({
-              Fonte,
-              cenario,
-              estrategia,
-            })
-          }
-        }
-
-        setScenarios(parsedScenarios)
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Unknown error')
-      } finally {
-        setLoading(false)
-      }
+    if (cenariosData.length > 0 && cenariosData[0]) {
+      const cols = Object.keys(cenariosData[0]).filter((k) => !k.toLowerCase().includes('mes'))
+      setCenariosColumns(cols)
     }
+  }, [cenariosData])
 
-    fetchCsv()
-  }, [])
+  useEffect(() => {
+    if (demandaData.length > 0 && demandaData[0]) {
+      const cols = Object.keys(demandaData[0]).filter((k) => k.toLowerCase().includes('demanda'))
+      setDemandaColumns(Object.keys(demandaData[0]))
+    }
+  }, [demandaData])
 
-  // ===== IMPORTAÇÃO E FILTRAGEM COM TRÊS CSVS =====
-  const handleImportSimulation = async () => {
-    // Validação pré-importação
-    if (!demandaCenario || !demandaConsumo || !indicePerda) {
-      alert('Selecione todos os campos de demanda e perdas')
+  useEffect(() => {
+    if (perdasData.length > 0 && perdasData[0]) {
+      setPerdasColumns(Object.keys(perdasData[0]))
+    }
+  }, [perdasData])
+
+  const handleImportSimulation = () => {
+    // Validações pré-importação
+    if (!cenariosData.length) {
+      alert('Carregue o arquivo cenarios.csv')
+      return
+    }
+    if (!vazaoColumn) {
+      alert('Selecione a coluna de vazão captada')
+      return
+    }
+    if (!demandaData.length) {
+      alert('Carregue o arquivo de demanda')
+      return
+    }
+    if (!demandaColumn) {
+      alert('Selecione a coluna de demanda')
+      return
+    }
+    if (!perdasData.length) {
+      alert('Carregue o arquivo de perdas')
+      return
+    }
+    if (!perdasColumn) {
+      alert('Selecione a coluna de perdas')
       return
     }
 
-    if (!selectedScenario) {
-      alert('Selecione um cenário antes de executar a simulação')
-      return
-    }
-
-    setLoadingSimulation(true)
-    setShowSummary(false)
-    setShowDemandaPerdas(false)
-    setDemandaFilteredData([])
-    setPerdasFilteredData([])
-
-    try {
-      // ===== 1. DADOS_SIMULACAO_NOVO.CSV (IDÊNTICO AO ORIGINAL) =====
-      const responseSimulacao = await fetch('/Dados_Simulacao_novo.csv')
-      if (!responseSimulacao.ok) {
-        throw new Error('Failed to fetch simulation data')
-      }
-
-      const textSimulacao = await responseSimulacao.text()
-      const cleanedTextSimulacao = textSimulacao.replace(/^\ufeff/, '')
-      const linesSimulacao = cleanedTextSimulacao.split('\n').filter((line) => line.trim() !== '')
-
-      const headersSimulacao = linesSimulacao[0].split(',').map((h) => h.trim())
-
-      const parsedSimulacao: any[] = []
-
-      for (let i = 1; i < linesSimulacao.length; i++) {
-        const parts = linesSimulacao[i].split(',')
-        const record: any = {}
-        headersSimulacao.forEach((header, index) => {
-          record[header] = isNaN(Number(parts[index])) ? parts[index].trim() : Number(parts[index])
-        })
-        parsedSimulacao.push(record)
-      }
-
-      // Construir scenario_key dinamicamente
-      const parsedWithKey: SimulationRecord[] = parsedSimulacao.map((record) => ({
-        ...record,
-        scenario_key: `${record.Fonte} | ${record.cenario} | ${record.estrategia}`,
-      }))
-
-      setSimulationData(parsedWithKey)
-
-      // Filtragem silenciosa com normalização
-      const selectedNormalized = normalizeString(selectedScenario)
-      const filteredSimulacao = parsedWithKey.filter((record) => {
-        const recordNormalized = normalizeString(record.scenario_key)
-        return recordNormalized === selectedNormalized
+    // Process filtered data
+    const vazaoFiltered = cenariosData
+      .map((row) => {
+        const mesStr = row.Mes
+        const vazaoStr = row[vazaoColumn]
+        const mes = parseInt(mesStr || '0')
+        const vazao = parseFloat(vazaoStr || '0') * normalizeFactor
+        if (isNaN(mes) || isNaN(vazao) || mes <= 0) return null
+        return { mes, vazao_captada: vazao }
       })
+      .filter(Boolean) as any[]
 
-      setFilteredData(filteredSimulacao)
-      setShowSummary(true)
+    const demFiltered = demandaData
+      .map((row) => {
+        const mesStr = row.Mes
+        const demStr = row[demandaColumn]
+        const mes = parseInt(mesStr || '0')
+        const dem = parseFloat(demStr || '0')
+        if (isNaN(mes) || isNaN(dem)) return null
+        return { mes, demanda_1000m3_mes: dem }
+      })
+      .filter(Boolean) as any[]
 
-      // ===== 2. CENARIOS_DEMANDA.CSV (NOVO) =====
-      const responseDemanda = await fetch('/cenarios_demanda.csv')
-      if (!responseDemanda.ok) {
-        throw new Error('Failed to fetch demanda data')
-      }
+    const perFiltered = perdasData
+      .map((row) => {
+        const mesStr = row.Mes
+        const perStr = row[perdasColumn]
+        const mes = parseInt(mesStr || '0')
+        const per = parseFloat(perStr || '0')
+        if (isNaN(mes) || isNaN(per)) return null
+        return { mes, perdas_pct: per }
+      })
+      .filter(Boolean) as any[]
 
-      const textDemanda = await responseDemanda.text()
-      const cleanedTextDemanda = textDemanda.replace(/^\ufeff/, '')
-      const linesDemanda = cleanedTextDemanda.split('\n').filter((line) => line.trim() !== '')
+    const demandaRecordsCount = demFiltered.length
+    const perdasRecordsCount = perFiltered.length
+    const vazaoRecordsCount = vazaoFiltered.length
 
-      const headersDemanda = linesDemanda[0].split(',').map((h) => h.trim())
-
-      const parsedDemanda: any[] = []
-
-      for (let i = 1; i < linesDemanda.length; i++) {
-        const parts = linesDemanda[i].split(',')
-        const record: any = {}
-        headersDemanda.forEach((header, index) => {
-          record[header] = isNaN(Number(parts[index])) ? parts[index].trim() : Number(parts[index])
-        })
-        parsedDemanda.push(record)
-      }
-
-      // Filtrar por cenario_demanda concatenado
-      const filterKeyDemanda = normalizeString(`${demandaCenario} | ${demandaConsumo}`)
-      const filteredDemanda: DemandaRow[] = parsedDemanda
-        .filter((record) => normalizeString(record.cenario_demanda) === filterKeyDemanda)
-        .map((record) => ({
-          cenario_demanda: record.cenario_demanda,
-          Demanda_1000m3_mes: Number(record.Demanda_1000m3_mes),
-        }))
-
-      setDemandaFilteredData(filteredDemanda)
-      setDemandaRecordsCount(filteredDemanda.length)
-
-      // ===== 3. CENARIOS_PERDAS.CSV (NOVO) =====
-      const responsePerdas = await fetch('/cenarios_perdas.csv')
-      if (!responsePerdas.ok) {
-        throw new Error('Failed to fetch perdas data')
-      }
-
-      const textPerdas = await responsePerdas.text()
-      const cleanedTextPerdas = textPerdas.replace(/^\ufeff/, '')
-      const linesPerdas = cleanedTextPerdas.split('\n').filter((line) => line.trim() !== '')
-
-      const headersPerdas = linesPerdas[0].split(',').map((h) => h.trim())
-
-      const parsedPerdas: any[] = []
-
-      for (let i = 1; i < linesPerdas.length; i++) {
-        const parts = linesPerdas[i].split(',')
-        const record: any = {}
-        headersPerdas.forEach((header, index) => {
-          record[header] = isNaN(Number(parts[index])) ? parts[index].trim() : Number(parts[index])
-        })
-        parsedPerdas.push(record)
-      }
-
-      // Filtrar por cenario_perdas
-      const filterKeyPerdas = normalizeString(indicePerda)
-      const filteredPerdas: PerdasRow[] = parsedPerdas
-        .filter((record) => normalizeString(record.cenario_perdas) === filterKeyPerdas)
-        .map((record) => ({
-          cenario_perdas: record.cenario_perdas,
-          perdas_pct: Number(record.perdas_pct),
-        }))
-
-      setPerdasFilteredData(filteredPerdas)
-      setPerdasRecordsCount(filteredPerdas.length)
-
-      setShowDemandaPerdas(true)
-    } catch (err) {
-      console.error('Erro ao importar:', err)
-      alert('Erro ao executar a simulação')
-    } finally {
-      setLoadingSimulation(false)
+    if (demandaRecordsCount !== perdasRecordsCount || demandaRecordsCount !== vazaoRecordsCount) {
+      alert(
+        `Quantidades diferentes: Demanda ${demandaRecordsCount}, Perdas ${perdasRecordsCount}, Vazão ${vazaoRecordsCount}`,
+      )
+      return
     }
+
+    // Merge data
+    const merged: SimulationRecord[] = vazaoFiltered.map((row: any, i: number) => ({
+      mes: row.mes,
+      vazao_captada: row.vazao_captada,
+      demanda_1000m3_mes: demFiltered[i].demanda_1000m3_mes,
+      perdas_pct: perFiltered[i].perdas_pct,
+      demanda_m3_mes: demFiltered[i].demanda_1000m3_mes * 1000,
+      deficit: Math.max(0, demFiltered[i].demanda_1000m3_mes * 1000 - row.vazao_captada),
+      superavit: Math.max(0, row.vazao_captada - demFiltered[i].demanda_1000m3_mes * 1000),
+    }))
+
+    setFilteredData(vazaoFiltered)
+    setDemandaFilteredData(demFiltered)
+    setPerdasFilteredData(perFiltered)
+    setMergedSimulationData(merged)
+    setShowDashboard(true)
   }
 
-  // ===== CÁLCULOS DE RESUMO =====
-  const totalVolume_Captado = filteredData.reduce(
-    (sum, item) => sum + (item.Volume_Captado || 0),
-    0,
-  )
-  const totalDemanda = filteredData.reduce((sum, item) => sum + (item.Demanda || 0), 0)
-  const totalCapex = filteredData.reduce((sum, item) => sum + (item.CAPEX || 0), 0)
-  const totalOpex = filteredData.reduce((sum, item) => sum + (item.OPEX || 0), 0)
+  const formatNumber = (num: number): string => num.toLocaleString('pt-BR')
+  const formatPercent = (pct: number): string => pct.toFixed(2) + '%'
 
-  if (loading) {
-    return <div className="p-4">Carregando cenários...</div>
-  }
-
-  if (error) {
-    return <div className="p-4 text-red-600">Erro: {error}</div>
-  }
+  const totalMeses = mergedSimulationData.length
+  const volumeCaptadoTotal = mergedSimulationData.reduce((sum, r) => sum + r.vazao_captada, 0)
+  const volumeDemandadoTotal = mergedSimulationData.reduce((sum, r) => sum + r.demanda_m3_mes, 0)
+  const demandaTotal = mergedSimulationData.reduce((sum, r) => sum + r.demanda_1000m3_mes, 0)
+  const perdasMedia =
+    totalMeses > 0 ? mergedSimulationData.reduce((sum, r) => sum + r.perdas_pct, 0) / totalMeses : 0
 
   return (
-    <div className="space-y-4 p-4">
-      {/* ===== CARD DE SELEÇÃO DE CENÁRIOS =====*/}
-      <Card>
-        <CardHeader>
-          <CardTitle>Cenários para simulação</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Select value={selectedScenario} onValueChange={setSelectedScenario}>
-            <SelectTrigger>
-              <SelectValue placeholder="Selecione um cenário" />
-            </SelectTrigger>
-            <SelectContent>
-              {scenarios.map((scenario, index) => (
-                <SelectItem
-                  key={index}
-                  value={`${scenario.Fonte} | ${scenario.cenario} | ${scenario.estrategia}`}
-                >
-                  {`${scenario.Fonte} | ${scenario.cenario} | ${scenario.estrategia}`}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </CardContent>
-      </Card>
-
-      {/* ===== BOTÃO EXECUTAR =====*/}
-      <Button
-        onClick={handleImportSimulation}
-        disabled={loadingSimulation || !selectedScenario}
-        className="w-full"
-      >
-        {loadingSimulation ? 'Carregando...' : 'Executar a Simulação'}
-      </Button>
-
-      {/* ===== SEÇÃO: CONFIGURAÇÃO DE DEMANDA E PERDAS =====*/}
-      <div className="space-y-4 mt-8">
-        <h2 className="text-xl font-bold">Configuração de Demanda e Perdas</h2>
-
-        {/* CARDS LADO A LADO */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* CARD 1: DEMANDA DE CONSUMO */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Demanda de consumo</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Combobox: Cenários */}
-              <div>
-                <label className="block text-sm font-medium mb-2">Cenários</label>
-                <Select value={demandaCenario} onValueChange={setDemandaCenario}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione um cenário" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Estagnação populacional">Estagnação populacional</SelectItem>
-                    <SelectItem value="Crescimento tendencial">Crescimento tendencial</SelectItem>
-                    <SelectItem value="Crescimento acelerado">Crescimento acelerado</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Combobox: Consumo */}
-              <div>
-                <label className="block text-sm font-medium mb-2">Consumo</label>
-                <Select value={demandaConsumo} onValueChange={setDemandaConsumo}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione consumo" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Consumo crescente (até 250 L/pcd)">
-                      Crescente - até 250 L/pcd
-                    </SelectItem>
-                    <SelectItem value="Consumo estável (215 L/pcd)">Estável - 215 L/pcd</SelectItem>
-                    <SelectItem value="Consumo decrescente (até 180 L/pcd)">
-                      Decrescente - até 180 L/pcd
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* CARD 2: CENÁRIOS DE PERDAS */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Cenários de perdas</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {/* Combobox: Índice de Perdas */}
-              <div>
-                <label className="block text-sm font-medium mb-2">Índice de perdas</label>
-                <Select value={indicePerda} onValueChange={setIndicePerda}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione índice" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Perdas → 30%">30%</SelectItem>
-                    <SelectItem value="Perdas → 28%">28%</SelectItem>
-                    <SelectItem value="Perdas → 26%">26%</SelectItem>
-                    <SelectItem value="Perdas → 24%">24%</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardContent>
-          </Card>
+    <div className="container mx-auto p-6 space-y-8 max-w-7xl">
+      {/* Card de Cenários */}
+      <div>
+        <h2 className="text-2xl font-bold mb-4">Cenários</h2>
+        <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-6">
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-2">Arquivo cenarios.csv</label>
+              <input
+                type="file"
+                accept=".csv"
+                className="border border-gray-300 px-3 py-2 rounded-md w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+                onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                  const file = e.target.files?.[0]
+                  if (file) handleCenariosUpload(file)
+                }}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">Coluna Vazão Captada</label>
+              <select
+                value={vazaoColumn}
+                onChange={(e) => setVazaoColumn(e.target.value)}
+                className="border border-gray-300 px-3 py-2 rounded-md w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Selecione...</option>
+                {cenariosColumns.map((col) => (
+                  <option key={col} value={col}>
+                    {col}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">Fator de Normalização</label>
+              <input
+                type="number"
+                value={normalizeFactor}
+                onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                  setNormalizeFactor(parseFloat(e.target.value) || 30)
+                }
+                className="border border-gray-300 px-3 py-2 rounded-md w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Ex: 30"
+              />
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* ===== CARDS DE RESUMO (aparecem após importação) =====*/}
-      {showSummary && filteredData.length > 0 && (
-        <div className="space-y-4 mt-8">
-          <h2 className="text-xl font-bold">Resumo dos Dados Filtrados</h2>
+      {/* Configuração de Demanda e Perdas */}
+      <div>
+        <h2 className="text-2xl font-bold mb-4">Configuração de Demanda e Perdas</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          {/* Card Demanda */}
+          <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-6">
+            <h3 className="text-lg font-semibold mb-4">Demanda</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">Arquivo demanda.csv</label>
+                <input
+                  type="file"
+                  accept=".csv"
+                  className="border border-gray-300 px-3 py-2 rounded-md w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                    const file = e.target.files?.[0]
+                    if (file) handleDemandaUpload(file)
+                  }}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Coluna Demanda (1000m³/mês)
+                </label>
+                <select
+                  value={demandaColumn}
+                  onChange={(e) => setDemandaColumn(e.target.value)}
+                  className="border border-gray-300 px-3 py-2 rounded-md w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Selecione...</option>
+                  {demandaColumns.map((col) => (
+                    <option key={col} value={col}>
+                      {col}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-            {/* Card: Quantidade de Registros */}
-            <Card className="border-l-4 border-l-gray-400">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm">Total de meses</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-gray-700">{filteredData.length}</div>
-              </CardContent>
-            </Card>
-
-            {/* Card: Vazão Captada Total */}
-            <Card className="border-l-4 border-l-green-500">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm">Total de volume captado</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-green-600">
-                  {formatNumber(totalVolume_Captado)}
-                </div>
-                <p className="text-xs text-gray-500 mt-2">m³</p>
-              </CardContent>
-            </Card>
-
-            {/* Card: Demanda Total */}
-            <Card className="border-l-4 border-l-blue-500">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm">Total de volume demandado</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-blue-600">{formatNumber(totalDemanda)}</div>
-                <p className="text-xs text-gray-500 mt-2">m³</p>
-              </CardContent>
-            </Card>
-
-            {/* Card: CAPEX Total */}
-            <Card className="border-l-4 border-l-orange-500">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm">Total CAPEX</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-orange-600">
-                  R$ {formatNumber(totalCapex)}
-                </div>
-                <p className="text-xs text-gray-500 mt-2">Investimento</p>
-              </CardContent>
-            </Card>
-
-            {/* Card: OPEX Total */}
-            <Card className="border-l-4 border-l-red-500">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm">Total OPEX</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-red-600">R$ {formatNumber(totalOpex)}</div>
-                <p className="text-xs text-gray-500 mt-2">Operação</p>
-              </CardContent>
-            </Card>
+          {/* Card Perdas */}
+          <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-6">
+            <h3 className="text-lg font-semibold mb-4">Perdas</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">Arquivo perdas.csv</label>
+                <input
+                  type="file"
+                  accept=".csv"
+                  className="border border-gray-300 px-3 py-2 rounded-md w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                    const file = e.target.files?.[0]
+                    if (file) handlePerdasUpload(file)
+                  }}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Coluna Perdas (%)</label>
+                <select
+                  value={perdasColumn}
+                  onChange={(e) => setPerdasColumn(e.target.value)}
+                  className="border border-gray-300 px-3 py-2 rounded-md w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Selecione...</option>
+                  {perdasColumns.map((col) => (
+                    <option key={col} value={col}>
+                      {col}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
           </div>
         </div>
-      )}
+        <button
+          onClick={handleImportSimulation}
+          className="bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-8 rounded-lg transition-colors"
+        >
+          Executar a Simulação
+        </button>
+      </div>
 
-      {/* ===== CARDS DE DEMANDA E PERDAS FILTRADOS =====*/}
-      {showDemandaPerdas && (
-        <div className="space-y-4 mt-8">
-          <h2 className="text-xl font-bold">Dados Filtrados de Demanda e Perdas</h2>
+      {/* Dashboard */}
+      {showDashboard && mergedSimulationData.length > 0 && (
+        <div>
+          <h2 className="text-2xl font-bold mb-6">Dashboard</h2>
+          {/* Linha 1: 5 cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+            <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-6 text-center">
+              <h3 className="text-sm font-medium text-gray-500 mb-1">Total Meses</h3>
+              <p className="text-2xl font-bold text-gray-900">{totalMeses}</p>
+            </div>
+            <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-6 text-center">
+              <h3 className="text-sm font-medium text-gray-500 mb-1">Volume Captado Total</h3>
+              <p className="text-2xl font-bold text-gray-900">
+                {formatNumber(volumeCaptadoTotal)} m³
+              </p>
+            </div>
+            <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-6 text-center">
+              <h3 className="text-sm font-medium text-gray-500 mb-1">Volume Demandado Total</h3>
+              <p className="text-2xl font-bold text-gray-900">
+                {formatNumber(volumeDemandadoTotal)} m³
+              </p>
+            </div>
+            <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-6 text-center">
+              <h3 className="text-sm font-medium text-gray-500 mb-1">Demanda 1000m³/mês Total</h3>
+              <p className="text-2xl font-bold text-gray-900">{formatNumber(demandaTotal)}</p>
+            </div>
+            <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-6 text-center">
+              <h3 className="text-sm font-medium text-gray-500 mb-1">Perdas % Média</h3>
+              <p className="text-2xl font-bold text-gray-900">{formatPercent(perdasMedia)}</p>
+            </div>
+          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Card: Dados de Demanda */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Dados de Demanda Filtrados</CardTitle>
-                <p className="text-xs text-gray-500 mt-2">
-                  Total de registros: {demandaRecordsCount}
-                </p>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Cenário Demanda</TableHead>
-                      <TableHead>Demanda (1000m³/mês)</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {demandaFilteredData.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={2} className="text-center py-4 text-gray-500">
-                          Nenhum registro encontrado
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      demandaFilteredData.map((row, index) => (
-                        <TableRow key={index}>
-                          <TableCell>{row.cenario_demanda}</TableCell>
-                          <TableCell>{formatNumber(row.Demanda_1000m3_mes)}</TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
+          {/* Linha 2: 3 Gráficos */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Gráfico 1: LineChart Vazão vs Demanda */}
+            <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-6 h-[500px]">
+              <h3 className="text-lg font-semibold mb-4">Vazão vs Demanda ao longo do tempo</h3>
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={mergedSimulationData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="mes" label={{ value: 'Tempo (Mês)', position: 'insideBottom' }} />
+                  <YAxis label={{ value: 'Volume (m³/mês)', angle: -90, position: 'insideLeft' }} />
+                  <Tooltip />
+                  <Legend />
+                  <Line
+                    type="monotone"
+                    dataKey="vazao_captada"
+                    stroke="#8884d8"
+                    name="Vazão Captada"
+                  />
+                  <Line type="monotone" dataKey="demanda_m3_mes" stroke="#82ca9d" name="Demanda" />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
 
-            {/* Card: Dados de Perdas */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Dados de Perdas Filtrados</CardTitle>
-                <p className="text-xs text-gray-500 mt-2">
-                  Total de registros: {perdasRecordsCount}
-                </p>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Cenário Perdas</TableHead>
-                      <TableHead>Perdas (%)</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {perdasFilteredData.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={2} className="text-center py-4 text-gray-500">
-                          Nenhum registro encontrado
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      perdasFilteredData.map((row, index) => (
-                        <TableRow key={index}>
-                          <TableCell>{row.cenario_perdas}</TableCell>
-                          <TableCell>{formatNumber(row.perdas_pct)}</TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
+            {/* Gráfico 2: Scatter Demanda vs Perdas */}
+            <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-6 h-[500px]">
+              <h3 className="text-lg font-semibold mb-4">Correlação Demanda vs Perdas</h3>
+              <ResponsiveContainer width="100%" height="100%">
+                <ScatterChart>
+                  <CartesianGrid />
+                  <XAxis
+                    type="number"
+                    dataKey="demanda_1000m3_mes"
+                    name="Demanda"
+                    unit=" x1000 m³/mês"
+                  />
+                  <YAxis type="number" dataKey="perdas_pct" name="Perdas" unit=" %" />
+                  <Tooltip />
+                  <Scatter name="Demanda-Perdas" data={mergedSimulationData} fill="#8884d8" />
+                </ScatterChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Gráfico 3: BarChart Déficit/Superávit */}
+            <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-6 h-[500px]">
+              <h3 className="text-lg font-semibold mb-4">Déficit / Superávit Mensal</h3>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={mergedSimulationData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="mes" />
+                  <YAxis label={{ value: 'Volume (m³/mês)', angle: -90, position: 'insideLeft' }} />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="deficit" stackId="a" fill="#ef4444" name="Déficit" />
+                  <Bar dataKey="superavit" stackId="a" fill="#10b981" name="Superávit" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         </div>
       )}
