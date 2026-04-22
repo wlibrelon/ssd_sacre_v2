@@ -109,7 +109,7 @@ const CenariosComponent: React.FC = () => {
   // ===== IMPORTAÇÃO E FILTRAGEM (SILENCIOSA) =====
   const handleImportSimulation = async () => {
     if (!selectedScenario) {
-      alert('Selecione um cenário antes de importar dados')
+      alert('Selecione um cenário antes de executar a simulação')
       return
     }
 
@@ -157,7 +157,7 @@ const CenariosComponent: React.FC = () => {
       setFilteredData(filtered)
       setShowSummary(true)
     } catch (err) {
-      alert('Erro ao importar dados de simulação')
+      alert('Erro ao executar a simulação')
     } finally {
       setLoadingSimulation(false)
     }
@@ -202,16 +202,14 @@ const CenariosComponent: React.FC = () => {
           </Select>
         </CardContent>
       </Card>
-
       {/* ===== BOTÃO IMPORTAR =====*/}
       <Button
         onClick={handleImportSimulation}
         disabled={loadingSimulation || !selectedScenario}
         className="w-full"
       >
-        {loadingSimulation ? 'Carregando...' : 'Importar Dados de Simulação'}
+        {loadingSimulation ? 'Carregando...' : 'Executar a Simulação'}
       </Button>
-
       {/* ===== SEÇÃO: CONFIGURAÇÃO DE DEMANDA E PERDAS =====*/}
       <div className="space-y-4 mt-8">
         <h2 className="text-xl font-bold">Configuração de Demanda e Perdas</h2>
@@ -285,7 +283,6 @@ const CenariosComponent: React.FC = () => {
           </Card>
         </div>
       </div>
-
       {/* ===== CARDS DE RESUMO (aparecem após importação) =====*/}
       {showSummary && filteredData.length > 0 && (
         <div className="space-y-4 mt-8">
@@ -295,7 +292,7 @@ const CenariosComponent: React.FC = () => {
             {/* Card: Quantidade de Registros */}
             <Card className="border-l-4 border-l-gray-400">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm">Quantidade de Registros</CardTitle>
+                <CardTitle className="text-sm">Total de meses</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold text-gray-700">{filteredData.length}</div>
@@ -305,7 +302,7 @@ const CenariosComponent: React.FC = () => {
             {/* Card: Vazão Captada Total */}
             <Card className="border-l-4 border-l-green-500">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm">Vazão Captada Total</CardTitle>
+                <CardTitle className="text-sm">Total de volume captado</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-green-600">
@@ -318,7 +315,7 @@ const CenariosComponent: React.FC = () => {
             {/* Card: Demanda Total */}
             <Card className="border-l-4 border-l-blue-500">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm">Demanda Total</CardTitle>
+                <CardTitle className="text-sm">Total de volume demandado</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-blue-600">{formatNumber(totalDemanda)}</div>
@@ -329,7 +326,7 @@ const CenariosComponent: React.FC = () => {
             {/* Card: CAPEX Total */}
             <Card className="border-l-4 border-l-orange-500">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm">CAPEX Total</CardTitle>
+                <CardTitle className="text-sm">Total CAPEX</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-orange-600">
@@ -342,7 +339,7 @@ const CenariosComponent: React.FC = () => {
             {/* Card: OPEX Total */}
             <Card className="border-l-4 border-l-red-500">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm">OPEX Total</CardTitle>
+                <CardTitle className="text-sm">Total OPEX</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-red-600">R$ {formatNumber(totalOpex)}</div>
@@ -352,12 +349,14 @@ const CenariosComponent: React.FC = () => {
           </div>
         </div>
       )}
-
-      {/* ===== BOTÃO SALVAR CONFIGURAÇÃO (no fim da página) =====*/}
+      // {/* ===== BOTÃO SALVAR CONFIGURAÇÃO (no fim da página) =====*/}
+      //{' '}
       <div className="mt-12 pt-8 border-t">
+        //{' '}
         <Button className="w-full bg-green-600 hover:bg-green-700" size="lg">
-          Salvar Configuração
+          // Salvar Configuração //{' '}
         </Button>
+        //{' '}
       </div>
     </div>
   )
