@@ -47,6 +47,11 @@ type PerdasRow = {
   perdas_pct: number
 }
 
+type MergedSimulationRecord = SimulationRecord & {
+  Demanda_1000m3_mes: number
+  perdas_pct: number
+}
+
 const CenariosComponent: React.FC = () => {
   const [scenarios, setScenarios] = useState<Scenario[]>([])
   const [selectedScenario, setSelectedScenario] = useState<string>('')
@@ -56,6 +61,7 @@ const CenariosComponent: React.FC = () => {
   const [error, setError] = useState<string>('')
   const [loadingSimulation, setLoadingSimulation] = useState<boolean>(false)
   const [showSummary, setShowSummary] = useState<boolean>(false)
+  const [mergedData, setMergedData] = useState<MergedSimulationRecord[]>([])
 
   // ===== NOVOS ESTADOS PARA DEMANDA E PERDAS =====
   const [demandaCenario, setDemandaCenario] = useState<string>('')
@@ -263,6 +269,19 @@ const CenariosComponent: React.FC = () => {
       setPerdasRecordsCount(filteredPerdas.length)
 
       setShowDemandaPerdas(true)
+
+      // ===== MESCLAGEM DOS 3 DADOS FILTRADOS =====
+      if (
+        filteredSimulacao.length === demandaFilteredData.length &&
+        demandaFilteredData.length === perdasFilteredData.length
+      ) {
+        const merged: MergedSimulationRecord[] = filteredSimulacao.map((sim, index) => ({
+          ...sim,
+          Demanda_1000m3_mes: demandaFilteredData[index]?.Demanda_1000m3_mes || 0,
+          perdas_pct: perdasFilteredData[index]?.perdas_pct || 0,
+        }))
+        setMergedData(merged)
+      }
     } catch (err) {
       console.error('Erro ao importar:', err)
       alert('Erro ao executar a simulação')
@@ -412,7 +431,6 @@ const CenariosComponent: React.FC = () => {
                 <div className="text-3xl font-bold text-gray-700">{filteredData.length}</div>
               </CardContent>
             </Card>
-
             {/* Card: Vazão Captada Total */}
             <Card className="border-l-4 border-l-green-500">
               <CardHeader className="pb-3">
@@ -425,7 +443,6 @@ const CenariosComponent: React.FC = () => {
                 <p className="text-xs text-gray-500 mt-2">m³</p>
               </CardContent>
             </Card>
-
             {/* Card: Demanda Total */}
             <Card className="border-l-4 border-l-blue-500">
               <CardHeader className="pb-3">
@@ -436,7 +453,6 @@ const CenariosComponent: React.FC = () => {
                 <p className="text-xs text-gray-500 mt-2">m³</p>
               </CardContent>
             </Card>
-
             {/* Card: CAPEX Total */}
             <Card className="border-l-4 border-l-orange-500">
               <CardHeader className="pb-3">
@@ -449,7 +465,6 @@ const CenariosComponent: React.FC = () => {
                 <p className="text-xs text-gray-500 mt-2">Investimento</p>
               </CardContent>
             </Card>
-
             {/* Card: OPEX Total */}
             <Card className="border-l-4 border-l-red-500">
               <CardHeader className="pb-3">
@@ -460,6 +475,104 @@ const CenariosComponent: React.FC = () => {
                 <p className="text-xs text-gray-500 mt-2">Operação</p>
               </CardContent>
             </Card>
+            ///
+            {/* ===== DASHBOARD DE SENSIBILIDADE HIDROLÓGICA =====*/}
+            {mergedData.length > 0 && (
+              <div className="space-y-4 mt-8">
+                <h2 className="text-xl font-bold">Dashboard de Sensibilidade Hidrológica</h2>
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                  {/* Card 1: Vazão Ajustada Média */}
+                  <Card className="border-l-4 border-l-purple-500">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm">Vazão Ajustada Média</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold text-purple-600">
+                        {formatNumber(
+                          mergedData.reduce(
+                            (sum, d) => sum + d.Volume_Captado * (1 - d.perdas_pct / 100),
+                            0,
+                          ) / mergedData.length,
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-500 mt-2">m³</p>
+                    </CardContent>
+                  </Card>
+
+                  {/* Card 2: Perda Total */}
+                  <Card className="border-l-4 border-l-pink-500">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm">Perda Total</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold text-pink-600">
+                        {formatNumber(
+                          mergedData.reduce(
+                            (sum, d) => sum + d.Volume_Captado * (d.perdas_pct / 100),
+                            0,
+                          ),
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-500 mt-2">m³</p>
+                    </CardContent>
+                  </Card>
+
+                  {/* Card 3: Déficit Médio */}
+                  <Card className="border-l-4 border-l-yellow-500">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm">Déficit Médio</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold text-yellow-600">
+                        {formatNumber(
+                          mergedData.reduce((sum, d) => {
+                            const ajustada = d.Volume_Captado * (1 - d.perdas_pct / 100)
+                            return sum + Math.max(0, d.Demanda - ajustada)
+                          }, 0) / mergedData.length,
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-500 mt-2">m³</p>
+                    </CardContent>
+                  </Card>
+
+                  {/* Card 4: Superávit Médio */}
+                  <Card className="border-l-4 border-l-teal-500">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm">Superávit Médio</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold text-teal-600">
+                        {formatNumber(
+                          mergedData.reduce((sum, d) => {
+                            const ajustada = d.Volume_Captado * (1 - d.perdas_pct / 100)
+                            return sum + Math.max(0, ajustada - d.Demanda)
+                          }, 0) / mergedData.length,
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-500 mt-2">m³</p>
+                    </CardContent>
+                  </Card>
+
+                  {/* Card 5: Taxa de Cobertura */}
+                  <Card className="border-l-4 border-l-indigo-500">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm">Taxa de Cobertura Média</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold text-indigo-600">
+                        {(
+                          mergedData.reduce((sum, d) => {
+                            const ajustada = d.Volume_Captado * (1 - d.perdas_pct / 100)
+                            return sum + (d.Demanda > 0 ? (ajustada / d.Demanda) * 100 : 0)
+                          }, 0) / mergedData.length
+                        ).toFixed(1)}
+                        %
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
