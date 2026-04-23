@@ -47,6 +47,11 @@ type PerdasRow = {
   perdas_pct: number
 }
 
+type MergedRecord = SimulationRecord & {
+  Demanda_1000m3_mes: number
+  perdas_pct: number
+}
+
 const CenariosComponent: React.FC = () => {
   const [scenarios, setScenarios] = useState<Scenario[]>([])
   const [selectedScenario, setSelectedScenario] = useState<string>('')
@@ -65,9 +70,8 @@ const CenariosComponent: React.FC = () => {
   // ===== NOVOS ESTADOS PARA DADOS FILTRADOS =====
   const [demandaFilteredData, setDemandaFilteredData] = useState<DemandaRow[]>([])
   const [perdasFilteredData, setPerdasFilteredData] = useState<PerdasRow[]>([])
-  const [demandaRecordsCount, setDemandaRecordsCount] = useState<number>(0)
-  const [perdasRecordsCount, setPerdasRecordsCount] = useState<number>(0)
-  const [showDemandaPerdas, setShowDemandaPerdas] = useState<boolean>(false)
+  const [mergedData, setMergedData] = useState<MergedRecord[]>([])
+  const [showMergedTable, setShowMergedTable] = useState<boolean>(false)
 
   // ===== FUNÇÃO DE NORMALIZAÇÃO AGRESSIVA =====
   const normalizeString = (str: string): string => {
@@ -146,12 +150,11 @@ const CenariosComponent: React.FC = () => {
 
     setLoadingSimulation(true)
     setShowSummary(false)
-    setShowDemandaPerdas(false)
-    setDemandaFilteredData([])
-    setPerdasFilteredData([])
+    setShowMergedTable(false)
+    setMergedData([])
 
     try {
-      // ===== 1. DADOS_SIMULACAO_NOVO.CSV (IDÊNTICO AO ORIGINAL) =====
+      // ===== 1. DADOS_SIMULACAO_NOVO.CSV =====
       const responseSimulacao = await fetch('/Dados_Simulacao_novo.csv')
       if (!responseSimulacao.ok) {
         throw new Error('Failed to fetch simulation data')
@@ -192,7 +195,7 @@ const CenariosComponent: React.FC = () => {
       setFilteredData(filteredSimulacao)
       setShowSummary(true)
 
-      // ===== 2. CENARIOS_DEMANDA.CSV (NOVO) =====
+      // ===== 2. CENARIOS_DEMANDA.CSV =====
       const responseDemanda = await fetch('/cenarios_demanda.csv')
       if (!responseDemanda.ok) {
         throw new Error('Failed to fetch demanda data')
@@ -225,9 +228,8 @@ const CenariosComponent: React.FC = () => {
         }))
 
       setDemandaFilteredData(filteredDemanda)
-      setDemandaRecordsCount(filteredDemanda.length)
 
-      // ===== 3. CENARIOS_PERDAS.CSV (NOVO) =====
+      // ===== 3. CENARIOS_PERDAS.CSV =====
       const responsePerdas = await fetch('/cenarios_perdas.csv')
       if (!responsePerdas.ok) {
         throw new Error('Failed to fetch perdas data')
@@ -260,9 +262,25 @@ const CenariosComponent: React.FC = () => {
         }))
 
       setPerdasFilteredData(filteredPerdas)
-      setPerdasRecordsCount(filteredPerdas.length)
 
-      setShowDemandaPerdas(true)
+      // ===== MESCLAGEM DOS 3 DADOS =====
+      if (
+        filteredSimulacao.length === filteredDemanda.length &&
+        filteredDemanda.length === filteredPerdas.length &&
+        filteredDemanda.length > 0
+      ) {
+        const merged: MergedRecord[] = filteredSimulacao.map((sim, index) => ({
+          ...sim,
+          Demanda_1000m3_mes: filteredDemanda[index]?.Demanda_1000m3_mes || 0,
+          perdas_pct: filteredPerdas[index]?.perdas_pct || 0,
+        }))
+        setMergedData(merged)
+        setShowMergedTable(true)
+      } else {
+        alert(
+          `Quantidades incompatíveis: Simulação=${filteredSimulacao.length}, Demanda=${filteredDemanda.length}, Perdas=${filteredPerdas.length}`,
+        )
+      }
     } catch (err) {
       console.error('Erro ao importar:', err)
       alert('Erro ao executar a simulação')
@@ -461,6 +479,66 @@ const CenariosComponent: React.FC = () => {
               </CardContent>
             </Card>
           </div>
+        </div>
+      )}
+
+      {/* ===== TABELA DE DADOS MESCLADOS =====*/}
+      {showMergedTable && mergedData.length > 0 && (
+        <div className="space-y-4 mt-8">
+          <h2 className="text-xl font-bold">Tabela Mesclada - Verificação</h2>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-xs">Tempo</TableHead>
+                      <TableHead className="text-xs">Fonte</TableHead>
+                      <TableHead className="text-xs">Cenário</TableHead>
+                      <TableHead className="text-xs">Estratégia</TableHead>
+                      <TableHead className="text-xs text-right">Volume Captado</TableHead>
+                      <TableHead className="text-xs text-right">Demanda</TableHead>
+                      <TableHead className="text-xs text-right">CAPEX</TableHead>
+                      <TableHead className="text-xs text-right">OPEX</TableHead>
+                      <TableHead className="text-xs text-right">Demanda 1000m³/mês</TableHead>
+                      <TableHead className="text-xs text-right">Perdas %</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {mergedData.slice(0, 20).map((row, index) => (
+                      <TableRow key={index}>
+                        <TableCell className="text-xs">{row.Tempo}</TableCell>
+                        <TableCell className="text-xs">{row.Fonte}</TableCell>
+                        <TableCell className="text-xs">{row.cenario}</TableCell>
+                        <TableCell className="text-xs">{row.estrategia}</TableCell>
+                        <TableCell className="text-xs text-right">
+                          {formatNumber(row.Volume_Captado)}
+                        </TableCell>
+                        <TableCell className="text-xs text-right">
+                          {formatNumber(row.Demanda)}
+                        </TableCell>
+                        <TableCell className="text-xs text-right">
+                          {formatNumber(row.CAPEX)}
+                        </TableCell>
+                        <TableCell className="text-xs text-right">
+                          {formatNumber(row.OPEX)}
+                        </TableCell>
+                        <TableCell className="text-xs text-right">
+                          {formatNumber(row.Demanda_1000m3_mes)}
+                        </TableCell>
+                        <TableCell className="text-xs text-right">
+                          {formatNumber(row.perdas_pct)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              <p className="text-xs text-gray-500 mt-4">
+                Exibindo 20 primeiros registros de {mergedData.length} registros mesclados
+              </p>
+            </CardContent>
+          </Card>
         </div>
       )}
     </div>
