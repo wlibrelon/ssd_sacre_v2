@@ -30,7 +30,6 @@ type SimulationRecord = {
   cenario: string
   estrategia: string
   Volume_Captado: number
-  //  Demanda: number
   CAPEX: number
   OPEX: number
   Aceitacao_Social: number
@@ -497,7 +496,6 @@ const CenariosComponent: React.FC = () => {
                       <TableHead className="text-xs">Cenário</TableHead>
                       <TableHead className="text-xs">Estratégia</TableHead>
                       <TableHead className="text-xs text-right">Volume Captado</TableHead>
-                      // <TableHead className="text-xs text-right">Demanda</TableHead>
                       <TableHead className="text-xs text-right">CAPEX</TableHead>
                       <TableHead className="text-xs text-right">OPEX</TableHead>
                       <TableHead className="text-xs text-right">Demanda 1000m³/mês</TableHead>
