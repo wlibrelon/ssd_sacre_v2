@@ -514,8 +514,10 @@ const CenariosComponent: React.FC = () => {
                         <TableCell className="text-xs text-right">
                           {formatNumber(row.Volume_Captado)}
                         </TableCell>
+                        //{' '}
                         <TableCell className="text-xs text-right">
-                          {formatNumber(row.Demanda)}
+                          // {formatNumber(row.Demanda)}
+                          //{' '}
                         </TableCell>
                         <TableCell className="text-xs text-right">
                           {formatNumber(row.CAPEX)}
