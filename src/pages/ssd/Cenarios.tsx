@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
+import Papa from 'papaparse'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Select,
@@ -8,571 +9,480 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
 
 type Scenario = {
-  Fonte: string
   cenario: string
-  estrategia: string
 }
 
 type SimulationRecord = {
-  scenario_key: string
-  Tempo: string
-  Fonte: string
+  Mes: string
   cenario: string
-  estrategia: string
+  Vazao_Ajustada: number
   Volume_Captado: number
   Demanda: number
   CAPEX: number
   OPEX: number
-  Aceitacao_Social: number
-  [key: string]: any
 }
 
 type DemandaRow = {
-  cenario_demanda: string
-  Demanda_1000m3_mes: number
+  Cenario: string
+  Consumo: string
+  Mes: string
+  Demanda: number
 }
 
 type PerdasRow = {
-  cenario_perdas: string
-  perdas_pct: number
+  Indice_Perda: string
+  Mes: string
+  Perda: number
 }
 
 type MergedSimulationRecord = SimulationRecord & {
-  Demanda_1000m3_mes: number
-  perdas_pct: number
+  Demanda: number
+  Perda: number
 }
 
-const CenariosComponent: React.FC = () => {
+const Cenarios: React.FC = () => {
   const [scenarios, setScenarios] = useState<Scenario[]>([])
   const [selectedScenario, setSelectedScenario] = useState<string>('')
   const [simulationData, setSimulationData] = useState<SimulationRecord[]>([])
   const [filteredData, setFilteredData] = useState<SimulationRecord[]>([])
-  const [loading, setLoading] = useState<boolean>(true)
-  const [error, setError] = useState<string>('')
-  const [loadingSimulation, setLoadingSimulation] = useState<boolean>(false)
-  const [showSummary, setShowSummary] = useState<boolean>(false)
+  const [demandaData, setDemandaData] = useState<DemandaRow[]>([])
+  const [perdasData, setPerdasData] = useState<PerdasRow[]>([])
   const [mergedData, setMergedData] = useState<MergedSimulationRecord[]>([])
-
-  // ===== NOVOS ESTADOS PARA DEMANDA E PERDAS =====
   const [demandaCenario, setDemandaCenario] = useState<string>('')
   const [demandaConsumo, setDemandaConsumo] = useState<string>('')
   const [indicePerda, setIndicePerda] = useState<string>('')
 
-  // ===== NOVOS ESTADOS PARA DADOS FILTRADOS =====
-  const [demandaFilteredData, setDemandaFilteredData] = useState<DemandaRow[]>([])
-  const [perdasFilteredData, setPerdasFilteredData] = useState<PerdasRow[]>([])
-  const [demandaRecordsCount, setDemandaRecordsCount] = useState<number>(0)
-  const [perdasRecordsCount, setPerdasRecordsCount] = useState<number>(0)
-  const [showDemandaPerdas, setShowDemandaPerdas] = useState<boolean>(false)
+  const normalizeString = useCallback((str: string): string => {
+    return str
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]/gi, '')
+      .trim()
+      .toLowerCase()
+  }, [])
 
-  // ===== FUNÇÃO DE NORMALIZAÇÃO AGRESSIVA =====
-  const normalizeString = (str: string): string => {
-    let normalized = str.replace(/\ufeff/g, '')
-    normalized = normalized.replace(/\u00a0/g, '')
-    normalized = normalized.replace(/\t/g, '')
-    normalized = normalized.replace(/[\u200b-\u200d]/g, '')
-    normalized = normalized.normalize('NFD')
-    normalized = normalized.toLowerCase()
-    normalized = normalized.trim()
-    return normalized
-  }
-
-  // ===== FUNÇÃO PARA FORMATAR NÚMEROS =====
-  const formatNumber = (num: number): string => {
+  const formatNumber = useCallback((num: number): string => {
     return new Intl.NumberFormat('pt-BR', {
+      style: 'decimal',
       minimumFractionDigits: 0,
       maximumFractionDigits: 2,
     }).format(num)
-  }
-
-  // ===== CARREGAMENTO ORIGINAL DE cenarios.csv =====
-  useEffect(() => {
-    const fetchCsv = async () => {
-      try {
-        const response = await fetch('/cenarios.csv')
-        if (!response.ok) {
-          throw new Error('Failed to fetch CSV')
-        }
-        const text = await response.text()
-        const cleanedText = text.replace(/^\ufeff/, '')
-        const lines = cleanedText.split('\n').filter((line) => line.trim() !== '')
-
-        const parsedScenarios: Scenario[] = []
-
-        for (let i = 1; i < lines.length; i++) {
-          const line = lines[i]
-          const parts = line.split(',').map((p) => p.trim())
-
-          if (parts.length >= 3) {
-            const Fonte = parts[0].normalize('NFD')
-            const cenario = parts[1].normalize('NFD')
-            const estrategia = parts[2].normalize('NFD')
-
-            parsedScenarios.push({
-              Fonte,
-              cenario,
-              estrategia,
-            })
-          }
-        }
-
-        setScenarios(parsedScenarios)
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Unknown error')
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchCsv()
   }, [])
 
-  // ===== IMPORTAÇÃO E FILTRAGEM COM TRÊS CSVS =====
-  const handleImportSimulation = async () => {
-    // Validação pré-importação
-    if (!demandaCenario || !demandaConsumo || !indicePerda) {
-      alert('Selecione todos os campos de demanda e perdas')
-      return
-    }
+  useEffect(() => {
+    Papa.parse('/cenarios.csv', {
+      download: true,
+      header: true,
+      skipEmptyLines: true,
+      complete: (results) => {
+        const data = results.data as any[]
+        const cleanData = data
+          .filter((row) => row && row.cenario)
+          .map((row) => ({ cenario: row.cenario }))
+        setScenarios(cleanData as Scenario[])
+      },
+    })
+  }, [])
 
-    if (!selectedScenario) {
-      alert('Selecione um cenário antes de executar a simulação')
-      return
-    }
-
-    setLoadingSimulation(true)
-    setShowSummary(false)
-    setShowDemandaPerdas(false)
-    setDemandaFilteredData([])
-    setPerdasFilteredData([])
-
-    try {
-      // ===== 1. DADOS_SIMULACAO_NOVO.CSV (IDÊNTICO AO ORIGINAL) =====
-      const responseSimulacao = await fetch('/Dados_Simulacao_novo.csv')
-      if (!responseSimulacao.ok) {
-        throw new Error('Failed to fetch simulation data')
+  const handleScenarioChange = useCallback(
+    (value: string) => {
+      setSelectedScenario(value)
+      setMergedData([])
+      if (simulationData.length > 0) {
+        const filtered = simulationData.filter((row) => normalizeString(row.cenario) === value)
+        setFilteredData(filtered)
       }
-
-      const textSimulacao = await responseSimulacao.text()
-      const cleanedTextSimulacao = textSimulacao.replace(/^\ufeff/, '')
-      const linesSimulacao = cleanedTextSimulacao.split('\n').filter((line) => line.trim() !== '')
-
-      const headersSimulacao = linesSimulacao[0].split(',').map((h) => h.trim())
-
-      const parsedSimulacao: any[] = []
-
-      for (let i = 1; i < linesSimulacao.length; i++) {
-        const parts = linesSimulacao[i].split(',')
-        const record: any = {}
-        headersSimulacao.forEach((header, index) => {
-          record[header] = isNaN(Number(parts[index])) ? parts[index].trim() : Number(parts[index])
-        })
-        parsedSimulacao.push(record)
-      }
-
-      // Construir scenario_key dinamicamente
-      const parsedWithKey: SimulationRecord[] = parsedSimulacao.map((record) => ({
-        ...record,
-        scenario_key: `${record.Fonte} | ${record.cenario} | ${record.estrategia}`,
-      }))
-
-      setSimulationData(parsedWithKey)
-
-      // Filtragem silenciosa com normalização
-      const selectedNormalized = normalizeString(selectedScenario)
-      const filteredSimulacao = parsedWithKey.filter((record) => {
-        const recordNormalized = normalizeString(record.scenario_key)
-        return recordNormalized === selectedNormalized
-      })
-
-      setFilteredData(filteredSimulacao)
-      setShowSummary(true)
-
-      // ===== 2. CENARIOS_DEMANDA.CSV (NOVO) =====
-      const responseDemanda = await fetch('/cenarios_demanda.csv')
-      if (!responseDemanda.ok) {
-        throw new Error('Failed to fetch demanda data')
-      }
-
-      const textDemanda = await responseDemanda.text()
-      const cleanedTextDemanda = textDemanda.replace(/^\ufeff/, '')
-      const linesDemanda = cleanedTextDemanda.split('\n').filter((line) => line.trim() !== '')
-
-      const headersDemanda = linesDemanda[0].split(',').map((h) => h.trim())
-
-      const parsedDemanda: any[] = []
-
-      for (let i = 1; i < linesDemanda.length; i++) {
-        const parts = linesDemanda[i].split(',')
-        const record: any = {}
-        headersDemanda.forEach((header, index) => {
-          record[header] = isNaN(Number(parts[index])) ? parts[index].trim() : Number(parts[index])
-        })
-        parsedDemanda.push(record)
-      }
-
-      // Filtrar por cenario_demanda concatenado
-      const filterKeyDemanda = normalizeString(`${demandaCenario} | ${demandaConsumo}`)
-      const filteredDemanda: DemandaRow[] = parsedDemanda
-        .filter((record) => normalizeString(record.cenario_demanda) === filterKeyDemanda)
-        .map((record) => ({
-          cenario_demanda: record.cenario_demanda,
-          Demanda_1000m3_mes: Number(record.Demanda_1000m3_mes),
-        }))
-
-      setDemandaFilteredData(filteredDemanda)
-      setDemandaRecordsCount(filteredDemanda.length)
-
-      // ===== 3. CENARIOS_PERDAS.CSV (NOVO) =====
-      const responsePerdas = await fetch('/cenarios_perdas.csv')
-      if (!responsePerdas.ok) {
-        throw new Error('Failed to fetch perdas data')
-      }
-
-      const textPerdas = await responsePerdas.text()
-      const cleanedTextPerdas = textPerdas.replace(/^\ufeff/, '')
-      const linesPerdas = cleanedTextPerdas.split('\n').filter((line) => line.trim() !== '')
-
-      const headersPerdas = linesPerdas[0].split(',').map((h) => h.trim())
-
-      const parsedPerdas: any[] = []
-
-      for (let i = 1; i < linesPerdas.length; i++) {
-        const parts = linesPerdas[i].split(',')
-        const record: any = {}
-        headersPerdas.forEach((header, index) => {
-          record[header] = isNaN(Number(parts[index])) ? parts[index].trim() : Number(parts[index])
-        })
-        parsedPerdas.push(record)
-      }
-
-      // Filtrar por cenario_perdas
-      const filterKeyPerdas = normalizeString(indicePerda)
-      const filteredPerdas: PerdasRow[] = parsedPerdas
-        .filter((record) => normalizeString(record.cenario_perdas) === filterKeyPerdas)
-        .map((record) => ({
-          cenario_perdas: record.cenario_perdas,
-          perdas_pct: Number(record.perdas_pct),
-        }))
-
-      setPerdasFilteredData(filteredPerdas)
-      setPerdasRecordsCount(filteredPerdas.length)
-
-      setShowDemandaPerdas(true)
-
-      // ===== MESCLAGEM DOS 3 DADOS FILTRADOS =====
-      if (
-        filteredSimulacao.length === demandaFilteredData.length &&
-        demandaFilteredData.length === perdasFilteredData.length
-      ) {
-        const merged: MergedSimulationRecord[] = filteredSimulacao.map((sim, index) => ({
-          ...sim,
-          Demanda_1000m3_mes: demandaFilteredData[index]?.Demanda_1000m3_mes || 0,
-          perdas_pct: perdasFilteredData[index]?.perdas_pct || 0,
-        }))
-        setMergedData(merged)
-      }
-    } catch (err) {
-      console.error('Erro ao importar:', err)
-      alert('Erro ao executar a simulação')
-    } finally {
-      setLoadingSimulation(false)
-    }
-  }
-
-  // ===== CÁLCULOS DE RESUMO =====
-  const totalVolume_Captado = filteredData.reduce(
-    (sum, item) => sum + (item.Volume_Captado || 0),
-    0,
+    },
+    [simulationData, normalizeString],
   )
-  const totalDemanda = filteredData.reduce((sum, item) => sum + (item.Demanda || 0), 0)
-  const totalCapex = filteredData.reduce((sum, item) => sum + (item.CAPEX || 0), 0)
-  const totalOpex = filteredData.reduce((sum, item) => sum + (item.OPEX || 0), 0)
 
-  if (loading) {
-    return <div className="p-4">Carregando cenários...</div>
-  }
+  const handleImportSimulation = useCallback(() => {
+    // Load simulation data
+    Papa.parse('/Dados_Simulacao_novo.csv', {
+      download: true,
+      header: true,
+      skipEmptyLines: true,
+      complete: (results) => {
+        const rawData = results.data as any[]
+        const data: SimulationRecord[] = rawData
+          .filter((row) => row && row.Mes && row.cenario)
+          .map((row) => ({
+            Mes: row.Mes,
+            cenario: row.cenario,
+            Vazao_Ajustada: parseFloat(row.Vazao_Ajustada || '0'),
+            Volume_Captado: parseFloat(row.Volume_Captado || '0'),
+            Demanda: parseFloat(row.Demanda || '0'),
+            CAPEX: parseFloat(row.CAPEX || '0'),
+            OPEX: parseFloat(row.OPEX || '0'),
+          }))
+          .filter((row) => !isNaN(row.Vazao_Ajustada))
+        setSimulationData(data)
+        if (selectedScenario) {
+          const filtered = data.filter((row) => normalizeString(row.cenario) === selectedScenario)
+          setFilteredData(filtered)
+        } else {
+          setFilteredData(data)
+        }
+      },
+    })
 
-  if (error) {
-    return <div className="p-4 text-red-600">Erro: {error}</div>
-  }
+    // Load demanda data
+    Papa.parse('/cenarios_demanda.csv', {
+      download: true,
+      header: true,
+      skipEmptyLines: true,
+      complete: (results) => {
+        const rawData = results.data as any[]
+        const data: DemandaRow[] = rawData
+          .filter((row) => row && row.Mes)
+          .map((row) => ({
+            Cenario: row.Cenario,
+            Consumo: row.Consumo,
+            Mes: row.Mes,
+            Demanda: parseFloat(row.Demanda || '0'),
+          }))
+          .filter((row) => !isNaN(row.Demanda))
+        setDemandaData(data)
+      },
+    })
+
+    // Load perdas data
+    Papa.parse('/cenarios_perdas.csv', {
+      download: true,
+      header: true,
+      skipEmptyLines: true,
+      complete: (results) => {
+        const rawData = results.data as any[]
+        const data: PerdasRow[] = rawData
+          .filter((row) => row && row.Mes)
+          .map((row) => ({
+            Indice_Perda: row.Indice_Perda,
+            Mes: row.Mes,
+            Perda: parseFloat(row.Perda || '0'),
+          }))
+          .filter((row) => !isNaN(row.Perda))
+        setPerdasData(data)
+      },
+    })
+  }, [selectedScenario, normalizeString])
+
+  const demandaCenarios = useMemo(
+    () => Array.from(new Set(demandaData.map((d) => normalizeString(d.Cenario)))),
+    [demandaData, normalizeString],
+  )
+  const demandaConsumos = useMemo(
+    () => Array.from(new Set(demandaData.map((d) => normalizeString(d.Consumo)))),
+    [demandaData, normalizeString],
+  )
+  const indicesPerda = useMemo(
+    () => Array.from(new Set(perdasData.map((p) => normalizeString(p.Indice_Perda)))),
+    [perdasData, normalizeString],
+  )
+
+  const handleExecuteSimulation = useCallback(() => {
+    if (!selectedScenario || filteredData.length === 0) {
+      alert('Selecione um cenário e importe a simulação primeiro.')
+      return
+    }
+    if (!demandaCenario || !demandaConsumo || !indicePerda) {
+      alert('Selecione cenário de demanda, consumo e índice de perda.')
+      return
+    }
+
+    const filteredDemanda = demandaData.filter(
+      (d) =>
+        normalizeString(d.Cenario) === demandaCenario &&
+        normalizeString(d.Consumo) === demandaConsumo,
+    )
+    if (filteredDemanda.length === 0) {
+      alert('Nenhum dado de demanda encontrado para as seleções.')
+      return
+    }
+    const demandaMap = new Map(filteredDemanda.map((d) => [d.Mes, d.Demanda]))
+
+    const filteredPerdas = perdasData.filter((p) => normalizeString(p.Indice_Perda) === indicePerda)
+    if (filteredPerdas.length === 0) {
+      alert('Nenhum dado de perdas encontrado para a seleção.')
+      return
+    }
+    const perdasMap = new Map(filteredPerdas.map((p) => [p.Mes, p.Perda]))
+
+    const merged: MergedSimulationRecord[] = filteredData
+      .map((row) => ({
+        ...row,
+        Demanda: demandaMap.get(row.Mes) || row.Demanda,
+        Perda: perdasMap.get(row.Mes) || 0,
+      }))
+      .filter((m) => m.Mes) // Ensure valid
+
+    setMergedData(merged)
+  }, [
+    selectedScenario,
+    filteredData,
+    demandaData,
+    perdasData,
+    demandaCenario,
+    demandaConsumo,
+    indicePerda,
+    normalizeString,
+  ])
+
+  const summary = useMemo(() => {
+    if (filteredData.length === 0) {
+      return { tempo: 0, volume: 0, demanda: 0, capex: 0, opex: 0 }
+    }
+    const tempo = filteredData.length
+    const volume = filteredData.reduce((sum, r) => sum + r.Volume_Captado, 0)
+    const demandaTotal = filteredData.reduce((sum, r) => sum + r.Demanda, 0)
+    const capex = filteredData.reduce((sum, r) => sum + r.CAPEX, 0)
+    const opex = filteredData.reduce((sum, r) => sum + r.OPEX, 0)
+    return { tempo, volume, demanda: demandaTotal, capex, opex }
+  }, [filteredData])
+
+  const sensitivityMetrics = useMemo(() => {
+    if (mergedData.length === 0) {
+      return {
+        vazaoMedia: 0,
+        perdaTotal: 0,
+        deficitMedio: 0,
+        superavitMedio: 0,
+        taxaCoberturaMedia: 0,
+      }
+    }
+    const vazaoMedia = mergedData.reduce((sum, r) => sum + r.Vazao_Ajustada, 0) / mergedData.length
+    const perdaTotal = mergedData.reduce((sum, r) => sum + r.Perda, 0)
+    let deficitSum = 0
+    let superavitSum = 0
+    let coberturaSum = 0
+    mergedData.forEach((r) => {
+      const disponivel = r.Vazao_Ajustada - r.Perda
+      const deficit = Math.max(0, r.Demanda - disponivel)
+      const superavit = Math.max(0, disponivel - r.Demanda)
+      deficitSum += deficit
+      superavitSum += superavit
+      if (r.Demanda > 0) {
+        coberturaSum += (disponivel / r.Demanda) * 100
+      }
+    })
+    const deficitMedio = deficitSum / mergedData.length
+    const superavitMedio = superavitSum / mergedData.length
+    const taxaCoberturaMedia = coberturaSum / mergedData.length
+    return {
+      vazaoMedia,
+      perdaTotal,
+      deficitMedio,
+      superavitMedio,
+      taxaCoberturaMedia,
+    }
+  }, [mergedData])
 
   return (
-    <div className="space-y-4 p-4">
-      {/* ===== CARD DE SELEÇÃO DE CENÁRIOS =====*/}
-      <Card>
-        <CardHeader>
-          <CardTitle>Cenários para simulação</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Select value={selectedScenario} onValueChange={setSelectedScenario}>
-            <SelectTrigger>
-              <SelectValue placeholder="Selecione um cenário" />
-            </SelectTrigger>
-            <SelectContent>
-              {scenarios.map((scenario, index) => (
-                <SelectItem
-                  key={index}
-                  value={`${scenario.Fonte} | ${scenario.cenario} | ${scenario.estrategia}`}
-                >
-                  {`${scenario.Fonte} | ${scenario.cenario} | ${scenario.estrategia}`}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </CardContent>
-      </Card>
+    <div className="container mx-auto p-6 space-y-6">
+      <h1 className="text-3xl font-bold">Dashboard SACRE - Simulação de Abastecimento</h1>
 
-      {/* ===== SEÇÃO: CONFIGURAÇÃO DE DEMANDA E PERDAS =====*/}
-      <div className="space-y-4 mt-8">
-        <h2 className="text-xl font-bold">Configuração de Demanda e Perdas</h2>
+      <Button onClick={handleImportSimulation} className="w-full md:w-auto">
+        Importar Dados de Simulação
+      </Button>
 
-        {/* CARDS LADO A LADO */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* CARD 1: DEMANDA DE CONSUMO */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Card de seleção de cenários */}
+        <div className="md:col-span-3">
           <Card>
             <CardHeader>
-              <CardTitle>Demanda de consumo</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Combobox: Cenários */}
-              <div>
-                <label className="block text-sm font-medium mb-2">Cenários</label>
-                <Select value={demandaCenario} onValueChange={setDemandaCenario}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione um cenário" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Estagnação populacional">Estagnação populacional</SelectItem>
-                    <SelectItem value="Crescimento tendencial">Crescimento tendencial</SelectItem>
-                    <SelectItem value="Crescimento acelerado">Crescimento acelerado</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Combobox: Consumo */}
-              <div>
-                <label className="block text-sm font-medium mb-2">Consumo</label>
-                <Select value={demandaConsumo} onValueChange={setDemandaConsumo}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione consumo" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Consumo crescente (até 250 L/pcd)">
-                      Crescente - até 250 L/pcd
-                    </SelectItem>
-                    <SelectItem value="Consumo estável (215 L/pcd)">Estável - 215 L/pcd</SelectItem>
-                    <SelectItem value="Consumo decrescente (até 180 L/pcd)">
-                      Decrescente - até 180 L/pcd
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* CARD 2: CENÁRIOS DE PERDAS */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Cenários de perdas</CardTitle>
+              <CardTitle>Seleção de Cenário</CardTitle>
             </CardHeader>
             <CardContent>
-              {/* Combobox: Índice de Perdas */}
+              <Select value={selectedScenario} onValueChange={handleScenarioChange}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um cenário" />
+                </SelectTrigger>
+                <SelectContent>
+                  {scenarios.map((s, index) => (
+                    <SelectItem key={index} value={normalizeString(s.cenario)}>
+                      {s.cenario}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Card Demanda de Consumo */}
+        <div className="md:col-span-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>Demanda de Consumo</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-2">Índice de perdas</label>
-                <Select value={indicePerda} onValueChange={setIndicePerda}>
+                <label className="text-sm font-medium block mb-1">Cenário de Demanda</label>
+                <Select value={demandaCenario} onValueChange={setDemandaCenario}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione índice" />
+                    <SelectValue placeholder="Selecione" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Perdas → 30%">Perdas → 30%</SelectItem>
-                    <SelectItem value="Perdas → 28%">Perdas → 28%</SelectItem>
-                    <SelectItem value="Perdas → 26%">Perdas → 26%</SelectItem>
-                    <SelectItem value="Perdas → 24%">Perdas → 24%</SelectItem>
+                    {demandaCenarios.map((cen, index) => (
+                      <SelectItem key={index} value={cen}>
+                        {cen}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-sm font-medium block mb-1">Consumo</label>
+                <Select value={demandaConsumo} onValueChange={setDemandaConsumo}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {demandaConsumos.map((con, index) => (
+                      <SelectItem key={index} value={con}>
+                        {con}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
             </CardContent>
           </Card>
         </div>
+
+        {/* Card Cenários de Perdas */}
+        <div className="md:col-span-1">
+          <Card>
+            <CardHeader>
+              <CardTitle>Cenários de Perdas</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div>
+                <label className="text-sm font-medium block mb-1">Índice de Perda</label>
+                <Select value={indicePerda} onValueChange={setIndicePerda}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {indicesPerda.map((ind, index) => (
+                      <SelectItem key={index} value={ind}>
+                        {ind}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Botão Executar a Simulação */}
+        <div className="md:col-span-3">
+          <Button onClick={handleExecuteSimulation} className="w-full h-12 text-lg">
+            Executar a Simulação
+          </Button>
+        </div>
       </div>
 
-      {/* ===== BOTÃO EXECUTAR =====*/}
-      <Button
-        onClick={handleImportSimulation}
-        disabled={loadingSimulation || !selectedScenario}
-        className="w-full"
-      >
-        {loadingSimulation ? 'Carregando...' : 'Executar a Simulação'}
-      </Button>
+      {/* Cards de resumo */}
+      <div>
+        <h2 className="text-2xl font-semibold mb-4">Resumo da Simulação</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg">Tempo total</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-3xl font-bold">{summary.tempo} meses</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg">Volume captado</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-3xl font-bold">{formatNumber(summary.volume)}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg">Demanda</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-3xl font-bold">{formatNumber(summary.demanda)}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg">CAPEX</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-3xl font-bold">{formatNumber(summary.capex)}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg">OPEX</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-3xl font-bold">{formatNumber(summary.opex)}</p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
 
-      {/* ===== CARDS DE RESUMO (aparecem após importação) =====*/}
-      {showSummary && filteredData.length > 0 && (
-        <div className="space-y-4 mt-8">
-          <h2 className="text-xl font-bold">Resumo dos Dados Filtrados</h2>
-
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-            {/* Card: Quantidade de Registros */}
-            <Card className="border-l-4 border-l-gray-400">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm">Total de meses</CardTitle>
+      {/* Dashboard de sensibilidade */}
+      {mergedData.length > 0 && (
+        <div>
+          <h2 className="text-2xl font-semibold mb-4">Dashboard de Sensibilidade Hidrológica</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg">Vazão Ajustada Média</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-gray-700">{filteredData.length}</div>
+                <p className="text-3xl font-bold">{formatNumber(sensitivityMetrics.vazaoMedia)}</p>
               </CardContent>
             </Card>
-            {/* Card: Vazão Captada Total */}
-            <Card className="border-l-4 border-l-green-500">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm">Total de volume captado</CardTitle>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg">Perda Total</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-green-600">
-                  {formatNumber(totalVolume_Captado)}
-                </div>
-                <p className="text-xs text-gray-500 mt-2">m³</p>
+                <p className="text-3xl font-bold">{formatNumber(sensitivityMetrics.perdaTotal)}</p>
               </CardContent>
             </Card>
-            {/* Card: Demanda Total */}
-            <Card className="border-l-4 border-l-blue-500">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm">Total de volume demandado</CardTitle>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg">Déficit Médio</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-blue-600">{formatNumber(totalDemanda)}</div>
-                <p className="text-xs text-gray-500 mt-2">m³</p>
+                <p className="text-3xl font-bold">
+                  {formatNumber(sensitivityMetrics.deficitMedio)}
+                </p>
               </CardContent>
             </Card>
-            {/* Card: CAPEX Total */}
-            <Card className="border-l-4 border-l-orange-500">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm">Total CAPEX</CardTitle>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg">Superávit Médio</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-orange-600">
-                  R$ {formatNumber(totalCapex)}
-                </div>
-                <p className="text-xs text-gray-500 mt-2">Investimento</p>
+                <p className="text-3xl font-bold">
+                  {formatNumber(sensitivityMetrics.superavitMedio)}
+                </p>
               </CardContent>
             </Card>
-            {/* Card: OPEX Total */}
-            <Card className="border-l-4 border-l-red-500">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm">Total OPEX</CardTitle>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg">Taxa de Cobertura Média</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-red-600">R$ {formatNumber(totalOpex)}</div>
-                <p className="text-xs text-gray-500 mt-2">Operação</p>
+                <p className="text-3xl font-bold">
+                  {formatNumber(sensitivityMetrics.taxaCoberturaMedia)}%
+                </p>
               </CardContent>
             </Card>
-            ///
-            {/* ===== DASHBOARD DE SENSIBILIDADE HIDROLÓGICA =====*/}
-            {mergedData.length > 0 && (
-              <div className="space-y-4 mt-8">
-                <h2 className="text-xl font-bold">Dashboard de Sensibilidade Hidrológica</h2>
-                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                  {/* Card 1: Vazão Ajustada Média */}
-                  <Card className="border-l-4 border-l-purple-500">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-sm">Vazão Ajustada Média</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold text-purple-600">
-                        {formatNumber(
-                          mergedData.reduce(
-                            (sum, d) => sum + d.Volume_Captado * (1 - d.perdas_pct / 100),
-                            0,
-                          ) / mergedData.length,
-                        )}
-                      </div>
-                      <p className="text-xs text-gray-500 mt-2">m³</p>
-                    </CardContent>
-                  </Card>
-
-                  {/* Card 2: Perda Total */}
-                  <Card className="border-l-4 border-l-pink-500">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-sm">Perda Total</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold text-pink-600">
-                        {formatNumber(
-                          mergedData.reduce(
-                            (sum, d) => sum + d.Volume_Captado * (d.perdas_pct / 100),
-                            0,
-                          ),
-                        )}
-                      </div>
-                      <p className="text-xs text-gray-500 mt-2">m³</p>
-                    </CardContent>
-                  </Card>
-
-                  {/* Card 3: Déficit Médio */}
-                  <Card className="border-l-4 border-l-yellow-500">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-sm">Déficit Médio</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold text-yellow-600">
-                        {formatNumber(
-                          mergedData.reduce((sum, d) => {
-                            const ajustada = d.Volume_Captado * (1 - d.perdas_pct / 100)
-                            return sum + Math.max(0, d.Demanda - ajustada)
-                          }, 0) / mergedData.length,
-                        )}
-                      </div>
-                      <p className="text-xs text-gray-500 mt-2">m³</p>
-                    </CardContent>
-                  </Card>
-
-                  {/* Card 4: Superávit Médio */}
-                  <Card className="border-l-4 border-l-teal-500">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-sm">Superávit Médio</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold text-teal-600">
-                        {formatNumber(
-                          mergedData.reduce((sum, d) => {
-                            const ajustada = d.Volume_Captado * (1 - d.perdas_pct / 100)
-                            return sum + Math.max(0, ajustada - d.Demanda)
-                          }, 0) / mergedData.length,
-                        )}
-                      </div>
-                      <p className="text-xs text-gray-500 mt-2">m³</p>
-                    </CardContent>
-                  </Card>
-
-                  {/* Card 5: Taxa de Cobertura */}
-                  <Card className="border-l-4 border-l-indigo-500">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-sm">Taxa de Cobertura Média</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold text-indigo-600">
-                        {(
-                          mergedData.reduce((sum, d) => {
-                            const ajustada = d.Volume_Captado * (1 - d.perdas_pct / 100)
-                            return sum + (d.Demanda > 0 ? (ajustada / d.Demanda) * 100 : 0)
-                          }, 0) / mergedData.length
-                        ).toFixed(1)}
-                        %
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              </div>
-            )}
           </div>
         </div>
       )}
@@ -580,4 +490,4 @@ const CenariosComponent: React.FC = () => {
   )
 }
 
-export default CenariosComponent
+export default Cenarios
