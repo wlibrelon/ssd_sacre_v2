@@ -30,7 +30,7 @@ type SimulationRecord = {
   cenario: string
   estrategia: string
   Volume_Captado: number
-  Demanda: number
+  //  Demanda: number
   CAPEX: number
   OPEX: number
   Aceitacao_Social: number
