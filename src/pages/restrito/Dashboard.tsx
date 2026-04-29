@@ -1,4 +1,4 @@
-import { useAuth } from '@/hooks/use-autht'
+import { useAuth } from '@/hooks/use-auth'
 import { Navigate } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Database, Megaphone, Users, Settings, ArrowRight } from 'lucide-react'
