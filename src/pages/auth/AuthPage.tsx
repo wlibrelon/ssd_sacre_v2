@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuth } from '@/hooks/use-auth'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -16,29 +16,46 @@ import {
 import { useToast } from '@/hooks/use-toast'
 
 export default function AuthPage() {
-  const { login } = useAuth()
+  const { signIn, signUp } = useAuth()
   const navigate = useNavigate()
   const { toast } = useToast()
   const [isLoading, setIsLoading] = useState(false)
+  const [role, setRole] = useState('')
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
-    setTimeout(() => {
-      login({ name: 'Usuário Teste', email: 'teste@sacre.org', role: 'admin' })
-      setIsLoading(false)
-      navigate('/restrito')
+    const email = (document.getElementById('email') as HTMLInputElement).value
+    const pass = (document.getElementById('password') as HTMLInputElement).value
+
+    const { error } = await signIn(email, pass)
+    setIsLoading(false)
+
+    if (error) {
+      toast({ title: 'Erro no login', description: error.message, variant: 'destructive' })
+    } else {
       toast({ title: 'Login bem-sucedido', description: 'Bem-vindo à área restrita.' })
-    }, 1000)
+      navigate('/restrito')
+    }
   }
 
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
-    setTimeout(() => {
-      setIsLoading(false)
-      toast({ title: 'Cadastro solicitado', description: 'Seu pedido de acesso está em análise.' })
-    }, 1500)
+    const email = (document.getElementById('reg-email') as HTMLInputElement).value
+    const pass = (document.getElementById('reg-pass') as HTMLInputElement).value
+
+    const { error } = await signUp(email, pass)
+    setIsLoading(false)
+
+    if (error) {
+      toast({ title: 'Erro no cadastro', description: error.message, variant: 'destructive' })
+    } else {
+      toast({
+        title: 'Cadastro solicitado',
+        description: `Sua solicitação para nível "${role || 'Não definido'}" foi enviada para warlenlibrelon@ipt.br.`,
+      })
+    }
   }
 
   return (
@@ -87,7 +104,7 @@ export default function AuthPage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="reg-level">Nível de Acesso Desejado</Label>
-                  <Select required>
+                  <Select required onValueChange={setRole}>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione..." />
                     </SelectTrigger>
