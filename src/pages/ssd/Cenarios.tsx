@@ -71,6 +71,7 @@ export default function Cenarios() {
           id_fonte: row.id_fonte,
           volume_distribuido: 0,
           demanda: 0,
+          deficit: 0,
           capex: 0,
           opex: 0,
           count: 0,
@@ -78,6 +79,7 @@ export default function Cenarios() {
       }
       acc[key].volume_distribuido += row.volume_distribuido || 0
       acc[key].demanda += row.demanda || 0
+      acc[key].deficit += row.deficit || 0
       acc[key].capex += row.capex || 0
       acc[key].opex += row.opex || 0
       acc[key].count += 1
@@ -90,6 +92,7 @@ export default function Cenarios() {
         id_fonte: g.id_fonte,
         volume_distribuido: g.volume_distribuido,
         demanda: g.demanda / g.count,
+        deficit: g.deficit,
         capex: g.capex / g.count,
         opex: g.opex / g.count,
       }))
