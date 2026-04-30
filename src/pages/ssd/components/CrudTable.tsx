@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { getTable, insertRow, deleteRow } from '@/services/ssd'
+import React, { useState, useEffect } from 'react'
+import { Trash2 } from 'lucide-react'
 import {
   Table,
   TableBody,
@@ -7,76 +7,96 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Trash2 } from 'lucide-react'
+  Button,
+} from '@/components/ui/table' // Adjust import path as needed for your UI library (e.g., shadcn/ui)
 
-export function CrudTable({ table, title, cols, pk }: any) {
-  const [data, setData] = useState<any[]>([])
-  const [form, setForm] = useState<any>({})
+interface User {
+  id: number
+  name: string
+  email: string
+}
 
-  const load = async () => setData(await getTable(table))
+const CrudTable: React.FC = () => {
+  const [data, setData] = useState<User[]>([])
+  const [newName, setNewName] = useState('')
+  const [newEmail, setNewEmail] = useState('')
 
   useEffect(() => {
-    load()
-  }, [table])
+    // Simulate initial data fetch
+    setData([
+      { id: 1, name: 'John Doe', email: 'john@example.com' },
+      { id: 2, name: 'Jane Smith', email: 'jane@example.com' },
+    ])
+  }, [])
 
-  const handleAdd = async () => {
-    await insertRow(table, form)
-    setForm({})
-    load()
+  const cols = ['Name', 'Email']
+
+  const handleAdd = () => {
+    if (newName.trim() && newEmail.trim()) {
+      const newUser: User = {
+        id: Date.now(),
+        name: newName,
+        email: newEmail,
+      }
+      setData((prev) => [...prev, newUser])
+      setNewName('')
+      setNewEmail('')
+    }
   }
 
-  const handleDelete = async (id: any) => {
-    await deleteRow(table, pk, id)
-    load()
+  const handleDelete = (id: number) => {
+    setData((prev) => prev.filter((user) => user.id !== id))
   }
 
   return (
-    <div className="space-y-4 bg-white p-4 rounded-lg shadow border">
-      <h3 className="font-semibold text-lg">{title}</h3>
-      <div className="flex flex-col gap-2">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          {cols.map((c: any) => (
-            <Input
-              key={c.key}
-              placeholder={c.label}
-              value={form[c.key] || ''}
-              onChange={(e) => setForm({ ...form, [c.key]: e.target.value })}
-            />
-          ))}
-        </div>
-        <Button onClick={handleAdd} className="w-full sm:w-auto">
-          Adicionar
-        </Button>
+    <div className="space-y-4">
+      {/* Add form */}
+      <div className="flex gap-2">
+        <input
+          type="text"
+          placeholder="Name"
+          value={newName}
+          onChange={(e) => setNewName(e.target.value)}
+          className="flex-1 p-2 border rounded-md"
+        />
+        <input
+          type="email"
+          placeholder="Email"
+          value={newEmail}
+          onChange={(e) => setNewEmail(e.target.value)}
+          className="flex-1 p-2 border rounded-md"
+        />
+        <Button onClick={handleAdd}>Add</Button>
       </div>
-      <div className="overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              {cols.map((c: any) => (
-                <TableHead key={c.key}>{c.label}</TableHead>
-              ))}
-              <TableHead className="w-16">Ação</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {data.map((row) => (
-              <TableRow key={row[pk]}>
-                {cols.map((c: any) => (
-                  <TableCell key={c.key}>{row[c.key]}</TableCell>
-                ))}
-                <TableCell>
-                  <Button variant="ghost" size="icon" onClick={() => handleDelete(row[pk])}>
-                    <Trash2 className="w-4 h-4 text-red-500" />
-                  </Button>
-                </TableCell>
-              </TableRow>
+
+      <Table>
+        <TableHeader>
+          <TableRow>
+            {cols.map((col) => (
+              <TableHead key={col}>{col}</TableHead>
             ))}
-          </TableBody>
-        </Table>
-      </div>
+            <TableHead>Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {data.map((user) => (
+            <TableRow key={user.id}>
+              {cols.map((col) => (
+                <TableCell key={col} className="py-1">
+                  {user[col.toLowerCase() as keyof User] as string}
+                </TableCell>
+              ))}
+              <TableCell className="py-1">
+                <Button variant="destructive" size="sm" onClick={() => handleDelete(user.id)}>
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
     </div>
   )
 }
+
+export default CrudTable

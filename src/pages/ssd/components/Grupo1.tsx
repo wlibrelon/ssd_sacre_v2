@@ -7,6 +7,8 @@ export function Grupo1() {
         Grupo 1: Configuração de fontes de água, cenários e estratégias
       </h2>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {' '}
+        // className=
         <CrudTable
           table="fonte_agua"
           title="Fontes de Água"
