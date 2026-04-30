@@ -149,7 +149,7 @@ export function CenariosDashboard({ data, fontesMap }: any) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>Vazão Captada por Fonte</CardTitle>
+            <CardTitle>Volume Captado por Fonte</CardTitle>
           </CardHeader>
           <CardContent className="h-[350px]">
             <ResponsiveContainer width="100%" height="100%">
@@ -204,7 +204,7 @@ export function CenariosDashboard({ data, fontesMap }: any) {
 
         <Card>
           <CardHeader>
-            <CardTitle>Captada vs Distribuída</CardTitle>
+            <CardTitle>Captação vs Distribuição</CardTitle>
           </CardHeader>
           <CardContent className="h-[350px]">
             <ResponsiveContainer width="100%" height="100%">
@@ -235,7 +235,7 @@ export function CenariosDashboard({ data, fontesMap }: any) {
 
         <Card>
           <CardHeader>
-            <CardTitle>Distribuída, Demanda e Déficit</CardTitle>
+            <CardTitle>Distribuição, Demanda e Déficit</CardTitle>
           </CardHeader>
           <CardContent className="h-[350px]">
             <ResponsiveContainer width="100%" height="100%">
