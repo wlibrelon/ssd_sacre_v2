@@ -338,6 +338,68 @@ export default function Cenarios() {
               </Table>
             </div>
           </div>
+
+          <div className="bg-white p-6 shadow-md rounded-xl border mt-6">
+            <h2 className="text-xl font-bold mb-4 text-primary">Tabela de Conferência (Bruta)</h2>
+            <div className="max-h-96 overflow-y-auto overflow-x-auto border rounded">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-slate-50">
+                    <TableHead className="whitespace-nowrap py-2">Tempo</TableHead>
+                    <TableHead className="whitespace-nowrap py-2">Fonte</TableHead>
+                    <TableHead className="whitespace-nowrap py-2">Volume (m³)</TableHead>
+                    <TableHead className="whitespace-nowrap py-2">Demanda (m³)</TableHead>
+                    <TableHead className="whitespace-nowrap py-2">Vol. Distribuído (m³)</TableHead>
+                    <TableHead className="whitespace-nowrap py-2">Distr. Total (m³)</TableHead>
+                    <TableHead className="whitespace-nowrap py-2">Déficit (m³)</TableHead>
+                    <TableHead className="whitespace-nowrap py-2">CAPEX</TableHead>
+                    <TableHead className="whitespace-nowrap py-2">OPEX</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {data.map((row, idx) => (
+                    <TableRow key={idx} className="hover:bg-slate-50/50">
+                      <TableCell className="py-1 text-sm whitespace-nowrap">{row.tempo}</TableCell>
+                      <TableCell className="py-1 text-sm whitespace-nowrap">
+                        {fontesMap[row.id_fonte] || row.id_fonte}
+                      </TableCell>
+                      <TableCell className="py-1 text-sm whitespace-nowrap">
+                        {row.volume_captado?.toLocaleString(undefined, {
+                          maximumFractionDigits: 2,
+                        })}
+                      </TableCell>
+                      <TableCell className="py-1 text-sm whitespace-nowrap">
+                        {row.demanda?.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                      </TableCell>
+                      <TableCell className="py-1 text-sm whitespace-nowrap">
+                        {row.volume_distribuido?.toLocaleString(undefined, {
+                          maximumFractionDigits: 2,
+                        })}
+                      </TableCell>
+                      <TableCell className="py-1 text-sm whitespace-nowrap">
+                        {row.distribuicao_total?.toLocaleString(undefined, {
+                          maximumFractionDigits: 2,
+                        })}
+                      </TableCell>
+                      <TableCell
+                        className={`py-1 text-sm whitespace-nowrap ${
+                          row.deficit > 0 ? 'text-red-600 font-semibold' : 'text-green-600'
+                        }`}
+                      >
+                        {row.deficit?.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                      </TableCell>
+                      <TableCell className="py-1 text-sm whitespace-nowrap">
+                        {formatCurrency(row.capex)}
+                      </TableCell>
+                      <TableCell className="py-1 text-sm whitespace-nowrap">
+                        {formatCurrency(row.opex)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
         </>
       )}
     </div>
