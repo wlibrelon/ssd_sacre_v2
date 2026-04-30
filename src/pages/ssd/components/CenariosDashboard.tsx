@@ -12,7 +12,17 @@ import {
   ReferenceLine,
 } from 'recharts'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
+
+const CHART_COLORS = [
+  '#2563eb', // blue
+  '#dc2626', // red
+  '#16a34a', // green
+  '#d97706', // amber
+  '#9333ea', // purple
+  '#0d9488', // teal
+  '#be123c', // rose
+  '#4f46e5', // indigo
+]
 
 export function CenariosDashboard({ data, fontesMap }: any) {
   const timeMap: any = {}
@@ -149,12 +159,12 @@ export function CenariosDashboard({ data, fontesMap }: any) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>Volume Captado por Fonte</CardTitle>
+            <CardTitle className="text-lg">Volume Captado por Fonte</CardTitle>
           </CardHeader>
           <CardContent className="h-[350px]">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" />
+                <CartesianGrid strokeDasharray="3 3" opacity={0.4} />
                 <XAxis dataKey="tempo" />
                 <YAxis />
                 <Tooltip formatter={(value: number) => formatVol(value)} />
@@ -165,9 +175,9 @@ export function CenariosDashboard({ data, fontesMap }: any) {
                     type="monotone"
                     dataKey={`${fk}_cap`}
                     name={fk}
-                    stroke={`hsl(var(--primary))`}
-                    strokeWidth={2}
-                    opacity={1 - i * 0.2}
+                    stroke={CHART_COLORS[i % CHART_COLORS.length]}
+                    strokeWidth={2.5}
+                    dot={false}
                   />
                 ))}
               </LineChart>
@@ -177,12 +187,12 @@ export function CenariosDashboard({ data, fontesMap }: any) {
 
         <Card>
           <CardHeader>
-            <CardTitle>Participação das Fontes(%)</CardTitle>
+            <CardTitle className="text-lg">Participação das Fontes (%)</CardTitle>
           </CardHeader>
           <CardContent className="h-[350px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" />
+                <CartesianGrid strokeDasharray="3 3" opacity={0.4} />
                 <XAxis dataKey="tempo" />
                 <YAxis domain={[0, 100]} />
                 <Tooltip formatter={(value: number) => `${value.toFixed(1)}%`} />
@@ -193,8 +203,7 @@ export function CenariosDashboard({ data, fontesMap }: any) {
                     dataKey={`${fk}_pct`}
                     name={fk}
                     stackId="a"
-                    fill={`hsl(var(--primary))`}
-                    opacity={1 - i * 0.2}
+                    fill={CHART_COLORS[i % CHART_COLORS.length]}
                   />
                 ))}
               </BarChart>
@@ -204,12 +213,12 @@ export function CenariosDashboard({ data, fontesMap }: any) {
 
         <Card>
           <CardHeader>
-            <CardTitle>Captação vs Distribuição</CardTitle>
+            <CardTitle className="text-lg">Captação vs Distribuição</CardTitle>
           </CardHeader>
           <CardContent className="h-[350px]">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" />
+                <CartesianGrid strokeDasharray="3 3" opacity={0.4} />
                 <XAxis dataKey="tempo" />
                 <YAxis />
                 <Tooltip formatter={(value: number) => formatVol(value)} />
@@ -218,15 +227,17 @@ export function CenariosDashboard({ data, fontesMap }: any) {
                   type="monotone"
                   dataKey="captacao_total"
                   name="Total Captado"
-                  stroke="#2563eb"
-                  strokeWidth={2}
+                  stroke="#0f172a"
+                  strokeWidth={2.5}
+                  dot={false}
                 />
                 <Line
                   type="monotone"
                   dataKey="distribuicao_total"
                   name="Total Distribuído"
                   stroke="#16a34a"
-                  strokeWidth={2}
+                  strokeWidth={2.5}
+                  dot={false}
                 />
               </LineChart>
             </ResponsiveContainer>
@@ -235,12 +246,12 @@ export function CenariosDashboard({ data, fontesMap }: any) {
 
         <Card>
           <CardHeader>
-            <CardTitle>Distribuição, Demanda e Déficit</CardTitle>
+            <CardTitle className="text-lg">Distribuição, Demanda e Saldo</CardTitle>
           </CardHeader>
           <CardContent className="h-[350px]">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" />
+                <CartesianGrid strokeDasharray="3 3" opacity={0.4} />
                 <XAxis dataKey="tempo" />
                 <YAxis />
                 <Tooltip formatter={(value: number) => formatVol(value)} />
@@ -251,21 +262,24 @@ export function CenariosDashboard({ data, fontesMap }: any) {
                   dataKey="distribuicao_total"
                   name="Distribuído"
                   stroke="#16a34a"
-                  strokeWidth={2}
+                  strokeWidth={2.5}
+                  dot={false}
                 />
                 <Line
                   type="monotone"
                   dataKey="demanda"
                   name="Demanda"
-                  stroke="#9333ea"
-                  strokeWidth={2}
+                  stroke="#4f46e5"
+                  strokeWidth={2.5}
+                  dot={false}
                 />
                 <Line
                   type="monotone"
                   dataKey="deficit"
-                  name="Déficit/Excedente"
+                  name="Saldo (Surplus/Déficit)"
                   stroke="#f59e0b"
                   strokeWidth={3}
+                  dot={false}
                 />
               </LineChart>
             </ResponsiveContainer>

@@ -18,17 +18,26 @@ export function Grupo3() {
   const { fonte_agua, tipos_cenarios, cenarios, estrategias, simulacao_ssd } = useSsdData()
   const [activeSim, setActiveSim] = useState('')
   const [cs, setCs] = useState<any[]>([])
+  const [cf, setCf] = useState<any[]>([])
+  const [ef, setEf] = useState<any[]>([])
+  const [tcc, setTcc] = useState<any[]>([])
   const [form, setForm] = useState<any>({})
 
-  const loadCs = async () => setCs(await getTable('cenario_simulacao'))
+  const loadAll = async () => {
+    setCs(await getTable('cenario_simulacao'))
+    setCf(await getTable('cenarios_fonte'))
+    setEf(await getTable('estrategias_fonte'))
+    setTcc(await getTable('tipo_cenario_cenario'))
+  }
+
   useEffect(() => {
-    loadCs()
+    loadAll()
   }, [])
 
   const handleAdd = async () => {
     if (!activeSim) return alert('Selecione uma simulação ativa!')
     await insertRow('cenario_simulacao', { ...form, id_s: activeSim })
-    loadCs()
+    loadAll()
   }
 
   const getF = (id: any) => fonte_agua.find((x: any) => x.id_fonte === id)?.nome_fonte
@@ -61,26 +70,46 @@ export function Grupo3() {
               <NativeSelect
                 options={fonte_agua.map((o: any) => ({ value: o.id_fonte, label: o.nome_fonte }))}
                 value={form.id_fonte || ''}
-                onChange={(v: any) => setForm({ ...form, id_fonte: v })}
+                onChange={(v: any) =>
+                  setForm({ ...form, id_fonte: v, id_tc: '', id_c: '', id_e: '' })
+                }
                 placeholder="Fonte"
               />
               <NativeSelect
-                options={tipos_cenarios.map((o: any) => ({ value: o.id_tc, label: o.descricao }))}
+                options={tipos_cenarios
+                  .filter(
+                    (o: any) =>
+                      !form.id_fonte ||
+                      cf.some((x) => x.id_fonte == form.id_fonte && x.id_tc == o.id_tc),
+                  )
+                  .map((o: any) => ({ value: o.id_tc, label: o.descricao }))}
                 value={form.id_tc || ''}
-                onChange={(v: any) => setForm({ ...form, id_tc: v })}
-                placeholder="Tipo"
+                onChange={(v: any) => setForm({ ...form, id_tc: v, id_c: '' })}
+                placeholder="Tipo Cenário"
               />
               <NativeSelect
-                options={cenarios.map((o: any) => ({ value: o.id_cenarios, label: o.cenarios }))}
+                options={cenarios
+                  .filter(
+                    (o: any) =>
+                      !form.id_tc ||
+                      tcc.some((x) => x.id_tc == form.id_tc && x.id_c == o.id_cenarios),
+                  )
+                  .map((o: any) => ({ value: o.id_cenarios, label: o.cenarios }))}
                 value={form.id_c || ''}
                 onChange={(v: any) => setForm({ ...form, id_c: v })}
                 placeholder="Cenário"
               />
               <NativeSelect
-                options={estrategias.map((o: any) => ({
-                  value: o.id_estrategia,
-                  label: o.descricao,
-                }))}
+                options={estrategias
+                  .filter(
+                    (o: any) =>
+                      !form.id_fonte ||
+                      ef.some((x) => x.id_fonte == form.id_fonte && x.id_e == o.id_estrategia),
+                  )
+                  .map((o: any) => ({
+                    value: o.id_estrategia,
+                    label: o.descricao,
+                  }))}
                 value={form.id_e || ''}
                 onChange={(v: any) => setForm({ ...form, id_e: v })}
                 placeholder="Estratégia"
@@ -88,41 +117,44 @@ export function Grupo3() {
               <Button onClick={handleAdd}>Associar</Button>
             </div>
 
-            <Table className="mt-4">
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Fonte</TableHead>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead>Cenário</TableHead>
-                  <TableHead>Estratégia</TableHead>
-                  <TableHead></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {cs
-                  .filter((r) => r.id_s.toString() === activeSim.toString())
-                  .map((row) => (
-                    <TableRow key={row.id_cs}>
-                      <TableCell>{getF(row.id_fonte)}</TableCell>
-                      <TableCell>{getTc(row.id_tc)}</TableCell>
-                      <TableCell>{getC(row.id_c)}</TableCell>
-                      <TableCell>{getE(row.id_e)}</TableCell>
-                      <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={async () => {
-                            await deleteRow('cenario_simulacao', 'id_cs', row.id_cs)
-                            loadCs()
-                          }}
-                        >
-                          <Trash2 className="w-4 h-4 text-red-500" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-              </TableBody>
-            </Table>
+            <div className="overflow-x-auto mt-4">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="py-2">Fonte</TableHead>
+                    <TableHead className="py-2">Tipo</TableHead>
+                    <TableHead className="py-2">Cenário</TableHead>
+                    <TableHead className="py-2">Estratégia</TableHead>
+                    <TableHead className="py-2 w-12"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {cs
+                    .filter((r) => r.id_s.toString() === activeSim.toString())
+                    .map((row) => (
+                      <TableRow key={row.id_cs}>
+                        <TableCell className="py-1 text-sm">{getF(row.id_fonte)}</TableCell>
+                        <TableCell className="py-1 text-sm">{getTc(row.id_tc)}</TableCell>
+                        <TableCell className="py-1 text-sm">{getC(row.id_c)}</TableCell>
+                        <TableCell className="py-1 text-sm">{getE(row.id_e)}</TableCell>
+                        <TableCell className="py-1 text-sm">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={async () => {
+                              await deleteRow('cenario_simulacao', 'id_cs', row.id_cs)
+                              loadAll()
+                            }}
+                          >
+                            <Trash2 className="w-4 h-4 text-red-500" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                </TableBody>
+              </Table>
+            </div>
           </>
         )}
       </div>

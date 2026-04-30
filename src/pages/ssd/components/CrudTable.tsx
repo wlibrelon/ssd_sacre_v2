@@ -65,9 +65,11 @@ export function CrudTable({ table, title, cols, pk }: any) {
             {data.map((row) => (
               <TableRow key={row[pk]}>
                 {cols.map((c: any) => (
-                  <TableCell key={c.key}>{row[c.key]}</TableCell>
+                  <TableCell key={c.key} className="py-1 text-sm">
+                    {row[c.key]}
+                  </TableCell>
                 ))}
-                <TableCell>
+                <TableCell className="py-1">
                   <Button variant="ghost" size="icon" onClick={() => handleDelete(row[pk])}>
                     <Trash2 className="w-4 h-4 text-red-500" />
                   </Button>

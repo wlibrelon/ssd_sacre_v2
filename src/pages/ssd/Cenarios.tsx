@@ -26,6 +26,7 @@ export default function Cenarios() {
 
   const [filters, setFilters] = useState<any>({})
   const [data, setData] = useState<any[]>([])
+  const [groupedData, setGroupedData] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [ran, setRan] = useState(false)
 
@@ -41,7 +42,6 @@ export default function Cenarios() {
     if (filters.id_cc) q = q.eq('id_cc', filters.id_cc)
     if (filters.id_cp) q = q.eq('id_cp', filters.id_cp)
 
-    // Filtros de tempo (Ano e Mês)
     if (filters.ano_inicio) q = q.gte('tempo', `${filters.ano_inicio}-01`)
     if (filters.ano_fim) q = q.lte('tempo', `${filters.ano_fim}-12`)
     if (filters.mes) q = q.ilike('tempo', `%-${filters.mes.padStart(2, '0')}`)
@@ -49,22 +49,54 @@ export default function Cenarios() {
     const { data: res, error } = await q
     if (error) console.error(error)
 
-    // Processamento de campos calculados conforme solicitado para o Projeto SACRE
     const processedData = (res || []).map((row: any) => {
       const volume_captado = row.volume_captado || 0
-      const perdas_percentual = row.perdas || 0 // Assumindo que 'perdas' vem como percentual (ex: 20 para 20%)
+      const perdas_percentual = row.perdas || 0
       const volume_distribuido = volume_captado * (1 - perdas_percentual / 100)
       const demanda = row.demanda || 0
 
       return {
         ...row,
         volume_distribuido,
-        distribuicao_total: volume_distribuido, // Valor consolidado para exibição
+        distribuicao_total: volume_distribuido,
         deficit: demanda - volume_distribuido,
       }
     })
 
+    const groupedMap = processedData.reduce((acc: any, row: any) => {
+      const key = `${row.tempo}_${row.id_fonte}`
+      if (!acc[key]) {
+        acc[key] = {
+          tempo: row.tempo,
+          id_fonte: row.id_fonte,
+          volume_distribuido: 0,
+          demanda: 0,
+          capex: 0,
+          opex: 0,
+          count: 0,
+        }
+      }
+      acc[key].volume_distribuido += row.volume_distribuido || 0
+      acc[key].demanda += row.demanda || 0
+      acc[key].capex += row.capex || 0
+      acc[key].opex += row.opex || 0
+      acc[key].count += 1
+      return acc
+    }, {})
+
+    const groupedArray = Object.values(groupedMap)
+      .map((g: any) => ({
+        tempo: g.tempo,
+        id_fonte: g.id_fonte,
+        volume_distribuido: g.volume_distribuido,
+        demanda: g.demanda / g.count,
+        capex: g.capex / g.count,
+        opex: g.opex / g.count,
+      }))
+      .sort((a: any, b: any) => a.tempo.localeCompare(b.tempo))
+
     setData(processedData)
+    setGroupedData(groupedArray)
     setRan(true)
     setLoading(false)
   }
@@ -73,6 +105,9 @@ export default function Cenarios() {
     (acc: any, f: any) => ({ ...acc, [f.id_fonte]: f.nome_fonte }),
     {},
   )
+
+  const formatCurrency = (val: number) =>
+    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val)
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
@@ -84,122 +119,148 @@ export default function Cenarios() {
         </p>
       </div>
 
-      <div className="bg-white p-6 shadow-md rounded-xl border grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 animate-fade-in">
-        <div className="space-y-1">
-          <label className="text-xs font-semibold text-muted-foreground">Fonte de Água</label>
-          <NativeSelect
-            options={fonte_agua.map((o: any) => ({ value: o.id_fonte, label: o.nome_fonte }))}
-            value={filters.id_fonte || ''}
-            onChange={(v: any) => setFilters({ ...filters, id_fonte: v })}
-            placeholder="Todas as Fontes"
-          />
-        </div>
-        <div className="space-y-1">
-          <label className="text-xs font-semibold text-muted-foreground">Tipo de Cenário</label>
-          <NativeSelect
-            options={tipos_cenarios.map((o: any) => ({ value: o.id_tc, label: o.descricao }))}
-            value={filters.id_tc || ''}
-            onChange={(v: any) => setFilters({ ...filters, id_tc: v })}
-            placeholder="Todos os Tipos"
-          />
-        </div>
-        <div className="space-y-1">
-          <label className="text-xs font-semibold text-muted-foreground">Cenário</label>
-          <NativeSelect
-            options={cenarios.map((o: any) => ({ value: o.id_cenarios, label: o.cenarios }))}
-            value={filters.id_c || ''}
-            onChange={(v: any) => setFilters({ ...filters, id_c: v })}
-            placeholder="Todos os Cenários"
-          />
-        </div>
-        <div className="space-y-1">
-          <label className="text-xs font-semibold text-muted-foreground">Estratégia</label>
-          <NativeSelect
-            options={estrategias.map((o: any) => ({ value: o.id_estrategia, label: o.descricao }))}
-            value={filters.id_e || ''}
-            onChange={(v: any) => setFilters({ ...filters, id_e: v })}
-            placeholder="Todas as Estratégias"
-          />
-        </div>
-        <div className="space-y-1">
-          <label className="text-xs font-semibold text-muted-foreground">Demanda</label>
-          <NativeSelect
-            options={cenario_demanda.map((o: any) => ({
-              value: o.id_cd,
-              label: o.nome_cenario_demanda,
-            }))}
-            value={filters.id_cd || ''}
-            onChange={(v: any) => setFilters({ ...filters, id_cd: v })}
-            placeholder="Todas as Demandas"
-          />
-        </div>
-        <div className="space-y-1">
-          <label className="text-xs font-semibold text-muted-foreground">Consumo</label>
-          <NativeSelect
-            options={cenario_consumo.map((o: any) => ({
-              value: o.id_cc,
-              label: o.nome_cenario_consumo,
-            }))}
-            value={filters.id_cc || ''}
-            onChange={(v: any) => setFilters({ ...filters, id_cc: v })}
-            placeholder="Todos os Consumos"
-          />
-        </div>
-        <div className="space-y-1">
-          <label className="text-xs font-semibold text-muted-foreground">Perdas</label>
-          <NativeSelect
-            options={cenario_perdas.map((o: any) => ({
-              value: o.id_cp,
-              label: o.nome_cenario_perdas,
-            }))}
-            value={filters.id_cp || ''}
-            onChange={(v: any) => setFilters({ ...filters, id_cp: v })}
-            placeholder="Todas as Perdas"
-          />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-fade-in">
+        {/* Quadro 1 */}
+        <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200">
+          <h3 className="font-semibold text-primary border-b pb-3 mb-4 text-sm uppercase tracking-wider">
+            Parâmetros de Captação
+          </h3>
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-muted-foreground">Fonte de Água</label>
+              <NativeSelect
+                options={fonte_agua.map((o: any) => ({ value: o.id_fonte, label: o.nome_fonte }))}
+                value={filters.id_fonte || ''}
+                onChange={(v: any) => setFilters({ ...filters, id_fonte: v })}
+                placeholder="Todas as Fontes"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-muted-foreground">Tipo de Cenário</label>
+              <NativeSelect
+                options={tipos_cenarios.map((o: any) => ({ value: o.id_tc, label: o.descricao }))}
+                value={filters.id_tc || ''}
+                onChange={(v: any) => setFilters({ ...filters, id_tc: v })}
+                placeholder="Todos os Tipos"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-muted-foreground">Cenário</label>
+              <NativeSelect
+                options={cenarios.map((o: any) => ({ value: o.id_cenarios, label: o.cenarios }))}
+                value={filters.id_c || ''}
+                onChange={(v: any) => setFilters({ ...filters, id_c: v })}
+                placeholder="Todos os Cenários"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-muted-foreground">Estratégia</label>
+              <NativeSelect
+                options={estrategias.map((o: any) => ({
+                  value: o.id_estrategia,
+                  label: o.descricao,
+                }))}
+                value={filters.id_e || ''}
+                onChange={(v: any) => setFilters({ ...filters, id_e: v })}
+                placeholder="Todas as Estratégias"
+              />
+            </div>
+          </div>
         </div>
 
-        {/* Novos Filtros: Período e Mês */}
-        <div className="space-y-1">
-          <label className="text-xs font-semibold text-muted-foreground">Ano Início</label>
-          <NativeSelect
-            options={[2023, 2024, 2025, 2026, 2027, 2028, 2029, 2030].map((y) => ({
-              value: y,
-              label: y.toString(),
-            }))}
-            value={filters.ano_inicio || ''}
-            onChange={(v: any) => setFilters({ ...filters, ano_inicio: v })}
-            placeholder="Início"
-          />
-        </div>
-        <div className="space-y-1">
-          <label className="text-xs font-semibold text-muted-foreground">Ano Fim</label>
-          <NativeSelect
-            options={[2023, 2024, 2025, 2026, 2027, 2028, 2029, 2030].map((y) => ({
-              value: y,
-              label: y.toString(),
-            }))}
-            value={filters.ano_fim || ''}
-            onChange={(v: any) => setFilters({ ...filters, ano_fim: v })}
-            placeholder="Fim"
-          />
-        </div>
-        <div className="space-y-1">
-          <label className="text-xs font-semibold text-muted-foreground">Mês Específico</label>
-          <NativeSelect
-            options={Array.from({ length: 12 }, (_, i) => ({
-              value: (i + 1).toString(),
-              label: (i + 1).toString().padStart(2, '0'),
-            }))}
-            value={filters.mes || ''}
-            onChange={(v: any) => setFilters({ ...filters, mes: v })}
-            placeholder="Todos os meses"
-          />
+        {/* Quadro 2 */}
+        <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200">
+          <h3 className="font-semibold text-primary border-b pb-3 mb-4 text-sm uppercase tracking-wider">
+            Demandas e Perdas
+          </h3>
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-muted-foreground">Demanda</label>
+              <NativeSelect
+                options={cenario_demanda.map((o: any) => ({
+                  value: o.id_cd,
+                  label: o.nome_cenario_demanda,
+                }))}
+                value={filters.id_cd || ''}
+                onChange={(v: any) => setFilters({ ...filters, id_cd: v })}
+                placeholder="Todas as Demandas"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-muted-foreground">Consumo</label>
+              <NativeSelect
+                options={cenario_consumo.map((o: any) => ({
+                  value: o.id_cc,
+                  label: o.nome_cenario_consumo,
+                }))}
+                value={filters.id_cc || ''}
+                onChange={(v: any) => setFilters({ ...filters, id_cc: v })}
+                placeholder="Todos os Consumos"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-muted-foreground">Perdas</label>
+              <NativeSelect
+                options={cenario_perdas.map((o: any) => ({
+                  value: o.id_cp,
+                  label: o.nome_cenario_perdas,
+                }))}
+                value={filters.id_cp || ''}
+                onChange={(v: any) => setFilters({ ...filters, id_cp: v })}
+                placeholder="Todas as Perdas"
+              />
+            </div>
+          </div>
         </div>
 
-        <div className="space-y-1 flex items-end">
-          <Button onClick={handleSimulate} disabled={loading} className="w-full h-10">
-            {loading ? 'Processando...' : 'Executar Simulação'}
-          </Button>
+        {/* Quadro 3 */}
+        <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200 flex flex-col">
+          <h3 className="font-semibold text-primary border-b pb-3 mb-4 text-sm uppercase tracking-wider">
+            Período
+          </h3>
+          <div className="space-y-3 flex-1">
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-muted-foreground">Ano Início</label>
+              <NativeSelect
+                options={[2023, 2024, 2025, 2026, 2027, 2028, 2029, 2030].map((y) => ({
+                  value: y,
+                  label: y.toString(),
+                }))}
+                value={filters.ano_inicio || ''}
+                onChange={(v: any) => setFilters({ ...filters, ano_inicio: v })}
+                placeholder="Início"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-muted-foreground">Ano Fim</label>
+              <NativeSelect
+                options={[2023, 2024, 2025, 2026, 2027, 2028, 2029, 2030].map((y) => ({
+                  value: y,
+                  label: y.toString(),
+                }))}
+                value={filters.ano_fim || ''}
+                onChange={(v: any) => setFilters({ ...filters, ano_fim: v })}
+                placeholder="Fim"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-muted-foreground">Mês Específico</label>
+              <NativeSelect
+                options={Array.from({ length: 12 }, (_, i) => ({
+                  value: (i + 1).toString(),
+                  label: (i + 1).toString().padStart(2, '0'),
+                }))}
+                value={filters.mes || ''}
+                onChange={(v: any) => setFilters({ ...filters, mes: v })}
+                placeholder="Todos os meses"
+              />
+            </div>
+          </div>
+          <div className="pt-6">
+            <Button onClick={handleSimulate} disabled={loading} className="w-full h-10 shadow-sm">
+              {loading ? 'Processando...' : 'Executar Simulação'}
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -215,47 +276,105 @@ export default function Cenarios() {
         <>
           <CenariosDashboard data={data} fontesMap={fontesMap} />
 
-          <div className="bg-white p-6 shadow-md rounded-xl border mt-6 overflow-hidden">
-            <h2 className="text-xl font-bold mb-4">Tabela de Conferência</h2>
-            <div className="max-h-96 overflow-y-auto">
+          <div className="bg-white p-6 shadow-md rounded-xl border mt-6">
+            <h2 className="text-xl font-bold mb-4 text-primary">Agrupamento por Tempo e Fonte</h2>
+            <div className="max-h-96 overflow-y-auto overflow-x-auto border rounded">
               <Table>
                 <TableHeader>
-                  <TableRow>
-                    <TableHead>Tempo</TableHead>
-                    <TableHead>Fonte</TableHead>
-                    <TableHead>Volume (m³)</TableHead>
-                    <TableHead>Demanda (m³)</TableHead>
-                    <TableHead>Vol. Distribuído (m³)</TableHead>
-                    <TableHead>Distr. Total (m³)</TableHead>
-                    <TableHead>Déficit (m³)</TableHead>
-                    <TableHead>CAPEX</TableHead>
-                    <TableHead>OPEX</TableHead>
+                  <TableRow className="bg-slate-50">
+                    <TableHead className="whitespace-nowrap py-2">Tempo</TableHead>
+                    <TableHead className="whitespace-nowrap py-2">Fonte</TableHead>
+                    <TableHead className="whitespace-nowrap py-2">
+                      Volume Total Distribuído (m³)
+                    </TableHead>
+                    <TableHead className="whitespace-nowrap py-2">Média Demanda (m³)</TableHead>
+                    <TableHead className="whitespace-nowrap py-2">Média CAPEX</TableHead>
+                    <TableHead className="whitespace-nowrap py-2">Média OPEX</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {groupedData.map((row, idx) => (
+                    <TableRow key={idx} className="hover:bg-slate-50/50">
+                      <TableCell className="py-1 text-sm whitespace-nowrap">{row.tempo}</TableCell>
+                      <TableCell className="py-1 text-sm whitespace-nowrap">
+                        {fontesMap[row.id_fonte] || row.id_fonte}
+                      </TableCell>
+                      <TableCell className="py-1 text-sm whitespace-nowrap">
+                        {row.volume_distribuido?.toLocaleString(undefined, {
+                          maximumFractionDigits: 2,
+                        })}
+                      </TableCell>
+                      <TableCell className="py-1 text-sm whitespace-nowrap">
+                        {row.demanda?.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                      </TableCell>
+                      <TableCell className="py-1 text-sm whitespace-nowrap">
+                        {formatCurrency(row.capex)}
+                      </TableCell>
+                      <TableCell className="py-1 text-sm whitespace-nowrap">
+                        {formatCurrency(row.opex)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+
+          <div className="bg-white p-6 shadow-md rounded-xl border mt-6">
+            <h2 className="text-xl font-bold mb-4 text-primary">Tabela de Conferência (Bruta)</h2>
+            <div className="max-h-96 overflow-y-auto overflow-x-auto border rounded">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-slate-50">
+                    <TableHead className="whitespace-nowrap py-2">Tempo</TableHead>
+                    <TableHead className="whitespace-nowrap py-2">Fonte</TableHead>
+                    <TableHead className="whitespace-nowrap py-2">Volume (m³)</TableHead>
+                    <TableHead className="whitespace-nowrap py-2">Demanda (m³)</TableHead>
+                    <TableHead className="whitespace-nowrap py-2">Vol. Distribuído (m³)</TableHead>
+                    <TableHead className="whitespace-nowrap py-2">Distr. Total (m³)</TableHead>
+                    <TableHead className="whitespace-nowrap py-2">Déficit (m³)</TableHead>
+                    <TableHead className="whitespace-nowrap py-2">CAPEX</TableHead>
+                    <TableHead className="whitespace-nowrap py-2">OPEX</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {data.map((row, idx) => (
-                    <TableRow key={idx}>
-                      <TableCell className="py-1">{row.tempo}</TableCell>
-                      <TableCell className="py-1">
+                    <TableRow key={idx} className="hover:bg-slate-50/50">
+                      <TableCell className="py-1 text-sm whitespace-nowrap">{row.tempo}</TableCell>
+                      <TableCell className="py-1 text-sm whitespace-nowrap">
                         {fontesMap[row.id_fonte] || row.id_fonte}
                       </TableCell>
-                      <TableCell className="py-1">{row.volume_captado?.toLocaleString()}</TableCell>
-                      <TableCell className="py-1">{row.demanda?.toLocaleString()}</TableCell>
-                      <TableCell className="py-1">
-                        {row.volume_distribuido?.toLocaleString()}
+                      <TableCell className="py-1 text-sm whitespace-nowrap">
+                        {row.volume_captado?.toLocaleString(undefined, {
+                          maximumFractionDigits: 2,
+                        })}
                       </TableCell>
-                      <TableCell className="py-1">
-                        {row.distribuicao_total?.toLocaleString()}
+                      <TableCell className="py-1 text-sm whitespace-nowrap">
+                        {row.demanda?.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                      </TableCell>
+                      <TableCell className="py-1 text-sm whitespace-nowrap">
+                        {row.volume_distribuido?.toLocaleString(undefined, {
+                          maximumFractionDigits: 2,
+                        })}
+                      </TableCell>
+                      <TableCell className="py-1 text-sm whitespace-nowrap">
+                        {row.distribuicao_total?.toLocaleString(undefined, {
+                          maximumFractionDigits: 2,
+                        })}
                       </TableCell>
                       <TableCell
-                        className={
+                        className={`py-1 text-sm whitespace-nowrap ${
                           row.deficit > 0 ? 'text-red-600 font-semibold' : 'text-green-600'
-                        }
+                        }`}
                       >
-                        {row.deficit?.toLocaleString()}
+                        {row.deficit?.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                       </TableCell>
-                      <TableCell>{row.capex?.toLocaleString()}</TableCell>
-                      <TableCell>{row.opex?.toLocaleString()}</TableCell>
+                      <TableCell className="py-1 text-sm whitespace-nowrap">
+                        {formatCurrency(row.capex)}
+                      </TableCell>
+                      <TableCell className="py-1 text-sm whitespace-nowrap">
+                        {formatCurrency(row.opex)}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

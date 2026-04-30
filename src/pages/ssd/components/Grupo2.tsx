@@ -14,18 +14,22 @@ import {
 import { Trash2 } from 'lucide-react'
 
 export function Grupo2() {
-  const { fonte_agua, tipos_cenarios, estrategias } = useSsdData()
+  const { fonte_agua, tipos_cenarios, estrategias, cenarios } = useSsdData()
   const [cf, setCf] = useState<any[]>([])
   const [ef, setEf] = useState<any[]>([])
+  const [tcc, setTcc] = useState<any[]>([])
 
   const [f1, setF1] = useState('')
   const [tc, setTc] = useState('')
   const [f2, setF2] = useState('')
   const [e, setE] = useState('')
+  const [tc2, setTc2] = useState('')
+  const [c, setC] = useState('')
 
   const load = async () => {
     setCf(await getTable('cenarios_fonte'))
     setEf(await getTable('estrategias_fonte'))
+    setTcc(await getTable('tipo_cenario_cenario'))
   }
   useEffect(() => {
     load()
@@ -36,16 +40,15 @@ export function Grupo2() {
   const getTcName = (id: number) => tipos_cenarios.find((x: any) => x.id_tc === id)?.descricao || id
   const getEName = (id: number) =>
     estrategias.find((x: any) => x.id_estrategia === id)?.descricao || id
+  const getCName = (id: number) => cenarios.find((x: any) => x.id_cenarios === id)?.cenarios || id
 
   return (
     <div className="space-y-6">
-      <h2 className="text-xl font-bold border-b pb-2">
-        Associações de fonte de água com cenários e estratégias
-      </h2>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <h2 className="text-xl font-bold border-b pb-2">Associações de Referência</h2>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="bg-white p-4 shadow rounded border space-y-4">
-          <h3 className="font-semibold">Cenários por Fonte</h3>
-          <div className="flex gap-2">
+          <h3 className="font-semibold text-sm">Tipos de Cenário por Fonte</h3>
+          <div className="flex flex-col gap-2">
             <NativeSelect
               options={fonte_agua.map((o: any) => ({ value: o.id_fonte, label: o.nome_fonte }))}
               value={f1}
@@ -56,7 +59,7 @@ export function Grupo2() {
               options={tipos_cenarios.map((o: any) => ({ value: o.id_tc, label: o.descricao }))}
               value={tc}
               onChange={setTc}
-              placeholder="Selecione Tipo Cen."
+              placeholder="Selecione Tipo Cenário"
             />
             <Button
               onClick={async () => {
@@ -67,40 +70,101 @@ export function Grupo2() {
               Adicionar
             </Button>
           </div>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Fonte</TableHead>
-                <TableHead>Cenário</TableHead>
-                <TableHead></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {cf.map((row) => (
-                <TableRow key={row.id_cf}>
-                  <TableCell>{getFonteName(row.id_fonte)}</TableCell>
-                  <TableCell>{getTcName(row.id_tc)}</TableCell>
-                  <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={async () => {
-                        await deleteRow('cenarios_fonte', 'id_cf', row.id_cf)
-                        load()
-                      }}
-                    >
-                      <Trash2 className="w-4 h-4 text-red-500" />
-                    </Button>
-                  </TableCell>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="py-2">Fonte</TableHead>
+                  <TableHead className="py-2">Tipo Cenário</TableHead>
+                  <TableHead className="py-2 w-12"></TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {cf.map((row) => (
+                  <TableRow key={row.id_cf}>
+                    <TableCell className="py-1 text-sm">{getFonteName(row.id_fonte)}</TableCell>
+                    <TableCell className="py-1 text-sm">{getTcName(row.id_tc)}</TableCell>
+                    <TableCell className="py-1 text-sm">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={async () => {
+                          await deleteRow('cenarios_fonte', 'id_cf', row.id_cf)
+                          load()
+                        }}
+                      >
+                        <Trash2 className="w-4 h-4 text-red-500" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </div>
 
         <div className="bg-white p-4 shadow rounded border space-y-4">
-          <h3 className="font-semibold">Estratégias por Fonte</h3>
-          <div className="flex gap-2">
+          <h3 className="font-semibold text-sm">Cenários por Tipo de Cenário</h3>
+          <div className="flex flex-col gap-2">
+            <NativeSelect
+              options={tipos_cenarios.map((o: any) => ({ value: o.id_tc, label: o.descricao }))}
+              value={tc2}
+              onChange={setTc2}
+              placeholder="Selecione Tipo Cenário"
+            />
+            <NativeSelect
+              options={cenarios.map((o: any) => ({ value: o.id_cenarios, label: o.cenarios }))}
+              value={c}
+              onChange={setC}
+              placeholder="Selecione Cenário"
+            />
+            <Button
+              onClick={async () => {
+                await insertRow('tipo_cenario_cenario', { id_tc: tc2, id_c: c })
+                load()
+              }}
+            >
+              Adicionar
+            </Button>
+          </div>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="py-2">Tipo Cenário</TableHead>
+                  <TableHead className="py-2">Cenário</TableHead>
+                  <TableHead className="py-2 w-12"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {tcc.map((row) => (
+                  <TableRow key={row.id_tcc}>
+                    <TableCell className="py-1 text-sm">{getTcName(row.id_tc)}</TableCell>
+                    <TableCell className="py-1 text-sm">{getCName(row.id_c)}</TableCell>
+                    <TableCell className="py-1 text-sm">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={async () => {
+                          await deleteRow('tipo_cenario_cenario', 'id_tcc', row.id_tcc)
+                          load()
+                        }}
+                      >
+                        <Trash2 className="w-4 h-4 text-red-500" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
+
+        <div className="bg-white p-4 shadow rounded border space-y-4">
+          <h3 className="font-semibold text-sm">Estratégias por Fonte</h3>
+          <div className="flex flex-col gap-2">
             <NativeSelect
               options={fonte_agua.map((o: any) => ({ value: o.id_fonte, label: o.nome_fonte }))}
               value={f2}
@@ -125,35 +189,38 @@ export function Grupo2() {
               Adicionar
             </Button>
           </div>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Fonte</TableHead>
-                <TableHead>Estratégia</TableHead>
-                <TableHead></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {ef.map((row) => (
-                <TableRow key={row.id_ef}>
-                  <TableCell>{getFonteName(row.id_fonte)}</TableCell>
-                  <TableCell>{getEName(row.id_e)}</TableCell>
-                  <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={async () => {
-                        await deleteRow('estrategias_fonte', 'id_ef', row.id_ef)
-                        load()
-                      }}
-                    >
-                      <Trash2 className="w-4 h-4 text-red-500" />
-                    </Button>
-                  </TableCell>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="py-2">Fonte</TableHead>
+                  <TableHead className="py-2">Estratégia</TableHead>
+                  <TableHead className="py-2 w-12"></TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {ef.map((row) => (
+                  <TableRow key={row.id_ef}>
+                    <TableCell className="py-1 text-sm">{getFonteName(row.id_fonte)}</TableCell>
+                    <TableCell className="py-1 text-sm">{getEName(row.id_e)}</TableCell>
+                    <TableCell className="py-1 text-sm">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={async () => {
+                          await deleteRow('estrategias_fonte', 'id_ef', row.id_ef)
+                          load()
+                        }}
+                      >
+                        <Trash2 className="w-4 h-4 text-red-500" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </div>
       </div>
     </div>
