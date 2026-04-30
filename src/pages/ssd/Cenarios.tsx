@@ -294,6 +294,7 @@ export default function Cenarios() {
                       Volume Total Distribuído (m³)
                     </TableHead>
                     <TableHead className="whitespace-nowrap py-2">Média Demanda (m³)</TableHead>
+                    <TableHead className="whitespace-nowrap py-2">Déficit (m³)</TableHead>
                     <TableHead className="whitespace-nowrap py-2">Média CAPEX</TableHead>
                     <TableHead className="whitespace-nowrap py-2">Média OPEX</TableHead>
                   </TableRow>
