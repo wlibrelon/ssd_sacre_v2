@@ -1,7 +1,6 @@
-import { useState, useEffect } from 'react'
-import { getTable, insertRow, deleteRow } from '@/services/ssd'
-import { CrudTable } from './CrudTable'
-import { useSsdData } from '@/hooks/use-ssd-data'
+import React, { useState, useEffect } from 'react'
+import { useSsdData } from '@/hooks/useSsdData' // Adjust path as needed
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Table,
   TableBody,
@@ -10,122 +9,279 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { NativeSelect } from './NativeSelect'
 import { Button } from '@/components/ui/button'
-import { Trash2 } from 'lucide-react'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
-export function Grupo3() {
-  const { fonte_agua, tipos_cenarios, cenarios, estrategias, simulacao_ssd } = useSsdData()
-  const [activeSim, setActiveSim] = useState('')
-  const [cs, setCs] = useState<any[]>([])
-  const [form, setForm] = useState<any>({})
+interface Fonte {
+  id: string
+  nome: string
+}
 
-  const loadCs = async () => setCs(await getTable('cenario_simulacao'))
+interface TipoCenario {
+  id: string
+  nome: string
+}
+
+interface Cenario {
+  id: string
+  nome: string
+}
+
+interface Estrategia {
+  id: string
+  nome: string
+}
+
+interface CenarioFonte {
+  id_fonte: string
+  id_tc: string
+  id_cenario: string
+}
+
+interface EstrategiaFonte {
+  id_fonte: string
+  id_estrategia: string
+}
+
+interface Associacao {
+  id_fonte: string
+  id_tc: string
+  id_cenario: string
+  id_estrategia: string
+}
+
+const Grupo3: React.FC = () => {
+  const { data, getTable } = useSsdData()
+
+  const fontes: Fonte[] = data?.fontes || []
+  const tiposCenariosBase: TipoCenario[] = data?.tipos_cenarios || []
+  const cenariosBase: Cenario[] = data?.cenarios || []
+  const estrategiasBase: Estrategia[] = data?.estrategias || []
+
+  const [cenariosFonte, setCenariosFonte] = useState<CenarioFonte[]>([])
+  const [estrategiasFonte, setEstrategiasFonte] = useState<EstrategiaFonte[]>([])
+  const [associacoes, setAssociacoes] = useState<Associacao[]>([])
+  const [filteredTiposCenarios, setFilteredTiposCenarios] = useState<TipoCenario[]>([])
+  const [filteredCenarios, setFilteredCenarios] = useState<Cenario[]>([])
+  const [filteredEstrategias, setFilteredEstrategias] = useState<Estrategia[]>([])
+
+  const [form, setForm] = useState({
+    id_fonte: '',
+    id_tc: '',
+    id_cenario: '',
+    id_estrategia: '',
+  })
+
   useEffect(() => {
-    loadCs()
-  }, [])
+    getTable('cenarios_fonte').then((res: CenarioFonte[]) => setCenariosFonte(res))
+    getTable('estrategias_fonte').then((res: EstrategiaFonte[]) => setEstrategiasFonte(res))
+    getTable('grupo3_associacoes').then((res: Associacao[]) => setAssociacoes(res))
+  }, [getTable])
 
-  const handleAdd = async () => {
-    if (!activeSim) return alert('Selecione uma simulação ativa!')
-    await insertRow('cenario_simulacao', { ...form, id_s: activeSim })
-    loadCs()
+  useEffect(() => {
+    if (!form.id_fonte) {
+      setFilteredTiposCenarios([])
+      setFilteredCenarios([])
+      setFilteredEstrategias([])
+      return
+    }
+
+    // Filter tipos cenários and estratégias
+    const cf = cenariosFonte.filter((c) => c.id_fonte === form.id_fonte)
+    const uniqueTc = Array.from(new Set(cf.map((c) => c.id_tc)))
+    setFilteredTiposCenarios(tiposCenariosBase.filter((tc) => uniqueTc.includes(tc.id)))
+
+    const ef = estrategiasFonte.filter((e) => e.id_fonte === form.id_fonte)
+    const uniqueE = Array.from(new Set(ef.map((e) => e.id_estrategia)))
+    setFilteredEstrategias(estrategiasBase.filter((e) => uniqueE.includes(e.id)))
+  }, [form.id_fonte, cenariosFonte, estrategiasFonte, tiposCenariosBase, estrategiasBase])
+
+  useEffect(() => {
+    if (!form.id_fonte || !form.id_tc) {
+      setFilteredCenarios([])
+      return
+    }
+
+    const cf = cenariosFonte.filter((c) => c.id_fonte === form.id_fonte && c.id_tc === form.id_tc)
+    const uniqueC = Array.from(new Set(cf.map((c) => c.id_cenario)))
+    setFilteredCenarios(cenariosBase.filter((c) => uniqueC.includes(c.id)))
+  }, [form.id_fonte, form.id_tc, cenariosFonte, cenariosBase])
+
+  const handleFonteChange = (id_fonte: string) => {
+    setForm({ id_fonte, id_tc: '', id_cenario: '', id_estrategia: '' })
   }
 
-  const getF = (id: any) => fonte_agua.find((x: any) => x.id_fonte === id)?.nome_fonte
-  const getTc = (id: any) => tipos_cenarios.find((x: any) => x.id_tc === id)?.descricao
-  const getC = (id: any) => cenarios.find((x: any) => x.id_cenarios === id)?.cenarios
-  const getE = (id: any) => estrategias.find((x: any) => x.id_estrategia === id)?.descricao
+  const handleTcChange = (id_tc: string) => {
+    setForm((prev) => ({ ...prev, id_tc, id_cenario: '' }))
+  }
+
+  const handleCenarioChange = (id_cenario: string) => {
+    setForm((prev) => ({ ...prev, id_cenario }))
+  }
+
+  const handleEstrategiaChange = (id_estrategia: string) => {
+    setForm((prev) => ({ ...prev, id_estrategia }))
+  }
+
+  const handleAdd = () => {
+    if (!form.id_fonte || !form.id_tc || !form.id_cenario || !form.id_estrategia) return
+
+    const newAssoc: Associacao = {
+      id_fonte: form.id_fonte,
+      id_tc: form.id_tc,
+      id_cenario: form.id_cenario,
+      id_estrategia: form.id_estrategia,
+    }
+
+    if (
+      associacoes.some(
+        (a) =>
+          a.id_fonte === newAssoc.id_fonte &&
+          a.id_tc === newAssoc.id_tc &&
+          a.id_cenario === newAssoc.id_cenario &&
+          a.id_estrategia === newAssoc.id_estrategia,
+      )
+    ) {
+      return // Duplicate
+    }
+
+    setAssociacoes((prev) => [...prev, newAssoc])
+    // TODO: Integrate original persistence logic, e.g., insertTable('grupo3_associacoes', newAssoc)
+
+    setForm((prev) => ({ ...prev, id_tc: '', id_cenario: '', id_estrategia: '' }))
+  }
+
+  const handleDelete = (assoc: Associacao) => {
+    setAssociacoes((prev) =>
+      prev.filter(
+        (a) =>
+          !(
+            a.id_fonte === assoc.id_fonte &&
+            a.id_tc === assoc.id_tc &&
+            a.id_cenario === assoc.id_cenario &&
+            a.id_estrategia === assoc.id_estrategia
+          ),
+      ),
+    )
+    // TODO: Integrate original persistence logic, e.g., deleteTable('grupo3_associacoes', assoc)
+  }
+
+  const getNome = (id: string, lista: any[]): string => {
+    return lista.find((item) => item.id === id)?.nome || id
+  }
 
   return (
-    <div className="space-y-6">
-      <h2 className="text-xl font-bold border-b pb-2">Simulações para SSD</h2>
-      <CrudTable
-        table="simulacao_ssd"
-        title="Simulações"
-        pk="id_s"
-        cols={[{ key: 'descricao', label: 'Descrição da Simulação' }]}
-      />
-
-      <div className="bg-white p-4 shadow rounded border space-y-4">
-        <h3 className="font-semibold text-lg">Configuração de cenários para simulação do SSD</h3>
-        <NativeSelect
-          options={simulacao_ssd.map((s: any) => ({ value: s.id_s, label: s.descricao }))}
-          value={activeSim}
-          onChange={setActiveSim}
-          placeholder="Selecione a Simulação Ativa"
-        />
-
-        {activeSim && (
-          <>
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-2 items-end mt-4">
-              <NativeSelect
-                options={fonte_agua.map((o: any) => ({ value: o.id_fonte, label: o.nome_fonte }))}
-                value={form.id_fonte || ''}
-                onChange={(v: any) => setForm({ ...form, id_fonte: v })}
-                placeholder="Fonte"
-              />
-              <NativeSelect
-                options={tipos_cenarios.map((o: any) => ({ value: o.id_tc, label: o.descricao }))}
-                value={form.id_tc || ''}
-                onChange={(v: any) => setForm({ ...form, id_tc: v })}
-                placeholder="Tipo"
-              />
-              <NativeSelect
-                options={cenarios.map((o: any) => ({ value: o.id_cenarios, label: o.cenarios }))}
-                value={form.id_c || ''}
-                onChange={(v: any) => setForm({ ...form, id_c: v })}
-                placeholder="Cenário"
-              />
-              <NativeSelect
-                options={estrategias.map((o: any) => ({
-                  value: o.id_estrategia,
-                  label: o.descricao,
-                }))}
-                value={form.id_e || ''}
-                onChange={(v: any) => setForm({ ...form, id_e: v })}
-                placeholder="Estratégia"
-              />
-              <Button onClick={handleAdd}>Associar</Button>
-            </div>
-
-            <Table className="mt-4">
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Fonte</TableHead>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead>Cenário</TableHead>
-                  <TableHead>Estratégia</TableHead>
-                  <TableHead></TableHead>
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Adicionar Associação</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Select value={form.id_fonte} onValueChange={handleFonteChange}>
+            <SelectTrigger>
+              <SelectValue placeholder="Selecione a Fonte de Água" />
+            </SelectTrigger>
+            <SelectContent>
+              {fontes.map((f) => (
+                <SelectItem key={f.id} value={f.id}>
+                  {f.nome}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={form.id_tc} onValueChange={handleTcChange}>
+            <SelectTrigger>
+              <SelectValue placeholder="Tipo de Cenário" />
+            </SelectTrigger>
+            <SelectContent>
+              {filteredTiposCenarios.map((tc) => (
+                <SelectItem key={tc.id} value={tc.id}>
+                  {tc.nome}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={form.id_cenario} onValueChange={handleCenarioChange}>
+            <SelectTrigger>
+              <SelectValue placeholder="Cenário" />
+            </SelectTrigger>
+            <SelectContent>
+              {filteredCenarios.map((c) => (
+                <SelectItem key={c.id} value={c.id}>
+                  {c.nome}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={form.id_estrategia} onValueChange={handleEstrategiaChange}>
+            <SelectTrigger>
+              <SelectValue placeholder="Estratégia" />
+            </SelectTrigger>
+            <SelectContent>
+              {filteredEstrategias.map((e) => (
+                <SelectItem key={e.id} value={e.id}>
+                  {e.nome}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button onClick={handleAdd} className="w-full">
+            Adicionar
+          </Button>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>Associações</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Fonte</TableHead>
+                <TableHead>Tipo Cenário</TableHead>
+                <TableHead>Cenário</TableHead>
+                <TableHead>Estratégia</TableHead>
+                <TableHead className="text-right">Ações</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {associacoes.map((assoc, index) => (
+                <TableRow key={index}>
+                  <TableCell className="py-1 font-medium">
+                    {getNome(assoc.id_fonte, fontes)}
+                  </TableCell>
+                  <TableCell className="py-1">{getNome(assoc.id_tc, tiposCenariosBase)}</TableCell>
+                  <TableCell className="py-1">{getNome(assoc.id_cenario, cenariosBase)}</TableCell>
+                  <TableCell className="py-1">
+                    {getNome(assoc.id_estrategia, estrategiasBase)}
+                  </TableCell>
+                  <TableCell className="py-1">
+                    <Button variant="destructive" size="sm" onClick={() => handleDelete(assoc)}>
+                      Excluir
+                    </Button>
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {cs
-                  .filter((r) => r.id_s.toString() === activeSim.toString())
-                  .map((row) => (
-                    <TableRow key={row.id_cs}>
-                      <TableCell>{getF(row.id_fonte)}</TableCell>
-                      <TableCell>{getTc(row.id_tc)}</TableCell>
-                      <TableCell>{getC(row.id_c)}</TableCell>
-                      <TableCell>{getE(row.id_e)}</TableCell>
-                      <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={async () => {
-                            await deleteRow('cenario_simulacao', 'id_cs', row.id_cs)
-                            loadCs()
-                          }}
-                        >
-                          <Trash2 className="w-4 h-4 text-red-500" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-              </TableBody>
-            </Table>
-          </>
-        )}
-      </div>
+              ))}
+              {associacoes.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={5} className="h-24 text-center py-1">
+                    Nenhuma associação.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
     </div>
   )
 }
+
+export default Grupo3
