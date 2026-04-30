@@ -9,151 +9,190 @@ import {
 } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
 
-interface Item {
-  id: string
-  name: string
+type Column = {
+  key: string
+  label: string
 }
 
-const CrudTable: React.FC = () => {
-  const [items, setItems] = useState<Item[]>([])
-  const [newName, setNewName] = useState('')
+type RowData = Record<string, any>
+
+interface CrudTableProps {
+  table: RowData[]
+  title: string
+  cols: Column[]
+  pk: string
+}
+
+export function CrudTable({ table: initialTable, title, cols, pk }: CrudTableProps) {
+  const [data, setData] = useState<RowData[]>([])
+  const [showAddDialog, setShowAddDialog] = useState(false)
+  const [showEditDialog, setShowEditDialog] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [editName, setEditName] = useState('')
+  const [newRow, setNewRow] = useState<Record<string, string>>({})
+  const [editRow, setEditRow] = useState<Record<string, string>>({})
+
+  const getPkValue = (row: RowData): string => String(row[pk] || '')
 
   useEffect(() => {
-    const saved = localStorage.getItem('crud-items')
-    if (saved) {
-      try {
-        setItems(JSON.parse(saved))
-      } catch (e) {
-        console.error('Failed to load items:', e)
-      }
-    }
-  }, [])
+    setData(initialTable)
+  }, [initialTable])
 
-  useEffect(() => {
-    localStorage.setItem('crud-items', JSON.stringify(items))
-  }, [items])
-
-  const addItem = () => {
-    if (!newName.trim()) return
-    const id = crypto.randomUUID()
-    setItems([{ id, name: newName.trim() }, ...items])
-    setNewName('')
+  const updateNewRowField = (key: string, value: string) => {
+    setNewRow((prev) => ({ ...prev, [key]: value }))
   }
 
-  const startEdit = (id: string, name: string) => {
-    setEditingId(id)
-    setEditName(name)
+  const updateEditRowField = (key: string, value: string) => {
+    setEditRow((prev) => ({ ...prev, [key]: value }))
+  }
+
+  const openEdit = (row: RowData) => {
+    setEditRow({ ...row } as Record<string, string>)
+    setEditingId(getPkValue(row))
+    setShowEditDialog(true)
   }
 
   const saveEdit = () => {
-    if (!editName.trim() || !editingId) return
-    setItems(
-      items.map((item) => (item.id === editingId ? { ...item, name: editName.trim() } : item)),
-    )
+    if (!editingId) return
+    setData((prev) => prev.map((r) => (getPkValue(r) === editingId ? editRow : r)))
+    setShowEditDialog(false)
     setEditingId(null)
-    setEditName('')
+    setEditRow({})
   }
 
-  const cancelEdit = () => {
-    setEditingId(null)
-    setEditName('')
+  const saveNew = () => {
+    setData((prev) => [...prev, newRow])
+    setShowAddDialog(false)
+    setNewRow({})
   }
 
-  const deleteItem = (id: string) => {
-    if (editingId === id) {
-      cancelEdit()
-    }
-    setItems(items.filter((item) => item.id !== id))
-  }
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      saveEdit()
-    } else if (e.key === 'Escape') {
-      cancelEdit()
+  const handleDelete = (row: RowData) => {
+    if (confirm(`Are you sure you want to delete this ${title.toLowerCase()}?`)) {
+      const id = getPkValue(row)
+      setData((prev) => prev.filter((r) => getPkValue(r) !== id))
     }
   }
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <div className="flex gap-2 mb-6">
-        <Input
-          value={newName}
-          onChange={(e) => setNewName(e.target.value)}
-          placeholder="Enter new item name"
-          className="flex-1"
-          onKeyDown={(e) => e.key === 'Enter' && addItem()}
-        />
-        <Button onClick={addItem}>Add Item</Button>
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold tracking-tight">{title}</h2>
+        <Dialog
+          open={showAddDialog}
+          onOpenChange={(open) => {
+            setShowAddDialog(open)
+            if (open) {
+              setNewRow({})
+            }
+          }}
+        >
+          <DialogTrigger asChild>
+            <Button>Add {title}</Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Add New {title}</DialogTitle>
+              <DialogDescription>Fill in the details below.</DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              {cols.map((col) => (
+                <div key={col.key} className="space-y-1">
+                  <Label htmlFor={col.key}>{col.label}</Label>
+                  <Input
+                    id={col.key}
+                    value={newRow[col.key] || ''}
+                    onChange={(e) => updateNewRowField(col.key, e.target.value)}
+                  />
+                </div>
+              ))}
+            </div>
+            <DialogFooter>
+              <Button type="button" onClick={saveNew}>
+                Save
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-[80%]">Name</TableHead>
-            <TableHead>Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {items.length === 0 ? (
+
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
             <TableRow>
-              <TableCell colSpan={2} className="py-1 text-sm text-center text-muted-foreground">
-                No items yet. Add one above.
-              </TableCell>
+              {cols.map((col) => (
+                <TableHead key={col.key}>{col.label}</TableHead>
+              ))}
+              <TableHead>Actions</TableHead>
             </TableRow>
-          ) : (
-            items.map((item) => (
-              <TableRow key={item.id}>
-                <TableCell className="py-1 text-sm">
-                  {editingId === item.id ? (
-                    <Input
-                      value={editName}
-                      onChange={(e) => setEditName(e.target.value)}
-                      autoFocus
-                      onKeyDown={handleKeyDown}
-                      className="h-8"
-                    />
-                  ) : (
-                    item.name
-                  )}
-                </TableCell>
-                <TableCell className="py-1 text-sm">
-                  {editingId === item.id ? (
-                    <div className="flex gap-1">
-                      <Button size="sm" onClick={saveEdit} className="h-8">
-                        Save
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={cancelEdit} className="h-8">
-                        Cancel
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="flex gap-1">
-                      <Button
-                        size="sm"
-                        onClick={() => startEdit(item.id, item.name)}
-                        className="h-8"
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => deleteItem(item.id)}
-                        className="h-8"
-                      >
-                        Delete
-                      </Button>
-                    </div>
-                  )}
+          </TableHeader>
+          <TableBody>
+            {data.map((row) => (
+              <TableRow key={getPkValue(row)}>
+                {cols.map((col) => (
+                  <TableCell key={col.key} className="py-1">
+                    {row[col.key]}
+                  </TableCell>
+                ))}
+                <TableCell className="py-1">
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={() => openEdit(row)}>
+                      Edit
+                    </Button>
+                    <Button variant="destructive" size="sm" onClick={() => handleDelete(row)}>
+                      Delete
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+
+      <Dialog
+        open={showEditDialog}
+        onOpenChange={(open) => {
+          setShowEditDialog(open)
+          if (!open) {
+            setEditRow({})
+            setEditingId(null)
+          }
+        }}
+      >
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Edit {title}</DialogTitle>
+            <DialogDescription>Update the details below.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            {cols.map((col) => (
+              <div key={col.key} className="space-y-1">
+                <Label htmlFor={col.key}>{col.label}</Label>
+                <Input
+                  id={col.key}
+                  value={editRow[col.key] || ''}
+                  onChange={(e) => updateEditRowField(col.key, e.target.value)}
+                />
+              </div>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button type="button" onClick={saveEdit}>
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
