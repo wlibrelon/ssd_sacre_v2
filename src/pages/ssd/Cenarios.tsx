@@ -316,6 +316,15 @@ export default function Cenarios() {
                       <TableCell className="py-1 text-sm whitespace-nowrap">
                         {formatCurrency(row.capex)}
                       </TableCell>
+
+                      <TableCell
+                        className={`py-1 text-sm whitespace-nowrap ${
+                          row.deficit > 0 ? 'text-red-600 font-semibold' : 'text-green-600'
+                        }`}
+                      >
+                        {row.deficit?.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                      </TableCell>
+
                       <TableCell className="py-1 text-sm whitespace-nowrap">
                         {formatCurrency(row.opex)}
                       </TableCell>
