@@ -177,7 +177,7 @@ export function CenariosDashboard({ data, fontesMap }: any) {
 
         <Card>
           <CardHeader>
-            <CardTitle>Participação das Fontes (%)</CardTitle>
+            <CardTitle>Participação das Fontes(%)</CardTitle>
           </CardHeader>
           <CardContent className="h-[350px]">
             <ResponsiveContainer width="100%" height="100%">
