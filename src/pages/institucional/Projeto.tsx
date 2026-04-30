@@ -98,7 +98,7 @@ export default function Projeto() {
         <div
           className="absolute inset-0 z-0 bg-center bg-cover bg-no-repeat brightness-90 contrast-110"
           style={{
-            backgroundImage: 'url(/imagem_1_projeto.png)',
+            backgroundImage: `url(${'https://hyacuhtohjuzgvcqzdwe.supabase.co/storage/v1/object/public/imagens_app/imagem_2_projeto.png'})`,
             backgroundSize: 'cover',
             backgroundPosition: 'center',
           }}

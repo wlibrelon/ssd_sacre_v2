@@ -12,8 +12,7 @@ const Index = () => {
         <div
           className="absolute inset-0 z-0 bg-cover bg-center object-cover brightness-110"
           style={{
-            backgroundImage:
-              'https://hyacuhtohjuzgvcqzdwe.supabase.co/storage/v1/object/public/imagens_app/image_abertura.png',
+            backgroundImage: `url(${'https://hyacuhtohjuzgvcqzdwe.supabase.co/storage/v1/object/public/imagens_app/image_abertura.png'})`,
           }}
         />
         <div className="absolute inset-0 z-10 bg-primary/40 mix-blend-overlay" />
