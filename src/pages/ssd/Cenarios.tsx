@@ -1,388 +1,208 @@
-import { useState } from 'react'
-import { useSsdData } from '@/hooks/use-ssd-data'
-import { NativeSelect } from './components/NativeSelect'
-import { Button } from '@/components/ui/button'
-import { supabase } from '@/lib/supabase/client'
-import { CenariosDashboard } from './components/CenariosDashboard'
+import React, { useState, useEffect } from 'react'
+import { createClient } from '@supabase/supabase-js'
 import {
   Table,
   TableBody,
+  TableCaption,
   TableCell,
   TableHead,
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { Label } from '@/components/ui/label'
+import CenariosDashboard from './CenariosDashboard'
 
-export default function Cenarios() {
-  const {
-    fonte_agua,
-    tipos_cenarios,
-    cenarios,
-    estrategias,
-    cenario_demanda,
-    cenario_consumo,
-    cenario_perdas,
-  } = useSsdData()
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
-  const [filters, setFilters] = useState<any>({})
-  const [data, setData] = useState<any[]>([])
-  const [groupedData, setGroupedData] = useState<any[]>([])
+interface Row {
+  id: string
+  tempo: string
+  id_fonte: string
+  volume: number
+  demanda: number
+  capex: number
+  opex: number
+  scenario_id?: string
+}
+
+interface GroupedRow {
+  tempo: string
+  volume: number
+  demanda: number
+  capex: number
+  opex: number
+}
+
+interface AccumulatorItem {
+  volume: number
+  demanda: number
+  capex: number
+  opex: number
+  count: number
+}
+
+const Cenarios: React.FC = () => {
+  const [data, setData] = useState<Row[]>([])
+  const [filteredData, setFilteredData] = useState<Row[]>([])
+  const [groupedData, setGroupedData] = useState<GroupedRow[]>([])
+  const [filters, setFilters] = useState<{ scenario?: string; fonte?: string }>({})
   const [loading, setLoading] = useState(false)
-  const [ran, setRan] = useState(false)
 
-  const handleSimulate = async () => {
+  useEffect(() => {
+    fetchData()
+  }, [filters])
+
+  const fetchData = async () => {
     setLoading(true)
-    let q = supabase.from('dados_simulacao').select('*')
+    try {
+      let query = supabase.from('cenarios').select('*').order('tempo', { ascending: true })
 
-    if (filters.id_fonte) q = q.eq('id_fonte', filters.id_fonte)
-    if (filters.id_tc) q = q.eq('id_tc', filters.id_tc)
-    if (filters.id_c) q = q.eq('id_c', filters.id_c)
-    if (filters.id_e) q = q.eq('id_e', filters.id_e)
-    if (filters.id_cd) q = q.eq('id_cd', filters.id_cd)
-    if (filters.id_cc) q = q.eq('id_cc', filters.id_cc)
-    if (filters.id_cp) q = q.eq('id_cp', filters.id_cp)
-
-    if (filters.ano_inicio) q = q.gte('tempo', `${filters.ano_inicio}-01`)
-    if (filters.ano_fim) q = q.lte('tempo', `${filters.ano_fim}-12`)
-    if (filters.mes) q = q.ilike('tempo', `%-${filters.mes.padStart(2, '0')}`)
-
-    const { data: res, error } = await q
-    if (error) console.error(error)
-
-    const processedData = (res || []).map((row: any) => {
-      const volume_captado = row.volume_captado || 0
-      const perdas_percentual = row.perdas || 0
-      const volume_distribuido = volume_captado * (1 - perdas_percentual / 100)
-      const demanda = row.demanda || 0
-
-      return {
-        ...row,
-        volume_distribuido,
-        distribuicao_total: volume_distribuido,
-        deficit: demanda - volume_distribuido,
+      if (filters.scenario) {
+        query = query.eq('scenario_id', filters.scenario)
       }
-    })
-
-    const groupedMap = processedData.reduce((acc: any, row: any) => {
-      const key = `${row.tempo}_${row.id_fonte}`
-      if (!acc[key]) {
-        acc[key] = {
-          tempo: row.tempo,
-          id_fonte: row.id_fonte,
-          volume_distribuido: 0,
-          demanda: 0,
-          capex: 0,
-          opex: 0,
-          count: 0,
-        }
+      if (filters.fonte) {
+        query = query.eq('id_fonte', filters.fonte)
       }
-      acc[key].volume_distribuido += row.volume_distribuido || 0
-      acc[key].demanda += row.demanda || 0
-      acc[key].capex += row.capex || 0
-      acc[key].opex += row.opex || 0
-      acc[key].count += 1
-      return acc
-    }, {})
 
-    const groupedArray = Object.values(groupedMap)
-      .map((g: any) => ({
-        tempo: g.tempo,
-        id_fonte: g.id_fonte,
-        volume_distribuido: g.volume_distribuido,
-        demanda: g.demanda / g.count,
-        capex: g.capex / g.count,
-        opex: g.opex / g.count,
-      }))
-      .sort((a: any, b: any) => a.tempo.localeCompare(b.tempo))
-
-    setData(processedData)
-    setGroupedData(groupedArray)
-    setRan(true)
-    setLoading(false)
+      const { data: fetchedData, error } = await query
+      if (error) throw error
+      setData(fetchedData || [])
+      setFilteredData(fetchedData || [])
+    } catch (error) {
+      console.error('Error fetching data:', error)
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const fontesMap = fonte_agua.reduce(
-    (acc: any, f: any) => ({ ...acc, [f.id_fonte]: f.nome_fonte }),
-    {},
-  )
+  const handleSimulate = () => {
+    const acc: Record<string, AccumulatorItem> = filteredData.reduce((accu, row) => {
+      const key = row.tempo
+      if (!accu[key]) {
+        accu[key] = { volume: 0, demanda: 0, capex: 0, opex: 0, count: 0 }
+      }
+      accu[key]!.volume += row.volume
+      accu[key]!.demanda += row.demanda
+      accu[key]!.capex += row.capex
+      accu[key]!.opex += row.opex
+      accu[key]!.count += 1
+      return accu
+    }, {})
 
-  const formatCurrency = (val: number) =>
-    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val)
+    const groupedArray: GroupedRow[] = Object.entries(acc)
+      .map(([key, item]) => ({
+        tempo: key,
+        volume: item.volume,
+        demanda: item.demanda / item.count,
+        capex: item.capex / item.count,
+        opex: item.opex / item.count,
+      }))
+      .sort((a, b) => a.tempo.localeCompare(b.tempo))
+
+    setGroupedData(groupedArray)
+  }
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
-      <div>
-        <h1 className="text-3xl font-bold text-primary mb-2">Simulação de Cenários</h1>
-        <p className="text-muted-foreground">
-          Filtre os parâmetros desejados para visualizar o comportamento do sistema de recursos
-          hídricos.
-        </p>
-      </div>
+    <div className="container mx-auto p-6">
+      <h1 className="text-3xl font-bold mb-6">Cenários</h1>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-fade-in">
-        {/* Quadro 1 */}
-        <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200">
-          <h3 className="font-semibold text-primary border-b pb-3 mb-4 text-sm uppercase tracking-wider">
-            Parâmetros de Captação
-          </h3>
-          <div className="space-y-3">
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-muted-foreground">Fonte de Água</label>
-              <NativeSelect
-                options={fonte_agua.map((o: any) => ({ value: o.id_fonte, label: o.nome_fonte }))}
-                value={filters.id_fonte || ''}
-                onChange={(v: any) => setFilters({ ...filters, id_fonte: v })}
-                placeholder="Todas as Fontes"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-muted-foreground">Tipo de Cenário</label>
-              <NativeSelect
-                options={tipos_cenarios.map((o: any) => ({ value: o.id_tc, label: o.descricao }))}
-                value={filters.id_tc || ''}
-                onChange={(v: any) => setFilters({ ...filters, id_tc: v })}
-                placeholder="Todos os Tipos"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-muted-foreground">Cenário</label>
-              <NativeSelect
-                options={cenarios.map((o: any) => ({ value: o.id_cenarios, label: o.cenarios }))}
-                value={filters.id_c || ''}
-                onChange={(v: any) => setFilters({ ...filters, id_c: v })}
-                placeholder="Todos os Cenários"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-muted-foreground">Estratégia</label>
-              <NativeSelect
-                options={estrategias.map((o: any) => ({
-                  value: o.id_estrategia,
-                  label: o.descricao,
-                }))}
-                value={filters.id_e || ''}
-                onChange={(v: any) => setFilters({ ...filters, id_e: v })}
-                placeholder="Todas as Estratégias"
-              />
-            </div>
-          </div>
+      {/* Filters */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <div>
+          <Label htmlFor="scenario">Scenario ID</Label>
+          <Input
+            id="scenario"
+            value={filters.scenario || ''}
+            onChange={(e) => setFilters({ ...filters, scenario: e.target.value })}
+            placeholder="Enter scenario ID"
+          />
         </div>
-
-        {/* Quadro 2 */}
-        <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200">
-          <h3 className="font-semibold text-primary border-b pb-3 mb-4 text-sm uppercase tracking-wider">
-            Demandas e Perdas
-          </h3>
-          <div className="space-y-3">
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-muted-foreground">Demanda</label>
-              <NativeSelect
-                options={cenario_demanda.map((o: any) => ({
-                  value: o.id_cd,
-                  label: o.nome_cenario_demanda,
-                }))}
-                value={filters.id_cd || ''}
-                onChange={(v: any) => setFilters({ ...filters, id_cd: v })}
-                placeholder="Todas as Demandas"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-muted-foreground">Consumo</label>
-              <NativeSelect
-                options={cenario_consumo.map((o: any) => ({
-                  value: o.id_cc,
-                  label: o.nome_cenario_consumo,
-                }))}
-                value={filters.id_cc || ''}
-                onChange={(v: any) => setFilters({ ...filters, id_cc: v })}
-                placeholder="Todos os Consumos"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-muted-foreground">Perdas</label>
-              <NativeSelect
-                options={cenario_perdas.map((o: any) => ({
-                  value: o.id_cp,
-                  label: o.nome_cenario_perdas,
-                }))}
-                value={filters.id_cp || ''}
-                onChange={(v: any) => setFilters({ ...filters, id_cp: v })}
-                placeholder="Todas as Perdas"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Quadro 3 */}
-        <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200 flex flex-col">
-          <h3 className="font-semibold text-primary border-b pb-3 mb-4 text-sm uppercase tracking-wider">
-            Período
-          </h3>
-          <div className="space-y-3 flex-1">
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-muted-foreground">Ano Início</label>
-              <NativeSelect
-                options={[2023, 2024, 2025, 2026, 2027, 2028, 2029, 2030].map((y) => ({
-                  value: y,
-                  label: y.toString(),
-                }))}
-                value={filters.ano_inicio || ''}
-                onChange={(v: any) => setFilters({ ...filters, ano_inicio: v })}
-                placeholder="Início"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-muted-foreground">Ano Fim</label>
-              <NativeSelect
-                options={[2023, 2024, 2025, 2026, 2027, 2028, 2029, 2030].map((y) => ({
-                  value: y,
-                  label: y.toString(),
-                }))}
-                value={filters.ano_fim || ''}
-                onChange={(v: any) => setFilters({ ...filters, ano_fim: v })}
-                placeholder="Fim"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-muted-foreground">Mês Específico</label>
-              <NativeSelect
-                options={Array.from({ length: 12 }, (_, i) => ({
-                  value: (i + 1).toString(),
-                  label: (i + 1).toString().padStart(2, '0'),
-                }))}
-                value={filters.mes || ''}
-                onChange={(v: any) => setFilters({ ...filters, mes: v })}
-                placeholder="Todos os meses"
-              />
-            </div>
-          </div>
-          <div className="pt-6">
-            <Button onClick={handleSimulate} disabled={loading} className="w-full h-10 shadow-sm">
-              {loading ? 'Processando...' : 'Executar Simulação'}
-            </Button>
-          </div>
+        <div>
+          <Label htmlFor="fonte">Fonte</Label>
+          <Input
+            id="fonte"
+            value={filters.fonte || ''}
+            onChange={(e) => setFilters({ ...filters, fonte: e.target.value })}
+            placeholder="Enter fonte ID"
+          />
         </div>
       </div>
 
-      {ran && data.length === 0 && (
-        <div className="text-center p-12 bg-white rounded-lg border border-dashed">
-          <p className="text-muted-foreground">
-            Nenhum dado de simulação encontrado para estes filtros.
-          </p>
+      <Button onClick={handleSimulate} className="mb-8" disabled={loading}>
+        Simular Agrupamento
+      </Button>
+
+      <section>
+        <h2 className="text-2xl font-semibold mb-4">Agrupamento por Tempo</h2>
+        <Table>
+          <TableCaption>Soma de volume e média de demanda, capex e opex por tempo.</TableCaption>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Tempo</TableHead>
+              <TableHead>Volume (soma)</TableHead>
+              <TableHead>Demanda (média)</TableHead>
+              <TableHead>Capex (média)</TableHead>
+              <TableHead>Opex (média)</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {groupedData.map((row) => (
+              <TableRow key={row.tempo}>
+                <TableCell>{row.tempo}</TableCell>
+                <TableCell>{row.volume.toFixed(2)}</TableCell>
+                <TableCell>{row.demanda.toFixed(2)}</TableCell>
+                <TableCell>{row.capex.toFixed(2)}</TableCell>
+                <TableCell>{row.opex.toFixed(2)}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </section>
+
+      <section className="mt-12">
+        <h2 className="text-2xl font-semibold mb-4">Tabela de Conferência (Bruta)</h2>
+        <Table>
+          <TableCaption>Dados brutos filtrados do Supabase.</TableCaption>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Tempo</TableHead>
+              <TableHead>Fonte</TableHead>
+              <TableHead>Volume</TableHead>
+              <TableHead>Demanda</TableHead>
+              <TableHead>Capex</TableHead>
+              <TableHead>Opex</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filteredData.map((row) => (
+              <TableRow key={row.id}>
+                <TableCell>{row.tempo}</TableCell>
+                <TableCell>{row.id_fonte}</TableCell>
+                <TableCell>{row.volume.toFixed(2)}</TableCell>
+                <TableCell>{row.demanda.toFixed(2)}</TableCell>
+                <TableCell>{row.capex.toFixed(2)}</TableCell>
+                <TableCell>{row.opex.toFixed(2)}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </section>
+
+      <section className="mt-12">
+        <CenariosDashboard />
+      </section>
+
+      {loading && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+          <p className="text-white text-lg">Carregando...</p>
         </div>
-      )}
-
-      {data.length > 0 && (
-        <>
-          <CenariosDashboard data={data} fontesMap={fontesMap} />
-
-          <div className="bg-white p-6 shadow-md rounded-xl border mt-6">
-            <h2 className="text-xl font-bold mb-4 text-primary">Agrupamento por Tempo e Fonte</h2>
-            <div className="max-h-96 overflow-y-auto overflow-x-auto border rounded">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-slate-50">
-                    <TableHead className="whitespace-nowrap py-2">Tempo</TableHead>
-                    <TableHead className="whitespace-nowrap py-2">Fonte</TableHead>
-                    <TableHead className="whitespace-nowrap py-2">
-                      Volume Total Distribuído (m³)
-                    </TableHead>
-                    <TableHead className="whitespace-nowrap py-2">Média Demanda (m³)</TableHead>
-                    <TableHead className="whitespace-nowrap py-2">Média CAPEX</TableHead>
-                    <TableHead className="whitespace-nowrap py-2">Média OPEX</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {groupedData.map((row, idx) => (
-                    <TableRow key={idx} className="hover:bg-slate-50/50">
-                      <TableCell className="py-1 text-sm whitespace-nowrap">{row.tempo}</TableCell>
-                      <TableCell className="py-1 text-sm whitespace-nowrap">
-                        {fontesMap[row.id_fonte] || row.id_fonte}
-                      </TableCell>
-                      <TableCell className="py-1 text-sm whitespace-nowrap">
-                        {row.volume_distribuido?.toLocaleString(undefined, {
-                          maximumFractionDigits: 2,
-                        })}
-                      </TableCell>
-                      <TableCell className="py-1 text-sm whitespace-nowrap">
-                        {row.demanda?.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                      </TableCell>
-                      <TableCell className="py-1 text-sm whitespace-nowrap">
-                        {formatCurrency(row.capex)}
-                      </TableCell>
-                      <TableCell className="py-1 text-sm whitespace-nowrap">
-                        {formatCurrency(row.opex)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </div>
-
-          <div className="bg-white p-6 shadow-md rounded-xl border mt-6">
-            <h2 className="text-xl font-bold mb-4 text-primary">Tabela de Conferência (Bruta)</h2>
-            <div className="max-h-96 overflow-y-auto overflow-x-auto border rounded">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-slate-50">
-                    <TableHead className="whitespace-nowrap py-2">Tempo</TableHead>
-                    <TableHead className="whitespace-nowrap py-2">Fonte</TableHead>
-                    <TableHead className="whitespace-nowrap py-2">Volume (m³)</TableHead>
-                    <TableHead className="whitespace-nowrap py-2">Demanda (m³)</TableHead>
-                    <TableHead className="whitespace-nowrap py-2">Vol. Distribuído (m³)</TableHead>
-                    <TableHead className="whitespace-nowrap py-2">Distr. Total (m³)</TableHead>
-                    <TableHead className="whitespace-nowrap py-2">Déficit (m³)</TableHead>
-                    <TableHead className="whitespace-nowrap py-2">CAPEX</TableHead>
-                    <TableHead className="whitespace-nowrap py-2">OPEX</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {data.map((row, idx) => (
-                    <TableRow key={idx} className="hover:bg-slate-50/50">
-                      <TableCell className="py-1 text-sm whitespace-nowrap">{row.tempo}</TableCell>
-                      <TableCell className="py-1 text-sm whitespace-nowrap">
-                        {fontesMap[row.id_fonte] || row.id_fonte}
-                      </TableCell>
-                      <TableCell className="py-1 text-sm whitespace-nowrap">
-                        {row.volume_captado?.toLocaleString(undefined, {
-                          maximumFractionDigits: 2,
-                        })}
-                      </TableCell>
-                      <TableCell className="py-1 text-sm whitespace-nowrap">
-                        {row.demanda?.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                      </TableCell>
-                      <TableCell className="py-1 text-sm whitespace-nowrap">
-                        {row.volume_distribuido?.toLocaleString(undefined, {
-                          maximumFractionDigits: 2,
-                        })}
-                      </TableCell>
-                      <TableCell className="py-1 text-sm whitespace-nowrap">
-                        {row.distribuicao_total?.toLocaleString(undefined, {
-                          maximumFractionDigits: 2,
-                        })}
-                      </TableCell>
-                      <TableCell
-                        className={`py-1 text-sm whitespace-nowrap ${
-                          row.deficit > 0 ? 'text-red-600 font-semibold' : 'text-green-600'
-                        }`}
-                      >
-                        {row.deficit?.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                      </TableCell>
-                      <TableCell className="py-1 text-sm whitespace-nowrap">
-                        {formatCurrency(row.capex)}
-                      </TableCell>
-                      <TableCell className="py-1 text-sm whitespace-nowrap">
-                        {formatCurrency(row.opex)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </div>
-        </>
       )}
     </div>
   )
 }
+
+export default Cenarios
