@@ -276,7 +276,7 @@ export function CenariosDashboard({ data, fontesMap }: any) {
                 <Line
                   type="monotone"
                   dataKey="deficit"
-                  name="Saldo (Surplus/Déficit)"
+                  name="Saldo"
                   stroke="#f59e0b"
                   strokeWidth={3}
                   dot={false}

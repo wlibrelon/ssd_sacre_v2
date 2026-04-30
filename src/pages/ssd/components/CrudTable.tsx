@@ -58,7 +58,7 @@ export function CrudTable({ table, title, cols, pk }: any) {
               {cols.map((c: any) => (
                 <TableHead key={c.key}>{c.label}</TableHead>
               ))}
-              <TableHead className="w-16">Ação</TableHead>
+              <TableHead className="w-16">Operação</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
