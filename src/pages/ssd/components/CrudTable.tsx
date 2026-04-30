@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react'
-import { Trash2 } from 'lucide-react'
 import {
   Table,
   TableBody,
@@ -7,92 +6,152 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-  Button,
-} from '@/components/ui/table' // Adjust import path as needed for your UI library (e.g., shadcn/ui)
+} from '@/components/ui/table'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 
-interface User {
-  id: number
+interface Item {
+  id: string
   name: string
-  email: string
 }
 
 const CrudTable: React.FC = () => {
-  const [data, setData] = useState<User[]>([])
+  const [items, setItems] = useState<Item[]>([])
   const [newName, setNewName] = useState('')
-  const [newEmail, setNewEmail] = useState('')
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editName, setEditName] = useState('')
 
   useEffect(() => {
-    // Simulate initial data fetch
-    setData([
-      { id: 1, name: 'John Doe', email: 'john@example.com' },
-      { id: 2, name: 'Jane Smith', email: 'jane@example.com' },
-    ])
+    const saved = localStorage.getItem('crud-items')
+    if (saved) {
+      try {
+        setItems(JSON.parse(saved))
+      } catch (e) {
+        console.error('Failed to load items:', e)
+      }
+    }
   }, [])
 
-  const cols = ['Name', 'Email']
+  useEffect(() => {
+    localStorage.setItem('crud-items', JSON.stringify(items))
+  }, [items])
 
-  const handleAdd = () => {
-    if (newName.trim() && newEmail.trim()) {
-      const newUser: User = {
-        id: Date.now(),
-        name: newName,
-        email: newEmail,
-      }
-      setData((prev) => [...prev, newUser])
-      setNewName('')
-      setNewEmail('')
+  const addItem = () => {
+    if (!newName.trim()) return
+    const id = crypto.randomUUID()
+    setItems([{ id, name: newName.trim() }, ...items])
+    setNewName('')
+  }
+
+  const startEdit = (id: string, name: string) => {
+    setEditingId(id)
+    setEditName(name)
+  }
+
+  const saveEdit = () => {
+    if (!editName.trim() || !editingId) return
+    setItems(
+      items.map((item) => (item.id === editingId ? { ...item, name: editName.trim() } : item)),
+    )
+    setEditingId(null)
+    setEditName('')
+  }
+
+  const cancelEdit = () => {
+    setEditingId(null)
+    setEditName('')
+  }
+
+  const deleteItem = (id: string) => {
+    if (editingId === id) {
+      cancelEdit()
+    }
+    setItems(items.filter((item) => item.id !== id))
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      saveEdit()
+    } else if (e.key === 'Escape') {
+      cancelEdit()
     }
   }
 
-  const handleDelete = (id: number) => {
-    setData((prev) => prev.filter((user) => user.id !== id))
-  }
-
   return (
-    <div className="space-y-4">
-      {/* Add form */}
-      <div className="flex gap-2">
-        <input
-          type="text"
-          placeholder="Name"
+    <div className="p-6 max-w-4xl mx-auto">
+      <div className="flex gap-2 mb-6">
+        <Input
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
-          className="flex-1 p-2 border rounded-md"
+          placeholder="Enter new item name"
+          className="flex-1"
+          onKeyDown={(e) => e.key === 'Enter' && addItem()}
         />
-        <input
-          type="email"
-          placeholder="Email"
-          value={newEmail}
-          onChange={(e) => setNewEmail(e.target.value)}
-          className="flex-1 p-2 border rounded-md"
-        />
-        <Button onClick={handleAdd}>Add</Button>
+        <Button onClick={addItem}>Add Item</Button>
       </div>
-
       <Table>
         <TableHeader>
           <TableRow>
-            {cols.map((col) => (
-              <TableHead key={col}>{col}</TableHead>
-            ))}
+            <TableHead className="w-[80%]">Name</TableHead>
             <TableHead>Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {data.map((user) => (
-            <TableRow key={user.id}>
-              {cols.map((col) => (
-                <TableCell key={col} className="py-1">
-                  {user[col.toLowerCase() as keyof User] as string}
-                </TableCell>
-              ))}
-              <TableCell className="py-1">
-                <Button variant="destructive" size="sm" onClick={() => handleDelete(user.id)}>
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+          {items.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={2} className="py-1 text-sm text-center text-muted-foreground">
+                No items yet. Add one above.
               </TableCell>
             </TableRow>
-          ))}
+          ) : (
+            items.map((item) => (
+              <TableRow key={item.id}>
+                <TableCell className="py-1 text-sm">
+                  {editingId === item.id ? (
+                    <Input
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      autoFocus
+                      onKeyDown={handleKeyDown}
+                      className="h-8"
+                    />
+                  ) : (
+                    item.name
+                  )}
+                </TableCell>
+                <TableCell className="py-1 text-sm">
+                  {editingId === item.id ? (
+                    <div className="flex gap-1">
+                      <Button size="sm" onClick={saveEdit} className="h-8">
+                        Save
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={cancelEdit} className="h-8">
+                        Cancel
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex gap-1">
+                      <Button
+                        size="sm"
+                        onClick={() => startEdit(item.id, item.name)}
+                        className="h-8"
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => deleteItem(item.id)}
+                        className="h-8"
+                      >
+                        Delete
+                      </Button>
+                    </div>
+                  )}
+                </TableCell>
+              </TableRow>
+            ))
+          )}
         </TableBody>
       </Table>
     </div>
