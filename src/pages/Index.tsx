@@ -11,7 +11,10 @@ const Index = () => {
         {/* Imagem de fundo com overlays */}
         <div
           className="absolute inset-0 z-0 bg-cover bg-center object-cover brightness-110"
-          style={{ backgroundImage: 'url(/image_abertura.png)' }}
+          style={{
+            backgroundImage:
+              'https://hyacuhtohjuzgvcqzdwe.supabase.co/storage/v1/object/public/imagens_app/image_abertura.png',
+          }}
         />
         <div className="absolute inset-0 z-10 bg-primary/40 mix-blend-overlay" />
         <div className="absolute inset-0 z-10 bg-gradient-to-t from-primary/60 via-transparent to-transparent" />
@@ -20,64 +23,7 @@ const Index = () => {
         <h1 className="absolute top-4 left-1/2 transform -translate-x-1/2 z-20 text-3xl md:text-5xl font-bold tracking-tight text-white drop-shadow-2xl whitespace-nowrap">
           Gestão Hídrica Baseada em Dados
         </h1>
-        {/*
-        <p className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-20 text-xs md:text-sm text-blue-100 font-light max-w-md mx-auto px-2 text-center drop-shadow-xl leading-tight hyphens-none word-break-keep-all overflow-hidden">
-          Conectando pesquisa científica avançada à tomada de decisão
-          <br className="hidden md:block" />
-          para construir cidades mais resilientes e sustentáveis.
-        </p>
-*/}
       </section>
-
-      {/* Quick Links - COMENTADO conforme solicitado */}
-      {/*
-      <section className="grid md:grid-cols-3 gap-6">
-        <Card className="hover:shadow-md transition-shadow group">
-          <CardHeader>
-            <Building2 className="h-8 w-8 text-secondary mb-2 group-hover:scale-110 transition-transform" />
-            <CardTitle>Projeto SACRE</CardTitle>
-            <CardDescription>Estudo de caso focado na bacia hidrográfica de Bauru.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button variant="ghost" className="w-full justify-between" asChild>
-              <Link to="/institucional/projeto">
-                Saiba mais <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card className="hover:shadow-md transition-shadow group border-primary/20">
-          <CardHeader>
-            <Activity className="h-8 w-8 text-secondary mb-2 group-hover:scale-110 transition-transform" />
-            <CardTitle>Suporte a Decisão</CardTitle>
-            <CardDescription>Simule cenários futuros de demanda e oferta hídrica.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button variant="ghost" className="w-full justify-between" asChild>
-              <Link to="/ssd/cenarios">
-                Acessar <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card className="hover:shadow-md transition-shadow group">
-          <CardHeader>
-            <BarChart2 className="h-8 w-8 text-secondary mb-2 group-hover:scale-110 transition-transform" />
-            <CardTitle>Resultados</CardTitle>
-            <CardDescription>Acesse os dados técnicos e artigos publicados.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button variant="ghost" className="w-full justify-between" asChild>
-              <Link to="/resultados/1">
-                Explorar <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
-      </section>
-      */}
 
       {/* Latest Updates */}
       <section className="bg-slate-50 p-6 rounded-xl border border-slate-100">
