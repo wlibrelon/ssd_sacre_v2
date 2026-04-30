@@ -107,9 +107,7 @@ export function Grupo5() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-xl font-bold border-b pb-2">
-        Grupo 5: Importação de dados para simulação
-      </h2>
+      <h2 className="text-xl font-bold border-b pb-2">Importação de dados para simulação</h2>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="border p-4 rounded bg-white shadow space-y-4">

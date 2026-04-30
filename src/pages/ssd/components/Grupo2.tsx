@@ -40,7 +40,7 @@ export function Grupo2() {
   return (
     <div className="space-y-6">
       <h2 className="text-xl font-bold border-b pb-2">
-        Grupo 2: Associações de fonte de água com cenários e estratégias
+        Associações de fonte de água com cenários e estratégias
       </h2>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white p-4 shadow rounded border space-y-4">

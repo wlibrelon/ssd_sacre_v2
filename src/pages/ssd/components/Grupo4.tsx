@@ -3,9 +3,7 @@ import { CrudTable } from './CrudTable'
 export function Grupo4() {
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-bold border-b pb-2">
-        Grupo 4: Configuração de Demandas e Perdas
-      </h2>
+      <h2 className="text-xl font-bold border-b pb-2">Configuração de Demandas e Perdas</h2>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <CrudTable
           table="cenario_demanda"
