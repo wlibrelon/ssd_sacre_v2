@@ -235,12 +235,12 @@ export default function Cenarios() {
                 <TableBody>
                   {data.map((row, idx) => (
                     <TableRow key={idx}>
-                      <TableCell>{row.tempo}</TableCell>
-                      <TableCell>{fontesMap[row.id_fonte] || row.id_fonte}</TableCell>
-                      <TableCell>{row.volume_captado?.toLocaleString()}</TableCell>
-                      <TableCell>{row.demanda?.toLocaleString()}</TableCell>
-                      <TableCell>{row.volume_distribuido?.toLocaleString()}</TableCell>
-                      <TableCell>{row.distribuicao_total?.toLocaleString()}</TableCell>
+                      <TableCell>"py-1">{row.tempo}</TableCell>
+                      <TableCell>"py-1">{fontesMap[row.id_fonte] || row.id_fonte}</TableCell>
+                      <TableCell>"py-1">{row.volume_captado?.toLocaleString()}</TableCell>
+                      <TableCell>"py-1">{row.demanda?.toLocaleString()}</TableCell>
+                      <TableCell>"py-1">{row.volume_distribuido?.toLocaleString()}</TableCell>
+                      <TableCell>"py-1">{row.distribuicao_total?.toLocaleString()}</TableCell>
                       <TableCell
                         className={
                           row.deficit > 0 ? 'text-red-600 font-semibold' : 'text-green-600'
