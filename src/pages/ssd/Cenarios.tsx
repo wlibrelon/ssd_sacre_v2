@@ -123,7 +123,7 @@ export default function Cenarios() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-fade-in">
-        {/* Quadro 1 **/}
+        {/* Quadro 1
         <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200">
           <h3 className="font-semibold text-primary border-b pb-3 mb-4 text-sm uppercase tracking-wider">
             Parâmetros de Captação
@@ -171,7 +171,7 @@ export default function Cenarios() {
           </div>
         </div>
 
-        {/* Quadro 2 */}
+        {/* Quadro 2
         <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200">
           <h3 className="font-semibold text-primary border-b pb-3 mb-4 text-sm uppercase tracking-wider">
             Demandas e Perdas
@@ -214,7 +214,7 @@ export default function Cenarios() {
               />
             </div>
           </div>
-        </div>
+        </div>*/}
 
         {/* Quadro 3 */}
         <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200 flex flex-col">
