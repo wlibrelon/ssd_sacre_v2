@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useSsdData } from '@/hooks/use-ssd-data'
 import { NativeSelect } from './components/NativeSelect'
 import { Button } from '@/components/ui/button'
@@ -29,11 +29,22 @@ export default function Cenarios() {
   const [groupedData, setGroupedData] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [ran, setRan] = useState(false)
+  const [simulacoes, setSimulacoes] = useState<any[]>([])
+
+  useEffect(() => {
+    supabase
+      .from('simulacao_ssd')
+      .select('*')
+      .then(({ data }) => {
+        if (data) setSimulacoes(data)
+      })
+  }, [])
 
   const handleSimulate = async () => {
     setLoading(true)
     let q = supabase.from('dados_simulacao').select('*')
 
+    if (filters.id_s) q = q.eq('id_s', filters.id_s)
     if (filters.id_fonte) q = q.eq('id_fonte', filters.id_fonte)
     if (filters.id_tc) q = q.eq('id_tc', filters.id_tc)
     if (filters.id_c) q = q.eq('id_c', filters.id_c)
@@ -123,12 +134,21 @@ export default function Cenarios() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-fade-in">
-        {/* Quadro 1
+        {/* Quadro 1 */}
         <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200">
           <h3 className="font-semibold text-primary border-b pb-3 mb-4 text-sm uppercase tracking-wider">
             Parâmetros de Captação
           </h3>
           <div className="space-y-3">
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-muted-foreground">Simulação</label>
+              <NativeSelect
+                options={simulacoes.map((o: any) => ({ value: o.id_s, label: o.descricao }))}
+                value={filters.id_s || ''}
+                onChange={(v: any) => setFilters({ ...filters, id_s: v })}
+                placeholder="Todas as Simulações"
+              />
+            </div>
             <div className="space-y-1">
               <label className="text-xs font-semibold text-muted-foreground">Fonte de Água</label>
               <NativeSelect
@@ -171,7 +191,7 @@ export default function Cenarios() {
           </div>
         </div>
 
-        {/* Quadro 2
+        {/* Quadro 2 */}
         <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200">
           <h3 className="font-semibold text-primary border-b pb-3 mb-4 text-sm uppercase tracking-wider">
             Demandas e Perdas
@@ -214,7 +234,7 @@ export default function Cenarios() {
               />
             </div>
           </div>
-        </div>*/}
+        </div>
 
         {/* Quadro 3 */}
         <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200 flex flex-col">

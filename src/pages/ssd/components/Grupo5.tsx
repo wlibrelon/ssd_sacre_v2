@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useSsdData } from '@/hooks/use-ssd-data'
 import { supabase } from '@/lib/supabase/client'
 import { useToast } from '@/hooks/use-toast'
@@ -19,6 +19,17 @@ export function Grupo5() {
   const [volState, setVolState] = useState<any>({})
   const [demState, setDemState] = useState<any>({})
   const [perState, setPerState] = useState<any>({})
+  const [simulacoes, setSimulacoes] = useState<any[]>([])
+  const [activeSimId, setActiveSimId] = useState<string>('')
+
+  useEffect(() => {
+    supabase
+      .from('simulacao_ssd')
+      .select('*')
+      .then(({ data }) => {
+        if (data) setSimulacoes(data)
+      })
+  }, [])
 
   const parseCSV = async (file: File) => {
     const text = await file.text()
@@ -36,10 +47,17 @@ export function Grupo5() {
 
   const importVol = async (e: any) => {
     const file = e.target.files[0]
-    if (!file || !volState.id_fonte || !volState.id_tc || !volState.id_c || !volState.id_e) {
+    if (
+      !file ||
+      !volState.id_fonte ||
+      !volState.id_tc ||
+      !volState.id_c ||
+      !volState.id_e ||
+      !activeSimId
+    ) {
       toast({
         title: 'Atenção',
-        description: 'Selecione todas as opções antes de importar.',
+        description: 'Selecione a simulação ativa e todas as opções antes de importar.',
         variant: 'destructive',
       })
       return
@@ -53,6 +71,7 @@ export function Grupo5() {
           id_tc: volState.id_tc,
           id_c: volState.id_c,
           id_e: volState.id_e,
+          id_s: parseInt(activeSimId),
           tempo: r.tempo,
           volume_captado: parseFloat(r.volume_captado) || 0,
           capex: parseFloat(r.capex) || 0,
@@ -69,7 +88,14 @@ export function Grupo5() {
 
   const importDem = async (e: any) => {
     const file = e.target.files[0]
-    if (!file || !demState.id_cd || !demState.id_cc) return
+    if (!file || !demState.id_cd || !demState.id_cc || !activeSimId) {
+      toast({
+        title: 'Atenção',
+        description: 'Selecione a simulação ativa e as opções de demanda.',
+        variant: 'destructive',
+      })
+      return
+    }
     try {
       const data = await parseCSV(file)
       for (const r of data.filter((r: any) => r.tempo)) {
@@ -78,6 +104,7 @@ export function Grupo5() {
           .update({
             id_cd: demState.id_cd,
             id_cc: demState.id_cc,
+            id_s: parseInt(activeSimId),
             demanda: parseFloat(r.demanda) || 0,
           })
           .eq('tempo', r.tempo)
@@ -90,13 +117,24 @@ export function Grupo5() {
 
   const importPer = async (e: any) => {
     const file = e.target.files[0]
-    if (!file || !perState.id_cp) return
+    if (!file || !perState.id_cp || !activeSimId) {
+      toast({
+        title: 'Atenção',
+        description: 'Selecione a simulação ativa e as opções de perdas.',
+        variant: 'destructive',
+      })
+      return
+    }
     try {
       const data = await parseCSV(file)
       for (const r of data.filter((r: any) => r.tempo)) {
         await supabase
           .from('dados_simulacao')
-          .update({ id_cp: perState.id_cp, perdas: parseFloat(r.perdas) || 0 })
+          .update({
+            id_cp: perState.id_cp,
+            id_s: parseInt(activeSimId),
+            perdas: parseFloat(r.perdas) || 0,
+          })
           .eq('tempo', r.tempo)
       }
       toast({ title: 'Importado com sucesso' })
@@ -108,6 +146,18 @@ export function Grupo5() {
   return (
     <div className="space-y-6">
       <h2 className="text-xl font-bold border-b pb-2">Importação de dados para simulação</h2>
+
+      <div className="mb-4 max-w-sm">
+        <label className="block text-sm font-semibold text-primary mb-1">
+          Selecione a simulação ativa
+        </label>
+        <NativeSelect
+          options={simulacoes.map((o: any) => ({ value: o.id_s, label: o.descricao }))}
+          value={activeSimId}
+          onChange={(v: any) => setActiveSimId(v)}
+          placeholder="Selecione uma simulação..."
+        />
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="border p-4 rounded bg-white shadow space-y-4">
