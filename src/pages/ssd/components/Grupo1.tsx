@@ -34,7 +34,7 @@ export function Grupo1() {
         />
         <CrudTable
           table="estrategias"
-          title="Estratégias"
+          title="Ações"
           pk="id_estrategia"
           cols={[
             { key: 'descricao', label: 'Descrição' },

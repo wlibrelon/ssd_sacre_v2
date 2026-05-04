@@ -112,7 +112,7 @@ export function Grupo3() {
                   }))}
                 value={form.id_e || ''}
                 onChange={(v: any) => setForm({ ...form, id_e: v })}
-                placeholder="Estratégia"
+                placeholder="Ação"
               />
               <Button onClick={handleAdd}>Associar</Button>
             </div>
@@ -124,7 +124,7 @@ export function Grupo3() {
                     <TableHead className="py-2">Fonte</TableHead>
                     <TableHead className="py-2">Tipo</TableHead>
                     <TableHead className="py-2">Cenário</TableHead>
-                    <TableHead className="py-2">Estratégia</TableHead>
+                    <TableHead className="py-2">Ação</TableHead>
                     <TableHead className="py-2 w-12"></TableHead>
                   </TableRow>
                 </TableHeader>

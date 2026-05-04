@@ -163,7 +163,7 @@ export function Grupo2() {
         </div>
 
         <div className="bg-white p-4 shadow rounded border space-y-4">
-          <h3 className="font-semibold text-sm">Estratégias por Fonte</h3>
+          <h3 className="font-semibold text-sm">Ações por Fonte</h3>
           <div className="flex flex-col gap-2">
             <NativeSelect
               options={fonte_agua.map((o: any) => ({ value: o.id_fonte, label: o.nome_fonte }))}
@@ -178,7 +178,7 @@ export function Grupo2() {
               }))}
               value={e}
               onChange={setE}
-              placeholder="Selecione Estratégia"
+              placeholder="Selecione a Ação"
             />
             <Button
               onClick={async () => {
@@ -194,7 +194,7 @@ export function Grupo2() {
               <TableHeader>
                 <TableRow>
                   <TableHead className="py-2">Fonte</TableHead>
-                  <TableHead className="py-2">Estratégia</TableHead>
+                  <TableHead className="py-2">Ação</TableHead>
                   <TableHead className="py-2 w-12"></TableHead>
                 </TableRow>
               </TableHeader>

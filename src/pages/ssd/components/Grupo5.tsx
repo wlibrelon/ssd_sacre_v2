@@ -134,7 +134,7 @@ export function Grupo5() {
             options={estrategias.map((o: any) => ({ value: o.id_estrategia, label: o.descricao }))}
             value={volState.id_e || ''}
             onChange={(v: any) => setVolState({ ...volState, id_e: v })}
-            placeholder="Estratégia"
+            placeholder="Ação"
           />
           <input
             type="file"
