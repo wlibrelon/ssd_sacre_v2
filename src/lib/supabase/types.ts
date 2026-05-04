@@ -1,11 +1,17 @@
 // AVOID UPDATING THIS FILE DIRECTLY. It is automatically generated.
-export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
 
 export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: '14.5'
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
@@ -90,39 +96,39 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'cenario_simulacao_id_c_fkey'
-            columns: ['id_c']
+            foreignKeyName: "cenario_simulacao_id_c_fkey"
+            columns: ["id_c"]
             isOneToOne: false
-            referencedRelation: 'cenarios'
-            referencedColumns: ['id_cenarios']
+            referencedRelation: "cenarios"
+            referencedColumns: ["id_cenarios"]
           },
           {
-            foreignKeyName: 'cenario_simulacao_id_e_fkey'
-            columns: ['id_e']
+            foreignKeyName: "cenario_simulacao_id_e_fkey"
+            columns: ["id_e"]
             isOneToOne: false
-            referencedRelation: 'estrategias'
-            referencedColumns: ['id_estrategia']
+            referencedRelation: "estrategias"
+            referencedColumns: ["id_estrategia"]
           },
           {
-            foreignKeyName: 'cenario_simulacao_id_fonte_fkey'
-            columns: ['id_fonte']
+            foreignKeyName: "cenario_simulacao_id_fonte_fkey"
+            columns: ["id_fonte"]
             isOneToOne: false
-            referencedRelation: 'fonte_agua'
-            referencedColumns: ['id_fonte']
+            referencedRelation: "fonte_agua"
+            referencedColumns: ["id_fonte"]
           },
           {
-            foreignKeyName: 'cenario_simulacao_id_s_fkey'
-            columns: ['id_s']
+            foreignKeyName: "cenario_simulacao_id_s_fkey"
+            columns: ["id_s"]
             isOneToOne: false
-            referencedRelation: 'simulacao_ssd'
-            referencedColumns: ['id_s']
+            referencedRelation: "simulacao_ssd"
+            referencedColumns: ["id_s"]
           },
           {
-            foreignKeyName: 'cenario_simulacao_id_tc_fkey'
-            columns: ['id_tc']
+            foreignKeyName: "cenario_simulacao_id_tc_fkey"
+            columns: ["id_tc"]
             isOneToOne: false
-            referencedRelation: 'tipos_cenarios'
-            referencedColumns: ['id_tc']
+            referencedRelation: "tipos_cenarios"
+            referencedColumns: ["id_tc"]
           },
         ]
       }
@@ -162,18 +168,18 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'cenarios_fonte_id_fonte_fkey'
-            columns: ['id_fonte']
+            foreignKeyName: "cenarios_fonte_id_fonte_fkey"
+            columns: ["id_fonte"]
             isOneToOne: false
-            referencedRelation: 'fonte_agua'
-            referencedColumns: ['id_fonte']
+            referencedRelation: "fonte_agua"
+            referencedColumns: ["id_fonte"]
           },
           {
-            foreignKeyName: 'cenarios_fonte_id_tc_fkey'
-            columns: ['id_tc']
+            foreignKeyName: "cenarios_fonte_id_tc_fkey"
+            columns: ["id_tc"]
             isOneToOne: false
-            referencedRelation: 'tipos_cenarios'
-            referencedColumns: ['id_tc']
+            referencedRelation: "tipos_cenarios"
+            referencedColumns: ["id_tc"]
           },
         ]
       }
@@ -234,60 +240,60 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'dados_simulacao_id_c_fkey'
-            columns: ['id_c']
+            foreignKeyName: "dados_simulacao_id_c_fkey"
+            columns: ["id_c"]
             isOneToOne: false
-            referencedRelation: 'cenarios'
-            referencedColumns: ['id_cenarios']
+            referencedRelation: "cenarios"
+            referencedColumns: ["id_cenarios"]
           },
           {
-            foreignKeyName: 'dados_simulacao_id_cc_fkey'
-            columns: ['id_cc']
+            foreignKeyName: "dados_simulacao_id_cc_fkey"
+            columns: ["id_cc"]
             isOneToOne: false
-            referencedRelation: 'cenario_consumo'
-            referencedColumns: ['id_cc']
+            referencedRelation: "cenario_consumo"
+            referencedColumns: ["id_cc"]
           },
           {
-            foreignKeyName: 'dados_simulacao_id_cd_fkey'
-            columns: ['id_cd']
+            foreignKeyName: "dados_simulacao_id_cd_fkey"
+            columns: ["id_cd"]
             isOneToOne: false
-            referencedRelation: 'cenario_demanda'
-            referencedColumns: ['id_cd']
+            referencedRelation: "cenario_demanda"
+            referencedColumns: ["id_cd"]
           },
           {
-            foreignKeyName: 'dados_simulacao_id_cp_fkey'
-            columns: ['id_cp']
+            foreignKeyName: "dados_simulacao_id_cp_fkey"
+            columns: ["id_cp"]
             isOneToOne: false
-            referencedRelation: 'cenario_perdas'
-            referencedColumns: ['id_cp']
+            referencedRelation: "cenario_perdas"
+            referencedColumns: ["id_cp"]
           },
           {
-            foreignKeyName: 'dados_simulacao_id_e_fkey'
-            columns: ['id_e']
+            foreignKeyName: "dados_simulacao_id_e_fkey"
+            columns: ["id_e"]
             isOneToOne: false
-            referencedRelation: 'estrategias'
-            referencedColumns: ['id_estrategia']
+            referencedRelation: "estrategias"
+            referencedColumns: ["id_estrategia"]
           },
           {
-            foreignKeyName: 'dados_simulacao_id_fonte_fkey'
-            columns: ['id_fonte']
+            foreignKeyName: "dados_simulacao_id_fonte_fkey"
+            columns: ["id_fonte"]
             isOneToOne: false
-            referencedRelation: 'fonte_agua'
-            referencedColumns: ['id_fonte']
+            referencedRelation: "fonte_agua"
+            referencedColumns: ["id_fonte"]
           },
           {
-            foreignKeyName: 'dados_simulacao_id_s_fkey'
-            columns: ['id_s']
+            foreignKeyName: "dados_simulacao_id_s_fkey"
+            columns: ["id_s"]
             isOneToOne: false
-            referencedRelation: 'simulacao_ssd'
-            referencedColumns: ['id_s']
+            referencedRelation: "simulacao_ssd"
+            referencedColumns: ["id_s"]
           },
           {
-            foreignKeyName: 'dados_simulacao_id_tc_fkey'
-            columns: ['id_tc']
+            foreignKeyName: "dados_simulacao_id_tc_fkey"
+            columns: ["id_tc"]
             isOneToOne: false
-            referencedRelation: 'tipos_cenarios'
-            referencedColumns: ['id_tc']
+            referencedRelation: "tipos_cenarios"
+            referencedColumns: ["id_tc"]
           },
         ]
       }
@@ -327,18 +333,18 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'estrategias_fonte_id_e_fkey'
-            columns: ['id_e']
+            foreignKeyName: "estrategias_fonte_id_e_fkey"
+            columns: ["id_e"]
             isOneToOne: false
-            referencedRelation: 'estrategias'
-            referencedColumns: ['id_estrategia']
+            referencedRelation: "estrategias"
+            referencedColumns: ["id_estrategia"]
           },
           {
-            foreignKeyName: 'estrategias_fonte_id_fonte_fkey'
-            columns: ['id_fonte']
+            foreignKeyName: "estrategias_fonte_id_fonte_fkey"
+            columns: ["id_fonte"]
             isOneToOne: false
-            referencedRelation: 'fonte_agua'
-            referencedColumns: ['id_fonte']
+            referencedRelation: "fonte_agua"
+            referencedColumns: ["id_fonte"]
           },
         ]
       }
@@ -375,6 +381,39 @@ export type Database = {
         }
         Relationships: []
       }
+      tipo_cenario_cenario: {
+        Row: {
+          id_c: number | null
+          id_tc: number | null
+          id_tcc: number
+        }
+        Insert: {
+          id_c?: number | null
+          id_tc?: number | null
+          id_tcc?: number
+        }
+        Update: {
+          id_c?: number | null
+          id_tc?: number | null
+          id_tcc?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tipo_cenario_cenario_id_c_fkey"
+            columns: ["id_c"]
+            isOneToOne: false
+            referencedRelation: "cenarios"
+            referencedColumns: ["id_cenarios"]
+          },
+          {
+            foreignKeyName: "tipo_cenario_cenario_id_tc_fkey"
+            columns: ["id_tc"]
+            isOneToOne: false
+            referencedRelation: "tipos_cenarios"
+            referencedColumns: ["id_tc"]
+          },
+        ]
+      }
       tipos_cenarios: {
         Row: {
           descricao: string | null
@@ -409,31 +448,33 @@ export type Database = {
   }
 }
 
-type DatabaseWithoutInternals = Omit<Database, '__InternalSupabase'>
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
 
-type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, 'public'>]
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
-    | keyof (DefaultSchema['Tables'] & DefaultSchema['Views'])
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'] &
-        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Views'])
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'] &
-      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Views'])[TableName] extends {
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
     ? R
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema['Tables'] & DefaultSchema['Views'])
-    ? (DefaultSchema['Tables'] & DefaultSchema['Views'])[DefaultSchemaTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
         Row: infer R
       }
       ? R
@@ -442,23 +483,23 @@ export type Tables<
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema['Tables']
+    | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables']
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'][TableName] extends {
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Insert: infer I
     }
     ? I
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema['Tables']
-    ? DefaultSchema['Tables'][DefaultSchemaTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
         Insert: infer I
       }
       ? I
@@ -467,23 +508,23 @@ export type TablesInsert<
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema['Tables']
+    | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables']
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'][TableName] extends {
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Update: infer U
     }
     ? U
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema['Tables']
-    ? DefaultSchema['Tables'][DefaultSchemaTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
         Update: infer U
       }
       ? U
@@ -492,36 +533,36 @@ export type TablesUpdate<
 
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
-    | keyof DefaultSchema['Enums']
+    | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions['schema']]['Enums']
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
     : never = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions['schema']]['Enums'][EnumName]
-  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema['Enums']
-    ? DefaultSchema['Enums'][DefaultSchemaEnumNameOrOptions]
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
     : never
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
-    | keyof DefaultSchema['CompositeTypes']
+    | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions['schema']]['CompositeTypes']
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
     : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions['schema']]['CompositeTypes'][CompositeTypeName]
-  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema['CompositeTypes']
-    ? DefaultSchema['CompositeTypes'][PublicCompositeTypeNameOrOptions]
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
 
 export const Constants = {
@@ -529,6 +570,7 @@ export const Constants = {
     Enums: {},
   },
 } as const
+
 
 // ====== DATABASE EXTENDED CONTEXT (auto-generated) ======
 // This section contains actual PostgreSQL column types, constraints, RLS policies,
@@ -599,6 +641,10 @@ export const Constants = {
 // Table: simulacao_ssd
 //   id_s: integer (not null)
 //   descricao: character varying (nullable)
+// Table: tipo_cenario_cenario
+//   id_tcc: integer (not null)
+//   id_tc: integer (nullable)
+//   id_c: integer (nullable)
 // Table: tipos_cenarios
 //   id_tc: integer (not null)
 //   descricao: character varying (nullable)
@@ -644,6 +690,10 @@ export const Constants = {
 //   PRIMARY KEY fonte_agua_pkey: PRIMARY KEY (id_fonte)
 // Table: simulacao_ssd
 //   PRIMARY KEY simulacao_ssd_pkey: PRIMARY KEY (id_s)
+// Table: tipo_cenario_cenario
+//   FOREIGN KEY tipo_cenario_cenario_id_c_fkey: FOREIGN KEY (id_c) REFERENCES cenarios(id_cenarios) ON DELETE CASCADE
+//   FOREIGN KEY tipo_cenario_cenario_id_tc_fkey: FOREIGN KEY (id_tc) REFERENCES tipos_cenarios(id_tc) ON DELETE CASCADE
+//   PRIMARY KEY tipo_cenario_cenario_pkey: PRIMARY KEY (id_tcc)
 // Table: tipos_cenarios
 //   PRIMARY KEY tipos_cenarios_pkey: PRIMARY KEY (id_tc)
 
@@ -714,9 +764,16 @@ export const Constants = {
 //   Policy "authenticated_all" (ALL, PERMISSIVE) roles={authenticated}
 //     USING: true
 //     WITH CHECK: true
+// Table: tipo_cenario_cenario
+//   Policy "anon_read" (SELECT, PERMISSIVE) roles={anon}
+//     USING: true
+//   Policy "authenticated_all" (ALL, PERMISSIVE) roles={authenticated}
+//     USING: true
+//     WITH CHECK: true
 // Table: tipos_cenarios
 //   Policy "anon_read" (SELECT, PERMISSIVE) roles={anon}
 //     USING: true
 //   Policy "authenticated_all" (ALL, PERMISSIVE) roles={authenticated}
 //     USING: true
 //     WITH CHECK: true
+
