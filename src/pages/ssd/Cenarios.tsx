@@ -124,7 +124,7 @@ export default function Cenarios() {
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val)
 
   return (
-    <div className="p-6 space-y-6 w-full">
+    <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
       <div>
         <h1 className="text-3xl font-bold text-primary mb-2">Simulação de Cenários</h1>
         <p className="text-muted-foreground">
@@ -134,18 +134,23 @@ export default function Cenarios() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-fade-in">
-        {/* COLUNA ESQUERDA (AGORA EMPILHADA) */}
-        <div className="space-y-6">
+        {/* COLUNA PRINCIPAL (MAIS LARGA) */}
+        <div className="space-y-6 md:col-span-2">
           {/* Quadro 1 */}
           <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200 w-full">
             <h3 className="font-semibold text-primary border-b pb-3 mb-4 text-sm uppercase tracking-wider">
               Cenários para Simulação
             </h3>
+
             <div className="space-y-3">
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-muted-foreground">Simulação</label>
                 <NativeSelect
-                  options={simulacoes.map((o: any) => ({ value: o.id_s, label: o.descricao }))}
+                  className="w-full"
+                  options={simulacoes.map((o: any) => ({
+                    value: o.id_s,
+                    label: o.descricao,
+                  }))}
                   value={filters.id_s || ''}
                   onChange={(v: any) => setFilters({ ...filters, id_s: v })}
                   placeholder="Todas as Simulações"
@@ -154,16 +159,18 @@ export default function Cenarios() {
             </div>
           </div>
 
-          {/* Quadro 3 (AGORA ABAIXO DO QUADRO 1) */}
-          <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200 w-full">
+          {/* Quadro 3 */}
+          <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200 flex flex-col w-full">
             <h3 className="font-semibold text-primary border-b pb-3 mb-4 text-sm uppercase tracking-wider">
               Período
             </h3>
 
-            <div className="space-y-3 flex-1">
+            {/* Layout melhorado */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 flex-1">
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-muted-foreground">Ano Início</label>
                 <NativeSelect
+                  className="w-full"
                   options={[
                     2026, 2027, 2028, 2029, 2030, 2031, 2032, 2033, 2034, 2035, 2036, 2037, 2038,
                     2039, 2040, 2041, 2042, 2043, 2044, 2045, 2046, 2047, 2048, 2049, 2050,
@@ -180,9 +187,10 @@ export default function Cenarios() {
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-muted-foreground">Ano Fim</label>
                 <NativeSelect
+                  className="w-full"
                   options={[
                     2026, 2027, 2028, 2029, 2030, 2031, 2032, 2033, 2034, 2035, 2036, 2037, 2038,
-                    2039, 2040, 2041, 2042, 2043, 2044, 2045, 2046, 2047, 2048, 2049, 2050,
+                    2039, 2040, 2041, 2042, 2043, 2044, 2045, 2046, 2047, 2048, 2049, 2040, 2050,
                   ].map((y) => ({
                     value: y,
                     label: y.toString(),
@@ -198,6 +206,7 @@ export default function Cenarios() {
                   Mês Específico
                 </label>
                 <NativeSelect
+                  className="w-full"
                   options={Array.from({ length: 12 }, (_, i) => ({
                     value: (i + 1).toString(),
                     label: (i + 1).toString().padStart(2, '0'),
@@ -210,16 +219,19 @@ export default function Cenarios() {
             </div>
 
             <div className="pt-6">
-              <Button onClick={handleSimulate} disabled={loading} className="w-full h-10 shadow-sm">
+              <Button
+                onClick={handleSimulate}
+                disabled={loading}
+                className="w-full h-11 shadow-sm text-base"
+              >
                 {loading ? 'Processando...' : 'Executar Simulação'}
               </Button>
             </div>
           </div>
         </div>
 
-        {/* OUTRAS COLUNAS (mantidas livres para expansão futura) */}
-        <div></div>
-        <div></div>
+        {/* COLUNA DIREITA (RESERVADA PRA FUTURO / DASHBOARD / FILTROS) */}
+        <div className="space-y-6">{/* Pode adicionar KPIs, resumo, etc */}</div>
       </div>
 
       {ran && data.length === 0 && (
