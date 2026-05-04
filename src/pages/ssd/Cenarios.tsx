@@ -124,7 +124,7 @@ export default function Cenarios() {
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val)
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
+    <div className="p-6 space-y-6 w-full">
       <div>
         <h1 className="text-3xl font-bold text-primary mb-2">Simulação de Cenários</h1>
         <p className="text-muted-foreground">
@@ -137,7 +137,7 @@ export default function Cenarios() {
         {/* COLUNA ESQUERDA (AGORA EMPILHADA) */}
         <div className="space-y-6">
           {/* Quadro 1 */}
-          <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200">
+          <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200 w-full">
             <h3 className="font-semibold text-primary border-b pb-3 mb-4 text-sm uppercase tracking-wider">
               Cenários para Simulação
             </h3>
@@ -155,7 +155,7 @@ export default function Cenarios() {
           </div>
 
           {/* Quadro 3 (AGORA ABAIXO DO QUADRO 1) */}
-          <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200 flex flex-col">
+          <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200 w-full">
             <h3 className="font-semibold text-primary border-b pb-3 mb-4 text-sm uppercase tracking-wider">
               Período
             </h3>
