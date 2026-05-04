@@ -149,6 +149,7 @@ export default function Cenarios() {
                 placeholder="Todas as Simulações"
               />
             </div>
+            {/*}
             <div className="space-y-1">
               <label className="text-xs font-semibold text-muted-foreground">Fonte de Água</label>
               <NativeSelect
@@ -188,10 +189,11 @@ export default function Cenarios() {
                 placeholder="Todas as Estratégias"
               />
             </div>
+*/}
           </div>
         </div>
 
-        {/* Quadro 2 */}
+        {/* Quadro 2
         <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200">
           <h3 className="font-semibold text-primary border-b pb-3 mb-4 text-sm uppercase tracking-wider">
             Demandas e Perdas
@@ -235,7 +237,7 @@ export default function Cenarios() {
             </div>
           </div>
         </div>
-
+*/}
         {/* Quadro 3 */}
         <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200 flex flex-col">
           <h3 className="font-semibold text-primary border-b pb-3 mb-4 text-sm uppercase tracking-wider">
