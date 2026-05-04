@@ -153,7 +153,7 @@ export default function Cenarios() {
                   }))}
                   value={filters.id_s || ''}
                   onChange={(v: any) => setFilters({ ...filters, id_s: v })}
-                  placeholder="Todas as Simulações"
+                  placeholder="Escolha uma Simulação"
                 />
               </div>
             </div>
