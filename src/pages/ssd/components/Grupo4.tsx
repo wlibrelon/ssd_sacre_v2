@@ -3,7 +3,6 @@ import { CrudTable } from './CrudTable'
 export function Grupo4() {
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-bold border-b pb-2">Configuração de Demandas e Perdas</h2>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <CrudTable
           table="cenario_demanda"
@@ -12,6 +11,7 @@ export function Grupo4() {
           cols={[
             { key: 'nome_cenario_demanda', label: 'Nome' },
             { key: 'descricao', label: 'Descrição' },
+            { key: 'percentual', label: 'Percentual (%)' },
           ]}
         />
         <CrudTable
@@ -21,6 +21,7 @@ export function Grupo4() {
           cols={[
             { key: 'nome_cenario_consumo', label: 'Nome' },
             { key: 'descricao', label: 'Descrição' },
+            { key: 'vol_hab', label: 'Vol/Hab (m³)' },
           ]}
         />
         <CrudTable
@@ -30,6 +31,7 @@ export function Grupo4() {
           cols={[
             { key: 'nome_cenario_perdas', label: 'Nome' },
             { key: 'descricao', label: 'Descrição' },
+            { key: 'percentual', label: 'Percentual (%)' },
           ]}
         />
       </div>

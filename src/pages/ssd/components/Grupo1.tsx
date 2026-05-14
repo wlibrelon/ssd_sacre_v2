@@ -3,9 +3,6 @@ import { CrudTable } from './CrudTable'
 export function Grupo1() {
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-bold border-b pb-2">
-        Configuração de fontes de água, cenários e estratégias
-      </h2>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {' '}
         <CrudTable

@@ -31,6 +31,52 @@ export default function Cenarios() {
   const [ran, setRan] = useState(false)
   const [simulacoes, setSimulacoes] = useState<any[]>([])
 
+  const aplicarCalculosModulares = (data: any[], sim: any, cd: any, cc: any, cp: any) => {
+    const tempos = Array.from(new Set(data.map((d) => d.tempo))).sort()
+
+    const pop_inicial = sim?.pop_inicial || 0
+    const vol_hab = cc?.vol_hab || 0
+    const perc_demanda = cd?.percentual || 0
+
+    const perc_inicial_perdas = sim?.perc_inicial_perdas || 0
+    const inicio_perdas = sim?.inicio_perdas || ''
+    const perc_final_perdas = cp?.percentual || 0
+
+    const startPerdasIdx = tempos.findIndex((t: any) => t >= inicio_perdas)
+    const totalStepsPerdas = startPerdasIdx >= 0 ? tempos.length - 1 - startPerdasIdx : 0
+    const perdasStep =
+      totalStepsPerdas > 0 ? (perc_inicial_perdas - perc_final_perdas) / totalStepsPerdas : 0
+
+    return data.map((row) => {
+      let rowDemanda = row.demanda
+      let rowPerdas = row.perdas
+
+      const tIdx = tempos.indexOf(row.tempo)
+
+      if (sim?.demanda_auto && cd && cc) {
+        const anos = Math.floor(tIdx / 12)
+        const popAtual = pop_inicial * Math.pow(1 + perc_demanda / 100, anos)
+        rowDemanda = popAtual * vol_hab
+      }
+
+      if (sim?.perdas_auto && cp) {
+        if (startPerdasIdx === -1 || tIdx <= startPerdasIdx) {
+          rowPerdas = perc_inicial_perdas
+        } else {
+          const passos = tIdx - startPerdasIdx
+          rowPerdas = perc_inicial_perdas - perdasStep * passos
+          if (perc_inicial_perdas >= perc_final_perdas && rowPerdas < perc_final_perdas) {
+            rowPerdas = perc_final_perdas
+          } else if (perc_inicial_perdas < perc_final_perdas && rowPerdas > perc_final_perdas) {
+            rowPerdas = perc_final_perdas
+          }
+        }
+      }
+
+      return { ...row, demanda: rowDemanda, perdas: rowPerdas }
+    })
+  }
+
   useEffect(() => {
     supabase
       .from('simulacao_ssd')
@@ -60,7 +106,17 @@ export default function Cenarios() {
     const { data: res, error } = await q
     if (error) console.error(error)
 
-    const processedData = (res || []).map((row: any) => {
+    let resData = res || []
+    const activeSimObj = simulacoes.find((s) => s.id_s === parseInt(filters.id_s))
+
+    if (activeSimObj?.demanda_auto || activeSimObj?.perdas_auto) {
+      const cd = cenario_demanda.find((c: any) => c.id_cd === parseInt(filters.id_cd_auto))
+      const cc = cenario_consumo.find((c: any) => c.id_cc === parseInt(filters.id_cc_auto))
+      const cp = cenario_perdas.find((c: any) => c.id_cp === parseInt(filters.id_cp_auto))
+      resData = aplicarCalculosModulares(resData, activeSimObj, cd, cc, cp)
+    }
+
+    const processedData = resData.map((row: any) => {
       const volume_captado = row.volume_captado || 0
       const perdas_percentual = row.perdas || 0
       const volume_distribuido = volume_captado * (1 - perdas_percentual / 100)
@@ -160,12 +216,67 @@ export default function Cenarios() {
           </div>
 
           {/* Quadro 3 */}
-          <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200 flex flex-col w-full">
+          {(() => {
+            const activeSimObj = simulacoes.find((s) => s.id_s === parseInt(filters.id_s))
+            if (activeSimObj && (activeSimObj.demanda_auto || activeSimObj.perdas_auto)) {
+              return (
+                <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200 w-full mt-6">
+                  <h3 className="font-semibold text-primary border-b pb-3 mb-4 text-sm uppercase tracking-wider">
+                    Demanda e Perdas (Automático)
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {activeSimObj.demanda_auto && (
+                      <div className="space-y-3">
+                        <h4 className="text-sm font-semibold text-muted-foreground">Demanda</h4>
+                        <NativeSelect
+                          className="w-full"
+                          options={cenario_demanda.map((o: any) => ({
+                            value: o.id_cd,
+                            label: o.nome_cenario_demanda,
+                          }))}
+                          value={filters.id_cd_auto || ''}
+                          onChange={(v: any) => setFilters({ ...filters, id_cd_auto: v })}
+                          placeholder="Cenário Demanda"
+                        />
+                        <NativeSelect
+                          className="w-full"
+                          options={cenario_consumo.map((o: any) => ({
+                            value: o.id_cc,
+                            label: o.nome_cenario_consumo,
+                          }))}
+                          value={filters.id_cc_auto || ''}
+                          onChange={(v: any) => setFilters({ ...filters, id_cc_auto: v })}
+                          placeholder="Cenário Consumo"
+                        />
+                      </div>
+                    )}
+                    {activeSimObj.perdas_auto && (
+                      <div className="space-y-3">
+                        <h4 className="text-sm font-semibold text-muted-foreground">Perdas</h4>
+                        <NativeSelect
+                          className="w-full"
+                          options={cenario_perdas.map((o: any) => ({
+                            value: o.id_cp,
+                            label: o.nome_cenario_perdas,
+                          }))}
+                          value={filters.id_cp_auto || ''}
+                          onChange={(v: any) => setFilters({ ...filters, id_cp_auto: v })}
+                          placeholder="Cenário Perdas"
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )
+            }
+            return null
+          })()}
+
+          <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200 flex flex-col w-full mt-6">
             <h3 className="font-semibold text-primary border-b pb-3 mb-4 text-sm uppercase tracking-wider">
               Período
             </h3>
 
-            {/* Layout melhorado */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 flex-1">
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-muted-foreground">Ano Início</label>

@@ -3,10 +3,16 @@ import { Grupo2 } from './components/Grupo2'
 import { Grupo3 } from './components/Grupo3'
 import { Grupo4 } from './components/Grupo4'
 import { Grupo5 } from './components/Grupo5'
+import {
+  Accordion,
+  AccordionItem,
+  AccordionTrigger,
+  AccordionContent,
+} from '@/components/ui/accordion'
 
 export default function Configuracoes() {
   return (
-    <div className="p-6 space-y-12 max-w-7xl mx-auto animate-fade-in">
+    <div className="p-6 space-y-8 max-w-7xl mx-auto animate-fade-in">
       <div>
         <h1 className="text-3xl font-bold text-primary mb-2">
           Configurações do Sistema de Suporte a Decisão
@@ -16,11 +22,52 @@ export default function Configuracoes() {
         </p>
       </div>
 
-      <Grupo1 />
-      <Grupo2 />
-      <Grupo3 />
-      <Grupo4 />
-      <Grupo5 />
+      <Accordion type="multiple" className="w-full space-y-4">
+        <AccordionItem value="g1" className="border rounded-lg px-4 bg-white shadow-sm">
+          <AccordionTrigger className="text-xl font-bold hover:no-underline text-left">
+            Configuração de fontes de água, cenários e estratégias
+          </AccordionTrigger>
+          <AccordionContent className="pt-2 pb-6">
+            <Grupo1 />
+          </AccordionContent>
+        </AccordionItem>
+
+        <AccordionItem value="g2" className="border rounded-lg px-4 bg-white shadow-sm">
+          <AccordionTrigger className="text-xl font-bold hover:no-underline text-left">
+            Associações de Referência
+          </AccordionTrigger>
+          <AccordionContent className="pt-2 pb-6">
+            <Grupo2 />
+          </AccordionContent>
+        </AccordionItem>
+
+        <AccordionItem value="g3" className="border rounded-lg px-4 bg-white shadow-sm">
+          <AccordionTrigger className="text-xl font-bold hover:no-underline text-left">
+            Simulações para SSD
+          </AccordionTrigger>
+          <AccordionContent className="pt-2 pb-6">
+            <Grupo3 />
+          </AccordionContent>
+        </AccordionItem>
+
+        <AccordionItem value="g4" className="border rounded-lg px-4 bg-white shadow-sm">
+          <AccordionTrigger className="text-xl font-bold hover:no-underline text-left">
+            Configuração de Demandas e Perdas
+          </AccordionTrigger>
+          <AccordionContent className="pt-2 pb-6">
+            <Grupo4 />
+          </AccordionContent>
+        </AccordionItem>
+
+        <AccordionItem value="g5" className="border rounded-lg px-4 bg-white shadow-sm">
+          <AccordionTrigger className="text-xl font-bold hover:no-underline text-left">
+            Importação de dados para simulação
+          </AccordionTrigger>
+          <AccordionContent className="pt-2 pb-6">
+            <Grupo5 />
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
     </div>
   )
 }

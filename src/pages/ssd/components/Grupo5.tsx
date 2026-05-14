@@ -47,17 +47,10 @@ export function Grupo5() {
 
   const importVol = async (e: any) => {
     const file = e.target.files[0]
-    if (
-      !file ||
-      !volState.id_fonte ||
-      !volState.id_tc ||
-      !volState.id_c ||
-      !volState.id_e ||
-      !activeSimId
-    ) {
+    if (!file || !volState.id_fonte || !activeSimId) {
       toast({
         title: 'Atenção',
-        description: 'Selecione a simulação ativa e todas as opções antes de importar.',
+        description: 'Selecione a simulação ativa e a fonte antes de importar.',
         variant: 'destructive',
       })
       return
@@ -68,9 +61,9 @@ export function Grupo5() {
         .filter((r: any) => r.tempo)
         .map((r: any) => ({
           id_fonte: volState.id_fonte,
-          id_tc: volState.id_tc,
-          id_c: volState.id_c,
-          id_e: volState.id_e,
+          id_tc: null,
+          id_c: null,
+          id_e: null,
           id_s: parseInt(activeSimId),
           tempo: r.tempo,
           volume_captado: parseFloat(r.volume_captado) || 0,
@@ -143,10 +136,38 @@ export function Grupo5() {
     }
   }
 
+  const setDemandaAuto = async () => {
+    if (!activeSimId)
+      return toast({
+        title: 'Atenção',
+        description: 'Selecione a simulação',
+        variant: 'destructive',
+      })
+    const { error } = await supabase
+      .from('simulacao_ssd')
+      .update({ demanda_auto: true })
+      .eq('id_s', parseInt(activeSimId))
+    if (!error) toast({ title: 'Sucesso', description: 'Cálculo automático de demanda ativado' })
+    else toast({ title: 'Erro', description: error.message, variant: 'destructive' })
+  }
+
+  const setPerdasAuto = async () => {
+    if (!activeSimId)
+      return toast({
+        title: 'Atenção',
+        description: 'Selecione a simulação',
+        variant: 'destructive',
+      })
+    const { error } = await supabase
+      .from('simulacao_ssd')
+      .update({ perdas_auto: true })
+      .eq('id_s', parseInt(activeSimId))
+    if (!error) toast({ title: 'Sucesso', description: 'Cálculo automático de perdas ativado' })
+    else toast({ title: 'Erro', description: error.message, variant: 'destructive' })
+  }
+
   return (
     <div className="space-y-6">
-      <h2 className="text-xl font-bold border-b pb-2">Importação de dados para simulação</h2>
-
       <div className="mb-4 max-w-sm">
         <label className="block text-sm font-semibold text-primary mb-1">
           Selecione a simulação ativa
@@ -167,24 +188,6 @@ export function Grupo5() {
             value={volState.id_fonte || ''}
             onChange={(v: any) => setVolState({ ...volState, id_fonte: v })}
             placeholder="Fonte de Água"
-          />
-          <NativeSelect
-            options={tipos_cenarios.map((o: any) => ({ value: o.id_tc, label: o.descricao }))}
-            value={volState.id_tc || ''}
-            onChange={(v: any) => setVolState({ ...volState, id_tc: v })}
-            placeholder="Tipo Cenário"
-          />
-          <NativeSelect
-            options={cenarios.map((o: any) => ({ value: o.id_cenarios, label: o.cenarios }))}
-            value={volState.id_c || ''}
-            onChange={(v: any) => setVolState({ ...volState, id_c: v })}
-            placeholder="Cenário"
-          />
-          <NativeSelect
-            options={estrategias.map((o: any) => ({ value: o.id_estrategia, label: o.descricao }))}
-            value={volState.id_e || ''}
-            onChange={(v: any) => setVolState({ ...volState, id_e: v })}
-            placeholder="Ação"
           />
           <input
             type="file"
@@ -220,6 +223,12 @@ export function Grupo5() {
             accept=".csv"
             className="text-sm w-full file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-white hover:file:bg-primary/90"
           />
+          <button
+            onClick={setDemandaAuto}
+            className="w-full mt-2 py-2 text-sm font-semibold rounded-md border text-primary border-primary hover:bg-primary hover:text-white transition-colors"
+          >
+            Cálculo Automático
+          </button>
         </div>
 
         <div className="border p-4 rounded bg-white shadow space-y-4">
@@ -239,6 +248,12 @@ export function Grupo5() {
             accept=".csv"
             className="text-sm w-full file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-white hover:file:bg-primary/90"
           />
+          <button
+            onClick={setPerdasAuto}
+            className="w-full mt-2 py-2 text-sm font-semibold rounded-md border text-primary border-primary hover:bg-primary hover:text-white transition-colors"
+          >
+            Cálculo Automático
+          </button>
         </div>
       </div>
     </div>

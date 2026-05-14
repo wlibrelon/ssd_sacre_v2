@@ -47,12 +47,16 @@ export function Grupo3() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-xl font-bold border-b pb-2">Simulações para SSD</h2>
       <CrudTable
         table="simulacao_ssd"
         title="Simulações"
         pk="id_s"
-        cols={[{ key: 'descricao', label: 'Descrição da Simulação' }]}
+        cols={[
+          { key: 'descricao', label: 'Descrição da Simulação' },
+          { key: 'pop_inicial', label: 'População Inicial' },
+          { key: 'inicio_perdas', label: 'Início Perdas (AAAA-MM)' },
+          { key: 'perc_inicial_perdas', label: '% Inicial Perdas' },
+        ]}
       />
 
       <div className="bg-white p-4 shadow rounded border space-y-4">
