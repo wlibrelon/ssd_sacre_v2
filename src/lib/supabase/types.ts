@@ -1,11 +1,17 @@
 // AVOID UPDATING THIS FILE DIRECTLY. It is automatically generated.
-export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
 
 export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: '14.5'
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
@@ -90,39 +96,39 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'cenario_simulacao_id_c_fkey'
-            columns: ['id_c']
+            foreignKeyName: "cenario_simulacao_id_c_fkey"
+            columns: ["id_c"]
             isOneToOne: false
-            referencedRelation: 'cenarios'
-            referencedColumns: ['id_cenarios']
+            referencedRelation: "cenarios"
+            referencedColumns: ["id_cenarios"]
           },
           {
-            foreignKeyName: 'cenario_simulacao_id_e_fkey'
-            columns: ['id_e']
+            foreignKeyName: "cenario_simulacao_id_e_fkey"
+            columns: ["id_e"]
             isOneToOne: false
-            referencedRelation: 'estrategias'
-            referencedColumns: ['id_estrategia']
+            referencedRelation: "estrategias"
+            referencedColumns: ["id_estrategia"]
           },
           {
-            foreignKeyName: 'cenario_simulacao_id_fonte_fkey'
-            columns: ['id_fonte']
+            foreignKeyName: "cenario_simulacao_id_fonte_fkey"
+            columns: ["id_fonte"]
             isOneToOne: false
-            referencedRelation: 'fonte_agua'
-            referencedColumns: ['id_fonte']
+            referencedRelation: "fonte_agua"
+            referencedColumns: ["id_fonte"]
           },
           {
-            foreignKeyName: 'cenario_simulacao_id_s_fkey'
-            columns: ['id_s']
+            foreignKeyName: "cenario_simulacao_id_s_fkey"
+            columns: ["id_s"]
             isOneToOne: false
-            referencedRelation: 'simulacao_ssd'
-            referencedColumns: ['id_s']
+            referencedRelation: "simulacao_ssd"
+            referencedColumns: ["id_s"]
           },
           {
-            foreignKeyName: 'cenario_simulacao_id_tc_fkey'
-            columns: ['id_tc']
+            foreignKeyName: "cenario_simulacao_id_tc_fkey"
+            columns: ["id_tc"]
             isOneToOne: false
-            referencedRelation: 'tipos_cenarios'
-            referencedColumns: ['id_tc']
+            referencedRelation: "tipos_cenarios"
+            referencedColumns: ["id_tc"]
           },
         ]
       }
@@ -162,18 +168,18 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'cenarios_fonte_id_fonte_fkey'
-            columns: ['id_fonte']
+            foreignKeyName: "cenarios_fonte_id_fonte_fkey"
+            columns: ["id_fonte"]
             isOneToOne: false
-            referencedRelation: 'fonte_agua'
-            referencedColumns: ['id_fonte']
+            referencedRelation: "fonte_agua"
+            referencedColumns: ["id_fonte"]
           },
           {
-            foreignKeyName: 'cenarios_fonte_id_tc_fkey'
-            columns: ['id_tc']
+            foreignKeyName: "cenarios_fonte_id_tc_fkey"
+            columns: ["id_tc"]
             isOneToOne: false
-            referencedRelation: 'tipos_cenarios'
-            referencedColumns: ['id_tc']
+            referencedRelation: "tipos_cenarios"
+            referencedColumns: ["id_tc"]
           },
         ]
       }
@@ -234,60 +240,60 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'dados_simulacao_id_c_fkey'
-            columns: ['id_c']
+            foreignKeyName: "dados_simulacao_id_c_fkey"
+            columns: ["id_c"]
             isOneToOne: false
-            referencedRelation: 'cenarios'
-            referencedColumns: ['id_cenarios']
+            referencedRelation: "cenarios"
+            referencedColumns: ["id_cenarios"]
           },
           {
-            foreignKeyName: 'dados_simulacao_id_cc_fkey'
-            columns: ['id_cc']
+            foreignKeyName: "dados_simulacao_id_cc_fkey"
+            columns: ["id_cc"]
             isOneToOne: false
-            referencedRelation: 'cenario_consumo'
-            referencedColumns: ['id_cc']
+            referencedRelation: "cenario_consumo"
+            referencedColumns: ["id_cc"]
           },
           {
-            foreignKeyName: 'dados_simulacao_id_cd_fkey'
-            columns: ['id_cd']
+            foreignKeyName: "dados_simulacao_id_cd_fkey"
+            columns: ["id_cd"]
             isOneToOne: false
-            referencedRelation: 'cenario_demanda'
-            referencedColumns: ['id_cd']
+            referencedRelation: "cenario_demanda"
+            referencedColumns: ["id_cd"]
           },
           {
-            foreignKeyName: 'dados_simulacao_id_cp_fkey'
-            columns: ['id_cp']
+            foreignKeyName: "dados_simulacao_id_cp_fkey"
+            columns: ["id_cp"]
             isOneToOne: false
-            referencedRelation: 'cenario_perdas'
-            referencedColumns: ['id_cp']
+            referencedRelation: "cenario_perdas"
+            referencedColumns: ["id_cp"]
           },
           {
-            foreignKeyName: 'dados_simulacao_id_e_fkey'
-            columns: ['id_e']
+            foreignKeyName: "dados_simulacao_id_e_fkey"
+            columns: ["id_e"]
             isOneToOne: false
-            referencedRelation: 'estrategias'
-            referencedColumns: ['id_estrategia']
+            referencedRelation: "estrategias"
+            referencedColumns: ["id_estrategia"]
           },
           {
-            foreignKeyName: 'dados_simulacao_id_fonte_fkey'
-            columns: ['id_fonte']
+            foreignKeyName: "dados_simulacao_id_fonte_fkey"
+            columns: ["id_fonte"]
             isOneToOne: false
-            referencedRelation: 'fonte_agua'
-            referencedColumns: ['id_fonte']
+            referencedRelation: "fonte_agua"
+            referencedColumns: ["id_fonte"]
           },
           {
-            foreignKeyName: 'dados_simulacao_id_s_fkey'
-            columns: ['id_s']
+            foreignKeyName: "dados_simulacao_id_s_fkey"
+            columns: ["id_s"]
             isOneToOne: false
-            referencedRelation: 'simulacao_ssd'
-            referencedColumns: ['id_s']
+            referencedRelation: "simulacao_ssd"
+            referencedColumns: ["id_s"]
           },
           {
-            foreignKeyName: 'dados_simulacao_id_tc_fkey'
-            columns: ['id_tc']
+            foreignKeyName: "dados_simulacao_id_tc_fkey"
+            columns: ["id_tc"]
             isOneToOne: false
-            referencedRelation: 'tipos_cenarios'
-            referencedColumns: ['id_tc']
+            referencedRelation: "tipos_cenarios"
+            referencedColumns: ["id_tc"]
           },
         ]
       }
@@ -327,18 +333,18 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'estrategias_fonte_id_e_fkey'
-            columns: ['id_e']
+            foreignKeyName: "estrategias_fonte_id_e_fkey"
+            columns: ["id_e"]
             isOneToOne: false
-            referencedRelation: 'estrategias'
-            referencedColumns: ['id_estrategia']
+            referencedRelation: "estrategias"
+            referencedColumns: ["id_estrategia"]
           },
           {
-            foreignKeyName: 'estrategias_fonte_id_fonte_fkey'
-            columns: ['id_fonte']
+            foreignKeyName: "estrategias_fonte_id_fonte_fkey"
+            columns: ["id_fonte"]
             isOneToOne: false
-            referencedRelation: 'fonte_agua'
-            referencedColumns: ['id_fonte']
+            referencedRelation: "fonte_agua"
+            referencedColumns: ["id_fonte"]
           },
         ]
       }
@@ -359,6 +365,59 @@ export type Database = {
           sujeito_perdas?: boolean | null
         }
         Relationships: []
+      }
+      members: {
+        Row: {
+          birth_date: string | null
+          birth_place: string | null
+          created_at: string | null
+          gender: string | null
+          id: string
+          is_deceased: boolean | null
+          is_librelon: boolean | null
+          message: string | null
+          name: string
+          parent_union_id: string | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          birth_date?: string | null
+          birth_place?: string | null
+          created_at?: string | null
+          gender?: string | null
+          id?: string
+          is_deceased?: boolean | null
+          is_librelon?: boolean | null
+          message?: string | null
+          name: string
+          parent_union_id?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          birth_date?: string | null
+          birth_place?: string | null
+          created_at?: string | null
+          gender?: string | null
+          id?: string
+          is_deceased?: boolean | null
+          is_librelon?: boolean | null
+          message?: string | null
+          name?: string
+          parent_union_id?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "members_parent_union_id_fkey"
+            columns: ["parent_union_id"]
+            isOneToOne: false
+            referencedRelation: "unions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       simulacao_ssd: {
         Row: {
@@ -393,18 +452,18 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'tipo_cenario_cenario_id_c_fkey'
-            columns: ['id_c']
+            foreignKeyName: "tipo_cenario_cenario_id_c_fkey"
+            columns: ["id_c"]
             isOneToOne: false
-            referencedRelation: 'cenarios'
-            referencedColumns: ['id_cenarios']
+            referencedRelation: "cenarios"
+            referencedColumns: ["id_cenarios"]
           },
           {
-            foreignKeyName: 'tipo_cenario_cenario_id_tc_fkey'
-            columns: ['id_tc']
+            foreignKeyName: "tipo_cenario_cenario_id_tc_fkey"
+            columns: ["id_tc"]
             isOneToOne: false
-            referencedRelation: 'tipos_cenarios'
-            referencedColumns: ['id_tc']
+            referencedRelation: "tipos_cenarios"
+            referencedColumns: ["id_tc"]
           },
         ]
       }
@@ -426,6 +485,48 @@ export type Database = {
         }
         Relationships: []
       }
+      unions: {
+        Row: {
+          created_at: string | null
+          id: string
+          partner1_id: string
+          partner2_id: string
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          partner1_id: string
+          partner2_id: string
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          partner1_id?: string
+          partner2_id?: string
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "unions_partner1_id_fkey"
+            columns: ["partner1_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "unions_partner2_id_fkey"
+            columns: ["partner2_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -442,31 +543,33 @@ export type Database = {
   }
 }
 
-type DatabaseWithoutInternals = Omit<Database, '__InternalSupabase'>
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
 
-type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, 'public'>]
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
-    | keyof (DefaultSchema['Tables'] & DefaultSchema['Views'])
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'] &
-        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Views'])
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'] &
-      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Views'])[TableName] extends {
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
     ? R
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema['Tables'] & DefaultSchema['Views'])
-    ? (DefaultSchema['Tables'] & DefaultSchema['Views'])[DefaultSchemaTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
         Row: infer R
       }
       ? R
@@ -475,23 +578,23 @@ export type Tables<
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema['Tables']
+    | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables']
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'][TableName] extends {
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Insert: infer I
     }
     ? I
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema['Tables']
-    ? DefaultSchema['Tables'][DefaultSchemaTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
         Insert: infer I
       }
       ? I
@@ -500,23 +603,23 @@ export type TablesInsert<
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema['Tables']
+    | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables']
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'][TableName] extends {
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Update: infer U
     }
     ? U
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema['Tables']
-    ? DefaultSchema['Tables'][DefaultSchemaTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
         Update: infer U
       }
       ? U
@@ -525,36 +628,36 @@ export type TablesUpdate<
 
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
-    | keyof DefaultSchema['Enums']
+    | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions['schema']]['Enums']
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
     : never = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions['schema']]['Enums'][EnumName]
-  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema['Enums']
-    ? DefaultSchema['Enums'][DefaultSchemaEnumNameOrOptions]
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
     : never
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
-    | keyof DefaultSchema['CompositeTypes']
+    | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions['schema']]['CompositeTypes']
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
     : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions['schema']]['CompositeTypes'][CompositeTypeName]
-  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema['CompositeTypes']
-    ? DefaultSchema['CompositeTypes'][PublicCompositeTypeNameOrOptions]
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
 
 export const Constants = {
@@ -562,6 +665,7 @@ export const Constants = {
     Enums: {},
   },
 } as const
+
 
 // ====== DATABASE EXTENDED CONTEXT (auto-generated) ======
 // This section contains actual PostgreSQL column types, constraints, RLS policies,
@@ -629,6 +733,19 @@ export const Constants = {
 //   id_fonte: integer (not null)
 //   nome_fonte: character varying (nullable)
 //   sujeito_perdas: boolean (nullable, default: true)
+// Table: members
+//   id: uuid (not null, default: gen_random_uuid())
+//   name: text (not null)
+//   gender: character varying (nullable)
+//   birth_date: date (nullable)
+//   birth_place: text (nullable)
+//   is_deceased: boolean (nullable, default: false)
+//   is_librelon: boolean (nullable, default: true)
+//   status: text (nullable, default: 'Pendente'::text)
+//   message: text (nullable)
+//   parent_union_id: uuid (nullable)
+//   created_at: timestamp with time zone (nullable, default: now())
+//   updated_at: timestamp with time zone (nullable, default: now())
 // Table: simulacao_ssd
 //   id_s: integer (not null)
 //   descricao: character varying (nullable)
@@ -640,6 +757,13 @@ export const Constants = {
 //   id_tc: integer (not null)
 //   descricao: character varying (nullable)
 //   obs_tipo_cenario: character varying (nullable)
+// Table: unions
+//   id: uuid (not null, default: gen_random_uuid())
+//   partner1_id: uuid (not null)
+//   partner2_id: uuid (not null)
+//   status: text (nullable, default: 'Active'::text)
+//   created_at: timestamp with time zone (nullable, default: now())
+//   updated_at: timestamp with time zone (nullable, default: now())
 
 // --- CONSTRAINTS ---
 // Table: cenario_consumo
@@ -679,6 +803,11 @@ export const Constants = {
 //   PRIMARY KEY estrategias_fonte_pkey: PRIMARY KEY (id_ef)
 // Table: fonte_agua
 //   PRIMARY KEY fonte_agua_pkey: PRIMARY KEY (id_fonte)
+// Table: members
+//   CHECK members_gender_check: CHECK (((gender)::text = ANY ((ARRAY['M'::character varying, 'F'::character varying])::text[])))
+//   FOREIGN KEY members_parent_union_id_fkey: FOREIGN KEY (parent_union_id) REFERENCES unions(id) ON DELETE SET NULL
+//   PRIMARY KEY members_pkey: PRIMARY KEY (id)
+//   CHECK members_status_check: CHECK ((status = ANY (ARRAY['Ativo'::text, 'Pendente'::text])))
 // Table: simulacao_ssd
 //   PRIMARY KEY simulacao_ssd_pkey: PRIMARY KEY (id_s)
 // Table: tipo_cenario_cenario
@@ -687,6 +816,11 @@ export const Constants = {
 //   PRIMARY KEY tipo_cenario_cenario_pkey: PRIMARY KEY (id_tcc)
 // Table: tipos_cenarios
 //   PRIMARY KEY tipos_cenarios_pkey: PRIMARY KEY (id_tc)
+// Table: unions
+//   FOREIGN KEY unions_partner1_id_fkey: FOREIGN KEY (partner1_id) REFERENCES members(id) ON DELETE CASCADE
+//   FOREIGN KEY unions_partner2_id_fkey: FOREIGN KEY (partner2_id) REFERENCES members(id) ON DELETE CASCADE
+//   PRIMARY KEY unions_pkey: PRIMARY KEY (id)
+//   CHECK unions_status_check: CHECK ((status = ANY (ARRAY['Active'::text, 'Separated'::text])))
 
 // --- ROW LEVEL SECURITY POLICIES ---
 // Table: cenario_consumo
@@ -749,6 +883,14 @@ export const Constants = {
 //   Policy "authenticated_all" (ALL, PERMISSIVE) roles={authenticated}
 //     USING: true
 //     WITH CHECK: true
+// Table: members
+//   Policy "Admin full access for members" (ALL, PERMISSIVE) roles={authenticated}
+//     USING: true
+//     WITH CHECK: true
+//   Policy "Public insert access for members" (INSERT, PERMISSIVE) roles={public}
+//     WITH CHECK: ((status = 'Pendente'::text) OR (auth.role() = 'authenticated'::text))
+//   Policy "Public read access for active members" (SELECT, PERMISSIVE) roles={public}
+//     USING: ((status = 'Ativo'::text) OR (auth.role() = 'authenticated'::text))
 // Table: simulacao_ssd
 //   Policy "anon_read" (SELECT, PERMISSIVE) roles={anon}
 //     USING: true
@@ -767,3 +909,10 @@ export const Constants = {
 //   Policy "authenticated_all" (ALL, PERMISSIVE) roles={authenticated}
 //     USING: true
 //     WITH CHECK: true
+// Table: unions
+//   Policy "Admin full access for unions" (ALL, PERMISSIVE) roles={authenticated}
+//     USING: true
+//     WITH CHECK: true
+//   Policy "Public read access for unions" (SELECT, PERMISSIVE) roles={public}
+//     USING: true
+
