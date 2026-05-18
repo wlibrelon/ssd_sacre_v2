@@ -69,6 +69,8 @@ export default function Cenarios() {
       return { ...row, demanda: rowDemanda, perdas: rowPerdas, populacao_calculada }
     })
     if (sim?.demanda_auto && cd && cc) {
+      {
+        /*  exporta dados para CSV
       const csvHeader = [
         'tempo',
         'populacao_calculada',
@@ -102,6 +104,8 @@ export default function Cenarios() {
       link.click()
       document.body.removeChild(link)
       URL.revokeObjectURL(url)
+*/
+      }
     }
     return calculatedData
   }
