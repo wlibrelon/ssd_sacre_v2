@@ -65,7 +65,7 @@ export function CenariosDashboard({ data, fontesMap }: any) {
         if (t[`${fName}_cap`]) {
           t[`${fName}_pct`] = Math.min(
             100,
-            Math.round((t[`${fName}_cap`] / t.captacao_total) * 100),
+            Math.floor((t[`${fName}_cap`] / t.captacao_total) * 100),
           )
         }
       })
