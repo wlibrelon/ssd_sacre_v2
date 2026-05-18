@@ -59,7 +59,11 @@ export function CenariosDashboard({ data, fontesMap }: any) {
 
       Object.keys(fontesMap).forEach((k) => {
         const fName = fontesMap[k]
-        if (t[`${fName}_cap`]) t[`${fName}_pct`] = (t[`${fName}_cap`] / t.captacao_total) * 100
+        {
+          /*}    if (t[`${fName}_cap`]) t[`${fName}_pct`] = (t[`${fName}_cap`] / t.captacao_total) * 100*/
+        }
+        if (t[`${fName}_cap`])
+          t[`${fName}_pct`] = +((t[`${fName}_cap`] / t.captacao_total) * 100).toFixed(2)
       })
       return { ...t, deficit }
     })
