@@ -15,18 +15,18 @@ import { Button } from '@/components/ui/button'
 import { Trash2 } from 'lucide-react'
 
 export function Grupo3() {
-  const { fonte_agua, tipos_cenarios, cenarios, estrategias, simulacao_ssd } = useSsdData()
+  const { fonte_agua, tipos_cenarios, cenarios, acoes, simulacao_ssd } = useSsdData()
   const [activeSim, setActiveSim] = useState('')
   const [cs, setCs] = useState<any[]>([])
   const [cf, setCf] = useState<any[]>([])
-  const [ef, setEf] = useState<any[]>([])
+  const [af, setAf] = useState<any[]>([])
   const [tcc, setTcc] = useState<any[]>([])
   const [form, setForm] = useState<any>({})
 
   const loadAll = async () => {
     setCs(await getTable('cenario_simulacao'))
     setCf(await getTable('cenarios_fonte'))
-    setEf(await getTable('estrategias_fonte'))
+    setAf(await getTable('acoes_fonte'))
     setTcc(await getTable('tipo_cenario_cenario'))
   }
 
@@ -43,7 +43,7 @@ export function Grupo3() {
   const getF = (id: any) => fonte_agua.find((x: any) => x.id_fonte === id)?.nome_fonte
   const getTc = (id: any) => tipos_cenarios.find((x: any) => x.id_tc === id)?.descricao
   const getC = (id: any) => cenarios.find((x: any) => x.id_cenarios === id)?.cenarios
-  const getE = (id: any) => estrategias.find((x: any) => x.id_estrategia === id)?.descricao
+  const getAcao = (id: any) => acoes.find((x: any) => x.id_acao === id)?.descricao
 
   return (
     <div className="space-y-6">
@@ -56,6 +56,8 @@ export function Grupo3() {
           { key: 'pop_inicial', label: 'População Inicial' },
           { key: 'inicio_perdas', label: 'Início Perdas (AAAA-MM)' },
           { key: 'perc_inicial_perdas', label: '% Inicial Perdas' },
+          { key: 'demanda_auto', label: 'Demanda Auto' },
+          { key: 'perdas_auto', label: 'Perdas Auto' },
         ]}
       />
 
@@ -75,7 +77,7 @@ export function Grupo3() {
                 options={fonte_agua.map((o: any) => ({ value: o.id_fonte, label: o.nome_fonte }))}
                 value={form.id_fonte || ''}
                 onChange={(v: any) =>
-                  setForm({ ...form, id_fonte: v, id_tc: '', id_c: '', id_e: '' })
+                  setForm({ ...form, id_fonte: v, id_tc: '', id_c: '', id_acao: '' })
                 }
                 placeholder="Fonte"
               />
@@ -104,18 +106,18 @@ export function Grupo3() {
                 placeholder="Cenário"
               />
               <NativeSelect
-                options={estrategias
+                options={acoes
                   .filter(
                     (o: any) =>
                       !form.id_fonte ||
-                      ef.some((x) => x.id_fonte == form.id_fonte && x.id_e == o.id_estrategia),
+                      af.some((x) => x.id_fonte == form.id_fonte && x.id_acao == o.id_acao),
                   )
                   .map((o: any) => ({
-                    value: o.id_estrategia,
+                    value: o.id_acao,
                     label: o.descricao,
                   }))}
-                value={form.id_e || ''}
-                onChange={(v: any) => setForm({ ...form, id_e: v })}
+                value={form.id_acao || ''}
+                onChange={(v: any) => setForm({ ...form, id_acao: v })}
                 placeholder="Ação"
               />
               <Button onClick={handleAdd}>Associar</Button>
@@ -140,7 +142,7 @@ export function Grupo3() {
                         <TableCell className="py-1 text-sm">{getF(row.id_fonte)}</TableCell>
                         <TableCell className="py-1 text-sm">{getTc(row.id_tc)}</TableCell>
                         <TableCell className="py-1 text-sm">{getC(row.id_c)}</TableCell>
-                        <TableCell className="py-1 text-sm">{getE(row.id_e)}</TableCell>
+                        <TableCell className="py-1 text-sm">{getAcao(row.id_acao)}</TableCell>
                         <TableCell className="py-1 text-sm">
                           <Button
                             variant="ghost"

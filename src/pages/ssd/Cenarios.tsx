@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useSsdData } from '@/hooks/use-ssd-data'
 import { NativeSelect } from './components/NativeSelect'
 import { Button } from '@/components/ui/button'
@@ -12,22 +12,41 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+
+const MONTHS = [
+  { v: '1', l: 'Janeiro' },
+  { v: '2', l: 'Fevereiro' },
+  { v: '3', l: 'Março' },
+  { v: '4', l: 'Abril' },
+  { v: '5', l: 'Maio' },
+  { v: '6', l: 'Junho' },
+  { v: '7', l: 'Julho' },
+  { v: '8', l: 'Agosto' },
+  { v: '9', l: 'Setembro' },
+  { v: '10', l: 'Outubro' },
+  { v: '11', l: 'Novembro' },
+  { v: '12', l: 'Dezembro' },
+]
+
 export default function Cenarios() {
   const {
     fonte_agua,
     tipos_cenarios,
     cenarios,
-    estrategias,
+    acoes,
     cenario_demanda,
     cenario_consumo,
     cenario_perdas,
+    simulacao_ssd,
+    cenario_simulacao,
   } = useSsdData()
+
   const [filters, setFilters] = useState<any>({})
   const [data, setData] = useState<any[]>([])
   const [groupedData, setGroupedData] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [ran, setRan] = useState(false)
-  const [simulacoes, setSimulacoes] = useState<any[]>([])
+
   const aplicarCalculosModulares = (data: any[], sim: any, cd: any, cc: any, cp: any) => {
     const tempos = Array.from(new Set(data.map((d) => d.tempo))).sort()
     const pop_inicial = sim?.pop_inicial || 0
@@ -68,79 +87,34 @@ export default function Cenarios() {
       }
       return { ...row, demanda: rowDemanda, perdas: rowPerdas, populacao_calculada }
     })
-    if (sim?.demanda_auto && cd && cc) {
-      {
-        /*  exporta dados para CSV
-      const csvHeader = [
-        'tempo',
-        'populacao_calculada',
-        'demanda_calculada',
-        'vol_hab',
-        'percentual_cenario',
-        'pop_inicial',
-      ]
-      const csvRows = [
-        csvHeader,
-        ...calculatedData.map((row: any) => [
-          row.tempo,
-          row.populacao_calculada,
-          row.demanda,
-          vol_hab,
-          perc_demanda,
-          pop_inicial,
-        ]),
-      ]
-      const csvContent = csvRows
-        .map((row) => row.map((field: any) => `"${field}"`).join(','))
-        .join('\n')
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      const filename = `debug_populacao_${new Date().toISOString().slice(0, 10)}.csv`
-      link.setAttribute('href', url)
-      link.setAttribute('download', filename)
-      link.style.visibility = 'hidden'
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      URL.revokeObjectURL(url)
-*/
-      }
-    }
     return calculatedData
   }
-  useEffect(() => {
-    supabase
-      .from('simulacao_ssd')
-      .select('*')
-      .then(({ data }) => {
-        if (data) setSimulacoes(data)
-      })
-  }, [])
+
   const handleSimulate = async () => {
     setLoading(true)
     let q = supabase.from('dados_simulacao').select('*')
     if (filters.id_s) q = q.eq('id_s', filters.id_s)
-    if (filters.id_fonte) q = q.eq('id_fonte', filters.id_fonte)
-    if (filters.id_tc) q = q.eq('id_tc', filters.id_tc)
-    if (filters.id_c) q = q.eq('id_c', filters.id_c)
-    if (filters.id_e) q = q.eq('id_e', filters.id_e)
-    if (filters.id_cd) q = q.eq('id_cd', filters.id_cd)
-    if (filters.id_cc) q = q.eq('id_cc', filters.id_cc)
-    if (filters.id_cp) q = q.eq('id_cp', filters.id_cp)
     if (filters.ano_inicio) q = q.gte('tempo', `${filters.ano_inicio}-01`)
     if (filters.ano_fim) q = q.lte('tempo', `${filters.ano_fim}-12`)
-    if (filters.mes) q = q.ilike('tempo', `%-${filters.mes.padStart(2, '0')}`)
+    if (filters.meses && filters.meses.length > 0) {
+      const orString = filters.meses
+        .map((m: string) => `tempo.ilike.%-${m.padStart(2, '0')}`)
+        .join(',')
+      q = q.or(orString)
+    }
+
     const { data: res, error } = await q
     if (error) console.error(error)
     let resData = res || []
-    const activeSimObj = simulacoes.find((s) => s.id_s === parseInt(filters.id_s))
+
+    const activeSimObj = simulacao_ssd.find((s: any) => s.id_s === parseInt(filters.id_s))
     if (activeSimObj?.demanda_auto || activeSimObj?.perdas_auto) {
       const cd = cenario_demanda.find((c: any) => c.id_cd === parseInt(filters.id_cd_auto))
       const cc = cenario_consumo.find((c: any) => c.id_cc === parseInt(filters.id_cc_auto))
       const cp = cenario_perdas.find((c: any) => c.id_cp === parseInt(filters.id_cp_auto))
       resData = aplicarCalculosModulares(resData, activeSimObj, cd, cc, cp)
     }
+
     const processedData = resData.map((row: any) => {
       const volume_captado = row.volume_captado || 0
       const perdas_percentual = row.perdas || 0
@@ -153,6 +127,7 @@ export default function Cenarios() {
         deficit: demanda - volume_distribuido,
       }
     })
+
     const groupedMap = processedData.reduce((acc: any, row: any) => {
       const key = `${row.tempo}_${row.id_fonte}`
       if (!acc[key]) {
@@ -175,6 +150,7 @@ export default function Cenarios() {
       acc[key].count += 1
       return acc
     }, {})
+
     const groupedArray = Object.values(groupedMap)
       .map((g: any) => ({
         tempo: g.tempo,
@@ -186,17 +162,29 @@ export default function Cenarios() {
         opex: g.opex / g.count,
       }))
       .sort((a: any, b: any) => a.tempo.localeCompare(b.tempo))
+
     setData(processedData)
     setGroupedData(groupedArray)
     setRan(true)
     setLoading(false)
   }
+
   const fontesMap = fonte_agua.reduce(
     (acc: any, f: any) => ({ ...acc, [f.id_fonte]: f.nome_fonte }),
     {},
   )
-  const formatCurrency = (val: number) =>
-    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val)
+
+  const activeSimObj = simulacao_ssd.find((s: any) => s.id_s === parseInt(filters.id_s))
+  const contextData =
+    activeSimObj && cenario_simulacao
+      ? cenario_simulacao.filter((cs: any) => cs.id_s === activeSimObj.id_s)
+      : []
+
+  const getF = (id: any) => fonte_agua.find((x: any) => x.id_fonte === id)?.nome_fonte
+  const getTc = (id: any) => tipos_cenarios.find((x: any) => x.id_tc === id)?.descricao
+  const getC = (id: any) => cenarios.find((x: any) => x.id_cenarios === id)?.cenarios
+  const getAcao = (id: any) => acoes.find((x: any) => x.id_acao === id)?.descricao
+
   return (
     <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
       <div>
@@ -206,10 +194,9 @@ export default function Cenarios() {
           hídricos.
         </p>
       </div>
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-fade-in">
-        {/* COLUNA PRINCIPAL (MAIS LARGA) */}
         <div className="space-y-6 md:col-span-2">
-          {/* Quadro 1 */}
           <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200 w-full">
             <h3 className="font-semibold text-primary border-b pb-3 mb-4 text-sm uppercase tracking-wider">
               Cenários para Simulação
@@ -219,7 +206,7 @@ export default function Cenarios() {
                 <label className="text-xs font-semibold text-muted-foreground">Simulação</label>
                 <NativeSelect
                   className="w-full"
-                  options={simulacoes.map((o: any) => ({
+                  options={simulacao_ssd.map((o: any) => ({
                     value: o.id_s,
                     label: o.descricao,
                   }))}
@@ -229,68 +216,88 @@ export default function Cenarios() {
                 />
               </div>
             </div>
+
+            {activeSimObj && (
+              <div className="mt-4 border rounded-md overflow-hidden animate-fade-in-up">
+                <Table>
+                  <TableHeader className="bg-slate-50">
+                    <TableRow>
+                      <TableHead className="text-xs">Fonte</TableHead>
+                      <TableHead className="text-xs">Tipo Cenário</TableHead>
+                      <TableHead className="text-xs">Cenário</TableHead>
+                      <TableHead className="text-xs">Ação</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {contextData.map((row: any) => (
+                      <TableRow key={row.id_cs}>
+                        <TableCell className="text-xs py-2">{getF(row.id_fonte)}</TableCell>
+                        <TableCell className="text-xs py-2">{getTc(row.id_tc)}</TableCell>
+                        <TableCell className="text-xs py-2">{getC(row.id_c)}</TableCell>
+                        <TableCell className="text-xs py-2">{getAcao(row.id_acao)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
           </div>
-          {/* Quadro 3 */}
-          {(() => {
-            const activeSimObj = simulacoes.find((s) => s.id_s === parseInt(filters.id_s))
-            if (activeSimObj && (activeSimObj.demanda_auto || activeSimObj.perdas_auto)) {
-              return (
-                <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200 w-full mt-6">
-                  <h3 className="font-semibold text-primary border-b pb-3 mb-4 text-sm uppercase tracking-wider">
-                    Demanda e Perdas (Automático)
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {activeSimObj.demanda_auto && (
-                      <div className="space-y-3">
-                        <h4 className="text-sm font-semibold text-muted-foreground">Demanda</h4>
-                        <NativeSelect
-                          className="w-full"
-                          options={cenario_demanda.map((o: any) => ({
-                            value: o.id_cd,
-                            label: o.nome_cenario_demanda,
-                          }))}
-                          value={filters.id_cd_auto || ''}
-                          onChange={(v: any) => setFilters({ ...filters, id_cd_auto: v })}
-                          placeholder="Cenário Demanda"
-                        />
-                        <NativeSelect
-                          className="w-full"
-                          options={cenario_consumo.map((o: any) => ({
-                            value: o.id_cc,
-                            label: o.nome_cenario_consumo,
-                          }))}
-                          value={filters.id_cc_auto || ''}
-                          onChange={(v: any) => setFilters({ ...filters, id_cc_auto: v })}
-                          placeholder="Cenário Consumo"
-                        />
-                      </div>
-                    )}
-                    {activeSimObj.perdas_auto && (
-                      <div className="space-y-3">
-                        <h4 className="text-sm font-semibold text-muted-foreground">Perdas</h4>
-                        <NativeSelect
-                          className="w-full"
-                          options={cenario_perdas.map((o: any) => ({
-                            value: o.id_cp,
-                            label: o.nome_cenario_perdas,
-                          }))}
-                          value={filters.id_cp_auto || ''}
-                          onChange={(v: any) => setFilters({ ...filters, id_cp_auto: v })}
-                          placeholder="Cenário Perdas"
-                        />
-                      </div>
-                    )}
+
+          {activeSimObj && (activeSimObj.demanda_auto || activeSimObj.perdas_auto) && (
+            <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200 w-full mt-6">
+              <h3 className="font-semibold text-primary border-b pb-3 mb-4 text-sm uppercase tracking-wider">
+                Demanda e Perdas (Automático)
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {activeSimObj.demanda_auto && (
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-semibold text-muted-foreground">Demanda</h4>
+                    <NativeSelect
+                      className="w-full"
+                      options={cenario_demanda.map((o: any) => ({
+                        value: o.id_cd,
+                        label: o.nome_cenario_demanda,
+                      }))}
+                      value={filters.id_cd_auto || ''}
+                      onChange={(v: any) => setFilters({ ...filters, id_cd_auto: v })}
+                      placeholder="Cenário Demanda"
+                    />
+                    <NativeSelect
+                      className="w-full"
+                      options={cenario_consumo.map((o: any) => ({
+                        value: o.id_cc,
+                        label: o.nome_cenario_consumo,
+                      }))}
+                      value={filters.id_cc_auto || ''}
+                      onChange={(v: any) => setFilters({ ...filters, id_cc_auto: v })}
+                      placeholder="Cenário Consumo"
+                    />
                   </div>
-                </div>
-              )
-            }
-            return null
-          })()}
+                )}
+                {activeSimObj.perdas_auto && (
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-semibold text-muted-foreground">Perdas</h4>
+                    <NativeSelect
+                      className="w-full"
+                      options={cenario_perdas.map((o: any) => ({
+                        value: o.id_cp,
+                        label: o.nome_cenario_perdas,
+                      }))}
+                      value={filters.id_cp_auto || ''}
+                      onChange={(v: any) => setFilters({ ...filters, id_cp_auto: v })}
+                      placeholder="Cenário Perdas"
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200 flex flex-col w-full mt-6">
             <h3 className="font-semibold text-primary border-b pb-3 mb-4 text-sm uppercase tracking-wider">
               Período
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 flex-1">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1">
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-muted-foreground">Ano Início</label>
                 <NativeSelect
@@ -313,7 +320,7 @@ export default function Cenarios() {
                   className="w-full"
                   options={[
                     2026, 2027, 2028, 2029, 2030, 2031, 2032, 2033, 2034, 2035, 2036, 2037, 2038,
-                    2039, 2040, 2041, 2042, 2043, 2044, 2045, 2046, 2047, 2048, 2049, 2040, 2050,
+                    2039, 2040, 2041, 2042, 2043, 2044, 2045, 2046, 2047, 2048, 2049, 2050,
                   ].map((y) => ({
                     value: y,
                     label: y.toString(),
@@ -323,36 +330,57 @@ export default function Cenarios() {
                   placeholder="Fim"
                 />
               </div>
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-muted-foreground">
-                  Mês Específico
-                </label>
-                <NativeSelect
-                  className="w-full"
-                  options={Array.from({ length: 12 }, (_, i) => ({
-                    value: (i + 1).toString(),
-                    label: (i + 1).toString().padStart(2, '0'),
-                  }))}
-                  value={filters.mes || ''}
-                  onChange={(v: any) => setFilters({ ...filters, mes: v })}
-                  placeholder="Todos os meses"
-                />
+            </div>
+
+            <div className="space-y-2 mt-4">
+              <label className="text-xs font-semibold text-muted-foreground">
+                Meses (Múltipla Seleção)
+              </label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                {MONTHS.map((m) => (
+                  <label
+                    key={m.v}
+                    className="flex items-center space-x-2 border p-2 rounded-md hover:bg-slate-50 cursor-pointer"
+                  >
+                    <input
+                      type="checkbox"
+                      className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+                      checked={filters.meses?.includes(m.v) || false}
+                      onChange={(e) => {
+                        const current = filters.meses || []
+                        setFilters({
+                          ...filters,
+                          meses: e.target.checked
+                            ? [...current, m.v]
+                            : current.filter((x: string) => x !== m.v),
+                        })
+                      }}
+                    />
+                    <span className="text-xs font-medium">{m.l}</span>
+                  </label>
+                ))}
               </div>
             </div>
-            <div className="pt-6">
+
+            <div className="pt-6 flex flex-col gap-2">
               <Button
                 onClick={handleSimulate}
-                disabled={loading}
-                className="w-full h-11 shadow-sm text-base"
+                disabled={loading || !filters.id_s}
+                className="w-full h-11 shadow-sm text-base disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? 'Processando...' : 'Executar Simulação'}
               </Button>
+              {!filters.id_s && (
+                <p className="text-xs text-red-500 text-center font-medium">
+                  Selecione uma simulação para executar.
+                </p>
+              )}
             </div>
           </div>
         </div>
-        {/* COLUNA DIREITA (RESERVADA PRA FUTURO / DASHBOARD / FILTROS) */}
-        <div className="space-y-6">{/* Pode adicionar KPIs, resumo, etc */}</div>
+        <div className="space-y-6"></div>
       </div>
+
       {ran && data.length === 0 && (
         <div className="text-center p-12 bg-white rounded-lg border border-dashed">
           <p className="text-muted-foreground">
@@ -360,11 +388,8 @@ export default function Cenarios() {
           </p>
         </div>
       )}
-      {data.length > 0 && (
-        <>
-          <CenariosDashboard data={data} fontesMap={fontesMap} />
-        </>
-      )}
+
+      {data.length > 0 && <CenariosDashboard data={data} fontesMap={fontesMap} />}
     </div>
   )
 }

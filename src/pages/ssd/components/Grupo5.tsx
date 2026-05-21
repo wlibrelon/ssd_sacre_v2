@@ -1,35 +1,18 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useSsdData } from '@/hooks/use-ssd-data'
 import { supabase } from '@/lib/supabase/client'
 import { useToast } from '@/hooks/use-toast'
 import { NativeSelect } from './NativeSelect'
 
 export function Grupo5() {
-  const {
-    fonte_agua,
-    tipos_cenarios,
-    cenarios,
-    estrategias,
-    cenario_demanda,
-    cenario_consumo,
-    cenario_perdas,
-  } = useSsdData()
+  const { fonte_agua, cenario_demanda, cenario_consumo, cenario_perdas, simulacao_ssd, reload } =
+    useSsdData()
   const { toast } = useToast()
 
   const [volState, setVolState] = useState<any>({})
   const [demState, setDemState] = useState<any>({})
   const [perState, setPerState] = useState<any>({})
-  const [simulacoes, setSimulacoes] = useState<any[]>([])
   const [activeSimId, setActiveSimId] = useState<string>('')
-
-  useEffect(() => {
-    supabase
-      .from('simulacao_ssd')
-      .select('*')
-      .then(({ data }) => {
-        if (data) setSimulacoes(data)
-      })
-  }, [])
 
   const parseCSV = async (file: File) => {
     const text = await file.text()
@@ -63,7 +46,7 @@ export function Grupo5() {
           id_fonte: volState.id_fonte,
           id_tc: null,
           id_c: null,
-          id_e: null,
+          id_acao: null,
           id_s: parseInt(activeSimId),
           tempo: r.tempo,
           volume_captado: parseFloat(r.volume_captado) || 0,
@@ -147,8 +130,10 @@ export function Grupo5() {
       .from('simulacao_ssd')
       .update({ demanda_auto: true })
       .eq('id_s', parseInt(activeSimId))
-    if (!error) toast({ title: 'Sucesso', description: 'Cálculo automático de demanda ativado' })
-    else toast({ title: 'Erro', description: error.message, variant: 'destructive' })
+    if (!error) {
+      toast({ title: 'Sucesso', description: 'Cálculo automático de demanda ativado' })
+      await reload()
+    } else toast({ title: 'Erro', description: error.message, variant: 'destructive' })
   }
 
   const setPerdasAuto = async () => {
@@ -162,18 +147,21 @@ export function Grupo5() {
       .from('simulacao_ssd')
       .update({ perdas_auto: true })
       .eq('id_s', parseInt(activeSimId))
-    if (!error) toast({ title: 'Sucesso', description: 'Cálculo automático de perdas ativado' })
-    else toast({ title: 'Erro', description: error.message, variant: 'destructive' })
+    if (!error) {
+      toast({ title: 'Sucesso', description: 'Cálculo automático de perdas ativado' })
+      await reload()
+    } else toast({ title: 'Erro', description: error.message, variant: 'destructive' })
   }
 
   return (
     <div className="space-y-6">
-      <div className="mb-4 max-w-sm">
+      <div className="mb-4 w-full">
         <label className="block text-sm font-semibold text-primary mb-1">
           Selecione a simulação ativa
         </label>
         <NativeSelect
-          options={simulacoes.map((o: any) => ({ value: o.id_s, label: o.descricao }))}
+          className="w-full"
+          options={simulacao_ssd.map((o: any) => ({ value: o.id_s, label: o.descricao }))}
           value={activeSimId}
           onChange={(v: any) => setActiveSimId(v)}
           placeholder="Selecione uma simulação..."

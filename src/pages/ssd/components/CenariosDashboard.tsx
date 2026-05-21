@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import {
   LineChart,
   Line,
@@ -12,17 +13,85 @@ import {
   ReferenceLine,
 } from 'recharts'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { Maximize2, Download } from 'lucide-react'
 
 const CHART_COLORS = [
-  '#2563eb', // blue
-  '#dc2626', // red
-  '#16a34a', // green
-  '#d97706', // amber
-  '#9333ea', // purple
-  '#0d9488', // teal
-  '#be123c', // rose
-  '#4f46e5', // indigo
+  '#2563eb',
+  '#dc2626',
+  '#16a34a',
+  '#d97706',
+  '#9333ea',
+  '#0d9488',
+  '#be123c',
+  '#4f46e5',
 ]
+
+const ChartWrapper = ({ title, data, children }: any) => {
+  const [isOpen, setIsOpen] = useState(false)
+
+  const handleExport = () => {
+    if (!data || data.length === 0) return
+    const keys = Object.keys(data[0])
+    const csvRows = [
+      keys.join(','),
+      ...data.map((row: any) => keys.map((k) => `"${row[k] || 0}"`).join(',')),
+    ]
+    const csvContent = csvRows.join('\n')
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.setAttribute('href', url)
+    link.setAttribute('download', `${title.replace(/\s+/g, '_').toLowerCase()}.csv`)
+    link.style.visibility = 'hidden'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  }
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <CardTitle className="text-lg">{title}</CardTitle>
+        <div className="flex gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={handleExport}
+            title="Exportar CSV"
+          >
+            <Download className="h-4 w-4" />
+          </Button>
+          <Dialog open={isOpen} onOpenChange={setIsOpen}>
+            <DialogTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8" title="Expandir (Zoom)">
+                <Maximize2 className="h-4 w-4" />
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-[95vw] h-[85vh] flex flex-col">
+              <DialogHeader>
+                <DialogTitle>{title}</DialogTitle>
+              </DialogHeader>
+              <div className="flex-1 w-full min-h-0 relative mt-4">{children}</div>
+            </DialogContent>
+          </Dialog>
+        </div>
+      </CardHeader>
+      <CardContent className="h-[350px]">
+        <div className="w-full h-full relative">{children}</div>
+      </CardContent>
+    </Card>
+  )
+}
 
 export function CenariosDashboard({ data, fontesMap }: any) {
   const timeMap: any = {}
@@ -59,9 +128,6 @@ export function CenariosDashboard({ data, fontesMap }: any) {
 
       Object.keys(fontesMap).forEach((k) => {
         const fName = fontesMap[k]
-        {
-          /*}    if (t[`${fName}_cap`]) t[`${fName}_pct`] = (t[`${fName}_cap`] / t.captacao_total) * 100*/
-        }
         if (t[`${fName}_cap`]) {
           t[`${fName}_pct`] = Math.min(
             100,
@@ -165,134 +231,114 @@ export function CenariosDashboard({ data, fontesMap }: any) {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Volume Captado por Fonte</CardTitle>
-          </CardHeader>
-          <CardContent className="h-[350px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" opacity={0.4} />
-                <XAxis dataKey="tempo" />
-                <YAxis />
-                <Tooltip formatter={(value: number) => formatVol(value)} />
-                <Legend />
-                {fontesKeys.map((fk, i) => (
-                  <Line
-                    key={fk}
-                    type="monotone"
-                    dataKey={`${fk}_cap`}
-                    name={fk}
-                    stroke={CHART_COLORS[i % CHART_COLORS.length]}
-                    strokeWidth={2.5}
-                    dot={false}
-                  />
-                ))}
-              </LineChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+        <ChartWrapper title="Volume Captado por Fonte" data={chartData}>
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" opacity={0.4} />
+              <XAxis dataKey="tempo" />
+              <YAxis />
+              <Tooltip formatter={(value: number) => formatVol(value)} />
+              <Legend />
+              {fontesKeys.map((fk, i) => (
+                <Line
+                  key={fk}
+                  type="monotone"
+                  dataKey={`${fk}_cap`}
+                  name={fk}
+                  stroke={CHART_COLORS[i % CHART_COLORS.length]}
+                  strokeWidth={2.5}
+                  dot={false}
+                />
+              ))}
+            </LineChart>
+          </ResponsiveContainer>
+        </ChartWrapper>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Participação das Fontes (%)</CardTitle>
-          </CardHeader>
-          <CardContent className="h-[350px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" opacity={0.4} />
-                <XAxis dataKey="tempo" />
-                <YAxis domain={[0, 100]} />
-                <Tooltip formatter={(value: number) => `${value.toFixed(1)}%`} />
-                <Legend />
-                {fontesKeys.map((fk, i) => (
-                  <Bar
-                    key={fk}
-                    dataKey={`${fk}_pct`}
-                    name={fk}
-                    stackId="a"
-                    fill={CHART_COLORS[i % CHART_COLORS.length]}
-                  />
-                ))}
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+        <ChartWrapper title="Participação das Fontes (%)" data={chartData}>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" opacity={0.4} />
+              <XAxis dataKey="tempo" />
+              <YAxis domain={[0, 100]} />
+              <Tooltip formatter={(value: number) => `${value.toFixed(1)}%`} />
+              <Legend />
+              {fontesKeys.map((fk, i) => (
+                <Bar
+                  key={fk}
+                  dataKey={`${fk}_pct`}
+                  name={fk}
+                  stackId="a"
+                  fill={CHART_COLORS[i % CHART_COLORS.length]}
+                />
+              ))}
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartWrapper>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Captação vs Distribuição</CardTitle>
-          </CardHeader>
-          <CardContent className="h-[350px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" opacity={0.4} />
-                <XAxis dataKey="tempo" />
-                <YAxis />
-                <Tooltip formatter={(value: number) => formatVol(value)} />
-                <Legend />
-                <Line
-                  type="monotone"
-                  dataKey="captacao_total"
-                  name="Total Captado"
-                  stroke="#0f172a"
-                  strokeWidth={2.5}
-                  dot={false}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="distribuicao_total"
-                  name="Total Distribuído"
-                  stroke="#16a34a"
-                  strokeWidth={2.5}
-                  dot={false}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+        <ChartWrapper title="Captação vs Distribuição" data={chartData}>
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" opacity={0.4} />
+              <XAxis dataKey="tempo" />
+              <YAxis />
+              <Tooltip formatter={(value: number) => formatVol(value)} />
+              <Legend />
+              <Line
+                type="monotone"
+                dataKey="captacao_total"
+                name="Total Captado"
+                stroke="#0f172a"
+                strokeWidth={2.5}
+                dot={false}
+              />
+              <Line
+                type="monotone"
+                dataKey="distribuicao_total"
+                name="Total Distribuído"
+                stroke="#16a34a"
+                strokeWidth={2.5}
+                dot={false}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </ChartWrapper>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Distribuição, Demanda e Saldo</CardTitle>
-          </CardHeader>
-          <CardContent className="h-[350px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" opacity={0.4} />
-                <XAxis dataKey="tempo" />
-                <YAxis />
-                <Tooltip formatter={(value: number) => formatVol(value)} />
-                <Legend />
-                <ReferenceLine y={0} stroke="#ef4444" strokeWidth={2} strokeDasharray="3 3" />
-                <Line
-                  type="monotone"
-                  dataKey="distribuicao_total"
-                  name="Distribuído"
-                  stroke="#16a34a"
-                  strokeWidth={2.5}
-                  dot={false}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="demanda"
-                  name="Demanda"
-                  stroke="#4f46e5"
-                  strokeWidth={2.5}
-                  dot={false}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="deficit"
-                  name="Saldo"
-                  stroke="#f59e0b"
-                  strokeWidth={3}
-                  dot={false}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+        <ChartWrapper title="Distribuição, Demanda e Saldo" data={chartData}>
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" opacity={0.4} />
+              <XAxis dataKey="tempo" />
+              <YAxis />
+              <Tooltip formatter={(value: number) => formatVol(value)} />
+              <Legend />
+              <ReferenceLine y={0} stroke="#ef4444" strokeWidth={2} strokeDasharray="3 3" />
+              <Line
+                type="monotone"
+                dataKey="distribuicao_total"
+                name="Distribuído"
+                stroke="#16a34a"
+                strokeWidth={2.5}
+                dot={false}
+              />
+              <Line
+                type="monotone"
+                dataKey="demanda"
+                name="Demanda"
+                stroke="#4f46e5"
+                strokeWidth={2.5}
+                dot={false}
+              />
+              <Line
+                type="monotone"
+                dataKey="deficit"
+                name="Saldo"
+                stroke="#f59e0b"
+                strokeWidth={3}
+                dot={false}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </ChartWrapper>
       </div>
     </div>
   )

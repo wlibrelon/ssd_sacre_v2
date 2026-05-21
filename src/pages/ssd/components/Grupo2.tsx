@@ -14,9 +14,9 @@ import {
 import { Trash2 } from 'lucide-react'
 
 export function Grupo2() {
-  const { fonte_agua, tipos_cenarios, estrategias, cenarios } = useSsdData()
+  const { fonte_agua, tipos_cenarios, acoes, cenarios } = useSsdData()
   const [cf, setCf] = useState<any[]>([])
-  const [ef, setEf] = useState<any[]>([])
+  const [af, setAf] = useState<any[]>([])
   const [tcc, setTcc] = useState<any[]>([])
 
   const [f1, setF1] = useState('')
@@ -28,7 +28,7 @@ export function Grupo2() {
 
   const load = async () => {
     setCf(await getTable('cenarios_fonte'))
-    setEf(await getTable('estrategias_fonte'))
+    setAf(await getTable('acoes_fonte'))
     setTcc(await getTable('tipo_cenario_cenario'))
   }
   useEffect(() => {
@@ -38,8 +38,7 @@ export function Grupo2() {
   const getFonteName = (id: number) =>
     fonte_agua.find((x: any) => x.id_fonte === id)?.nome_fonte || id
   const getTcName = (id: number) => tipos_cenarios.find((x: any) => x.id_tc === id)?.descricao || id
-  const getEName = (id: number) =>
-    estrategias.find((x: any) => x.id_estrategia === id)?.descricao || id
+  const getAcaoName = (id: number) => acoes.find((x: any) => x.id_acao === id)?.descricao || id
   const getCName = (id: number) => cenarios.find((x: any) => x.id_cenarios === id)?.cenarios || id
 
   return (
@@ -171,8 +170,8 @@ export function Grupo2() {
               placeholder="Selecione Fonte"
             />
             <NativeSelect
-              options={estrategias.map((o: any) => ({
-                value: o.id_estrategia,
+              options={acoes.map((o: any) => ({
+                value: o.id_acao,
                 label: o.descricao,
               }))}
               value={e}
@@ -181,7 +180,7 @@ export function Grupo2() {
             />
             <Button
               onClick={async () => {
-                await insertRow('estrategias_fonte', { id_fonte: f2, id_e: e })
+                await insertRow('acoes_fonte', { id_fonte: f2, id_acao: e })
                 load()
               }}
             >
@@ -198,17 +197,17 @@ export function Grupo2() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {ef.map((row) => (
+                {af.map((row) => (
                   <TableRow key={row.id_ef}>
                     <TableCell className="py-1 text-sm">{getFonteName(row.id_fonte)}</TableCell>
-                    <TableCell className="py-1 text-sm">{getEName(row.id_e)}</TableCell>
+                    <TableCell className="py-1 text-sm">{getAcaoName(row.id_acao)}</TableCell>
                     <TableCell className="py-1 text-sm">
                       <Button
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8"
                         onClick={async () => {
-                          await deleteRow('estrategias_fonte', 'id_ef', row.id_ef)
+                          await deleteRow('acoes_fonte', 'id_ef', row.id_ef)
                           load()
                         }}
                       >

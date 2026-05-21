@@ -30,12 +30,12 @@ export function Grupo1() {
           ]}
         />
         <CrudTable
-          table="estrategias"
+          table="acoes"
           title="Ações"
-          pk="id_estrategia"
+          pk="id_acao"
           cols={[
             { key: 'descricao', label: 'Descrição' },
-            { key: 'obs_estrategia', label: 'Observação' },
+            { key: 'obs', label: 'Observação' },
           ]}
         />
       </div>

@@ -12,6 +12,12 @@ export const insertRow = async (table: string, row: any) => {
   return error
 }
 
+export const updateRow = async (table: string, idCol: string, id: any, row: any) => {
+  const { error } = await supabase.from(table).update(row).eq(idCol, id)
+  if (error) console.error(`Error updating ${table}:`, error)
+  return error
+}
+
 export const deleteRow = async (table: string, idCol: string, id: any) => {
   const { error } = await supabase.from(table).delete().eq(idCol, id)
   if (error) console.error(`Error deleting from ${table}:`, error)

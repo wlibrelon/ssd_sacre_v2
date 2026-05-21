@@ -6,33 +6,39 @@ export function useSsdData() {
     fonte_agua: [],
     tipos_cenarios: [],
     cenarios: [],
-    estrategias: [],
+    acoes: [],
     simulacao_ssd: [],
     cenario_demanda: [],
     cenario_consumo: [],
     cenario_perdas: [],
+    cenario_simulacao: [],
+    acoes_fonte: [],
   })
 
   const load = async () => {
-    const [f, tc, c, e, s, cd, cc, cp] = await Promise.all([
+    const [f, tc, c, a, s, cd, cc, cp, cs, af] = await Promise.all([
       getTable('fonte_agua'),
       getTable('tipos_cenarios'),
       getTable('cenarios'),
-      getTable('estrategias'),
+      getTable('acoes'),
       getTable('simulacao_ssd'),
       getTable('cenario_demanda'),
       getTable('cenario_consumo'),
       getTable('cenario_perdas'),
+      getTable('cenario_simulacao'),
+      getTable('acoes_fonte'),
     ])
     setData({
       fonte_agua: f,
       tipos_cenarios: tc,
       cenarios: c,
-      estrategias: e,
+      acoes: a,
       simulacao_ssd: s,
       cenario_demanda: cd,
       cenario_consumo: cc,
       cenario_perdas: cp,
+      cenario_simulacao: cs,
+      acoes_fonte: af,
     })
   }
 

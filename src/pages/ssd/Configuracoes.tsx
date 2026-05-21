@@ -3,6 +3,7 @@ import { Grupo2 } from './components/Grupo2'
 import { Grupo3 } from './components/Grupo3'
 import { Grupo4 } from './components/Grupo4'
 import { Grupo5 } from './components/Grupo5'
+import { GrupoCapexOpex } from './components/GrupoCapexOpex'
 import {
   Accordion,
   AccordionItem,
@@ -25,7 +26,7 @@ export default function Configuracoes() {
       <Accordion type="multiple" className="w-full space-y-4">
         <AccordionItem value="g1" className="border rounded-lg px-4 bg-white shadow-sm">
           <AccordionTrigger className="text-xl font-bold hover:no-underline text-left">
-            Configuração de fontes de água, cenários e estratégias
+            Configuração de fontes de água, cenários e ações
           </AccordionTrigger>
           <AccordionContent className="pt-2 pb-6">
             <Grupo1 />
@@ -56,6 +57,15 @@ export default function Configuracoes() {
           </AccordionTrigger>
           <AccordionContent className="pt-2 pb-6">
             <Grupo4 />
+          </AccordionContent>
+        </AccordionItem>
+
+        <AccordionItem value="gcapex" className="border rounded-lg px-4 bg-white shadow-sm">
+          <AccordionTrigger className="text-xl font-bold hover:no-underline text-left">
+            Dados para CAPEX e OPEX
+          </AccordionTrigger>
+          <AccordionContent className="pt-2 pb-6">
+            <GrupoCapexOpex />
           </AccordionContent>
         </AccordionItem>
 

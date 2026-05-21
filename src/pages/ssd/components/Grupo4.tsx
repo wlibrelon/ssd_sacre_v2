@@ -30,7 +30,6 @@ export function Grupo4() {
           pk="id_cp"
           cols={[
             { key: 'nome_cenario_perdas', label: 'Nome' },
-            { key: 'descricao', label: 'Descrição' },
             { key: 'percentual', label: 'Percentual (%)' },
           ]}
         />
