@@ -17,10 +17,11 @@ import {
 import { useToast } from '@/hooks/use-toast'
 
 export default function AuthPage() {
-  const { signIn, signUp } = useAuth()
+  const { signIn, signUp, resetPassword } = useAuth()
   const navigate = useNavigate()
   const { toast } = useToast()
   const [isLoading, setIsLoading] = useState(false)
+  const [isRecovering, setIsRecovering] = useState(false)
   const [role, setRole] = useState('')
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -74,19 +75,71 @@ export default function AuthPage() {
             </TabsList>
 
             <TabsContent value="login">
-              <form onSubmit={handleLogin} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email">E-mail</Label>
-                  <Input id="email" type="email" placeholder="nome@organizacao.com" required />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="password">Senha</Label>
-                  <Input id="password" type="password" required />
-                </div>
-                <Button type="submit" className="w-full bg-primary" disabled={isLoading}>
-                  {isLoading ? 'Entrando...' : 'Entrar'}
-                </Button>
-              </form>
+              {isRecovering ? (
+                <form
+                  onSubmit={async (e) => {
+                    e.preventDefault()
+                    setIsLoading(true)
+                    const email = (document.getElementById('recovery-email') as HTMLInputElement)
+                      .value
+                    const { error } = await resetPassword(email)
+                    setIsLoading(false)
+                    if (error) {
+                      toast({ title: 'Erro', description: error.message, variant: 'destructive' })
+                    } else {
+                      toast({
+                        title: 'Sucesso',
+                        description: 'Um link de recuperação foi enviado para o seu e-mail.',
+                      })
+                      setIsRecovering(false)
+                    }
+                  }}
+                  className="space-y-4"
+                >
+                  <div className="space-y-2">
+                    <Label htmlFor="recovery-email">E-mail</Label>
+                    <Input
+                      id="recovery-email"
+                      type="email"
+                      placeholder="nome@organizacao.com"
+                      required
+                    />
+                  </div>
+                  <Button type="submit" className="w-full bg-primary" disabled={isLoading}>
+                    {isLoading ? 'Enviando...' : 'Recuperar Senha'}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="link"
+                    className="w-full"
+                    onClick={() => setIsRecovering(false)}
+                  >
+                    Voltar para login
+                  </Button>
+                </form>
+              ) : (
+                <form onSubmit={handleLogin} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="email">E-mail</Label>
+                    <Input id="email" type="email" placeholder="nome@organizacao.com" required />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="password">Senha</Label>
+                    <Input id="password" type="password" required />
+                  </div>
+                  <Button
+                    type="button"
+                    variant="link"
+                    className="text-sm px-0 h-auto"
+                    onClick={() => setIsRecovering(true)}
+                  >
+                    Esqueci minha senha
+                  </Button>
+                  <Button type="submit" className="w-full bg-primary" disabled={isLoading}>
+                    {isLoading ? 'Entrando...' : 'Entrar'}
+                  </Button>
+                </form>
+              )}
             </TabsContent>
 
             <TabsContent value="register">

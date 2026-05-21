@@ -56,7 +56,8 @@ export function CrudTable({ table, title, cols, pk, filter }: any) {
   }
 
   const handleUpdate = async () => {
-    await updateRow(table, pk, editId, editForm)
+    const { [pk]: _, ...payload } = editForm
+    await updateRow(table, pk, editId, payload)
     setEditId(null)
     load()
   }

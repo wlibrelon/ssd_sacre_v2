@@ -90,8 +90,7 @@ export default function Cenarios() {
     return calculatedData
   }
 
-  const handleSimulate = async () => {
-    setLoading(true)
+  const applyFinancialMetrics = async (simId: number) => {
     let q = supabase.from('dados_simulacao').select('*')
     if (filters.id_s) q = q.eq('id_s', filters.id_s)
     if (filters.ano_inicio) q = q.gte('tempo', `${filters.ano_inicio}-01`)
@@ -103,9 +102,84 @@ export default function Cenarios() {
       q = q.or(orString)
     }
 
-    const { data: res, error } = await q
+    const [
+      { data: capexAcao },
+      { data: acoesFonte },
+      { data: capexPerdas },
+      { data: opexData },
+      { data: dsData, error },
+    ] = await Promise.all([
+      supabase.from('capex_acao').select('*'),
+      supabase.from('acoes_fonte').select('*'),
+      supabase.from('capex_perdas').select('*'),
+      supabase.from('opex').select('*'),
+      q,
+    ])
+
     if (error) console.error(error)
-    let resData = res || []
+    if (!dsData) return []
+
+    const capexAcaoMap: Record<string, number> = {}
+    if (capexAcao && acoesFonte) {
+      capexAcao.forEach((ca) => {
+        const af = acoesFonte.filter((a) => a.id_acao === ca.id_acao)
+        af.forEach((a) => {
+          const key = `${ca.tempo}_${a.id_fonte}`
+          capexAcaoMap[key] = (capexAcaoMap[key] || 0) + (ca.capex || 0)
+        })
+      })
+    }
+
+    const capexPerdasMap: Record<string, number> = {}
+    if (capexPerdas) {
+      capexPerdas.forEach((cp) => {
+        if (cp.tempo) capexPerdasMap[cp.tempo] = (capexPerdasMap[cp.tempo] || 0) + (cp.capex || 0)
+      })
+    }
+
+    const opexMap: Record<string, number> = {}
+    if (opexData) {
+      opexData.forEach((op) => {
+        if (op.tempo) opexMap[op.tempo] = (opexMap[op.tempo] || 0) + (op.opex || 0)
+      })
+    }
+
+    const updates: any[] = []
+    const dsUpdated = dsData.map((row) => {
+      let newCapex = 0
+      if (row.tempo && row.id_fonte) {
+        newCapex += capexAcaoMap[`${row.tempo}_${row.id_fonte}`] || 0
+      }
+      if (row.tempo) {
+        newCapex += capexPerdasMap[row.tempo] || 0
+      }
+
+      let newOpex = 0
+      if (row.tempo) {
+        newOpex = opexMap[row.tempo] || 0
+      }
+
+      if (row.capex !== newCapex || row.opex !== newOpex) {
+        const updatedRow = { ...row, capex: newCapex, opex: newOpex }
+        updates.push(updatedRow)
+        return updatedRow
+      }
+      return row
+    })
+
+    if (updates.length > 0) {
+      const batchSize = 1000
+      for (let i = 0; i < updates.length; i += batchSize) {
+        await supabase.from('dados_simulacao').upsert(updates.slice(i, i + batchSize))
+      }
+    }
+
+    return dsUpdated
+  }
+
+  const handleSimulate = async () => {
+    setLoading(true)
+    let resData = await applyFinancialMetrics(parseInt(filters.id_s))
 
     const activeSimObj = simulacao_ssd.find((s: any) => s.id_s === parseInt(filters.id_s))
     if (activeSimObj?.demanda_auto || activeSimObj?.perdas_auto) {
@@ -333,9 +407,27 @@ export default function Cenarios() {
             </div>
 
             <div className="space-y-2 mt-4">
-              <label className="text-xs font-semibold text-muted-foreground">
-                Meses (Múltipla Seleção)
-              </label>
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-semibold text-muted-foreground">
+                  Meses (Múltipla Seleção)
+                </label>
+                <div className="space-x-2">
+                  <button
+                    type="button"
+                    className="text-xs text-primary hover:underline"
+                    onClick={() => setFilters({ ...filters, meses: MONTHS.map((m) => m.v) })}
+                  >
+                    Marcar todos
+                  </button>
+                  <button
+                    type="button"
+                    className="text-xs text-primary hover:underline"
+                    onClick={() => setFilters({ ...filters, meses: [] })}
+                  >
+                    Desmarcar todos
+                  </button>
+                </div>
+              </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
                 {MONTHS.map((m) => (
                   <label
