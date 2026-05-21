@@ -41,7 +41,7 @@ export function GrupoCapexOpex() {
         }))
       const { error } = await supabase.from('capex_acao').insert(rows)
       if (error) throw error
-      toast({ title: 'Importado com sucesso' })
+      toast({ title: 'Importado com sucesso.' })
       // Força recarregar CrudTable hackish alterando estado
       setAcaoId(acaoId + ' ')
       setTimeout(() => setAcaoId(acaoId.trim()), 50)
