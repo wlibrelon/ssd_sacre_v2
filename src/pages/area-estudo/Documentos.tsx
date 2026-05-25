@@ -3,10 +3,8 @@ import { supabase } from '@/lib/supabase/client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { FileText, Download, ExternalLink } from 'lucide-react'
-
 export default function Documentos() {
   const [documents, setDocuments] = useState<any[]>([])
-
   useEffect(() => {
     supabase
       .from('documentos_publicos')
@@ -16,21 +14,24 @@ export default function Documentos() {
         if (data) setDocuments(data)
       })
   }, [])
-
   return (
     <div className="space-y-8 animate-fade-in max-w-5xl mx-auto p-4">
       <div>
         <h1 className="text-3xl font-bold text-primary">Documentos Públicos</h1>
         <div className="w-16 h-1.5 bg-secondary mt-4 rounded-full" />
       </div>
-
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {documents.map((doc) => (
           <Card key={doc.id} className="hover:shadow-md transition-shadow">
             <CardHeader className="pb-2">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <FileText className="h-5 w-5 text-secondary" />
-                <span className="truncate">{doc.nome}</span>
+              <CardTitle className="text-lg flex flex-col items-start gap-1">
+                {doc.descricao && (
+                  <span className="text-sm text-muted-foreground">{doc.descricao}</span>
+                )}
+                <div className="flex items-center gap-2">
+                  <FileText className="h-5 w-5 text-secondary" />
+                  <span className="truncate">{doc.nome}</span>
+                </div>
               </CardTitle>
             </CardHeader>
             <CardContent>
