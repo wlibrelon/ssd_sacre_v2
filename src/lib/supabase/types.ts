@@ -413,59 +413,6 @@ export type Database = {
         }
         Relationships: []
       }
-      members: {
-        Row: {
-          birth_date: string | null
-          birth_place: string | null
-          created_at: string | null
-          gender: string | null
-          id: string
-          is_deceased: boolean | null
-          is_librelon: boolean | null
-          message: string | null
-          name: string
-          parent_union_id: string | null
-          status: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          birth_date?: string | null
-          birth_place?: string | null
-          created_at?: string | null
-          gender?: string | null
-          id?: string
-          is_deceased?: boolean | null
-          is_librelon?: boolean | null
-          message?: string | null
-          name: string
-          parent_union_id?: string | null
-          status?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          birth_date?: string | null
-          birth_place?: string | null
-          created_at?: string | null
-          gender?: string | null
-          id?: string
-          is_deceased?: boolean | null
-          is_librelon?: boolean | null
-          message?: string | null
-          name?: string
-          parent_union_id?: string | null
-          status?: string | null
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: 'members_parent_union_id_fkey'
-            columns: ['parent_union_id']
-            isOneToOne: false
-            referencedRelation: 'unions'
-            referencedColumns: ['id']
-          },
-        ]
-      }
       opex: {
         Row: {
           id_oa: number
@@ -564,48 +511,6 @@ export type Database = {
           obs_tipo_cenario?: string | null
         }
         Relationships: []
-      }
-      unions: {
-        Row: {
-          created_at: string | null
-          id: string
-          partner1_id: string
-          partner2_id: string
-          status: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          partner1_id: string
-          partner2_id: string
-          status?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          partner1_id?: string
-          partner2_id?: string
-          status?: string | null
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: 'unions_partner1_id_fkey'
-            columns: ['partner1_id']
-            isOneToOne: false
-            referencedRelation: 'members'
-            referencedColumns: ['id']
-          },
-          {
-            foreignKeyName: 'unions_partner2_id_fkey'
-            columns: ['partner2_id']
-            isOneToOne: false
-            referencedRelation: 'members'
-            referencedColumns: ['id']
-          },
-        ]
       }
     }
     Views: {
@@ -821,19 +726,6 @@ export const Constants = {
 //   id_fonte: integer (not null)
 //   nome_fonte: character varying (nullable)
 //   sujeito_perdas: boolean (nullable, default: true)
-// Table: members
-//   id: uuid (not null, default: gen_random_uuid())
-//   name: text (not null)
-//   gender: character varying (nullable)
-//   birth_date: date (nullable)
-//   birth_place: text (nullable)
-//   is_deceased: boolean (nullable, default: false)
-//   is_librelon: boolean (nullable, default: true)
-//   status: text (nullable, default: 'Pendente'::text)
-//   message: text (nullable)
-//   parent_union_id: uuid (nullable)
-//   created_at: timestamp with time zone (nullable, default: now())
-//   updated_at: timestamp with time zone (nullable, default: now())
 // Table: opex
 //   id_oa: integer (not null, default: nextval('opex_id_oa_seq'::regclass))
 //   tempo: character varying (nullable)
@@ -854,13 +746,6 @@ export const Constants = {
 //   id_tc: integer (not null)
 //   descricao: character varying (nullable)
 //   obs_tipo_cenario: character varying (nullable)
-// Table: unions
-//   id: uuid (not null, default: gen_random_uuid())
-//   partner1_id: uuid (not null)
-//   partner2_id: uuid (not null)
-//   status: text (nullable, default: 'Active'::text)
-//   created_at: timestamp with time zone (nullable, default: now())
-//   updated_at: timestamp with time zone (nullable, default: now())
 
 // --- CONSTRAINTS ---
 // Table: acoes
@@ -905,11 +790,6 @@ export const Constants = {
 //   PRIMARY KEY dados_simulacao_pkey: PRIMARY KEY (id_ds)
 // Table: fonte_agua
 //   PRIMARY KEY fonte_agua_pkey: PRIMARY KEY (id_fonte)
-// Table: members
-//   CHECK members_gender_check: CHECK (((gender)::text = ANY ((ARRAY['M'::character varying, 'F'::character varying])::text[])))
-//   FOREIGN KEY members_parent_union_id_fkey: FOREIGN KEY (parent_union_id) REFERENCES unions(id) ON DELETE SET NULL
-//   PRIMARY KEY members_pkey: PRIMARY KEY (id)
-//   CHECK members_status_check: CHECK ((status = ANY (ARRAY['Ativo'::text, 'Pendente'::text])))
 // Table: opex
 //   PRIMARY KEY opex_pkey: PRIMARY KEY (id_oa)
 // Table: simulacao_ssd
@@ -920,11 +800,6 @@ export const Constants = {
 //   PRIMARY KEY tipo_cenario_cenario_pkey: PRIMARY KEY (id_tcc)
 // Table: tipos_cenarios
 //   PRIMARY KEY tipos_cenarios_pkey: PRIMARY KEY (id_tc)
-// Table: unions
-//   FOREIGN KEY unions_partner1_id_fkey: FOREIGN KEY (partner1_id) REFERENCES members(id) ON DELETE CASCADE
-//   FOREIGN KEY unions_partner2_id_fkey: FOREIGN KEY (partner2_id) REFERENCES members(id) ON DELETE CASCADE
-//   PRIMARY KEY unions_pkey: PRIMARY KEY (id)
-//   CHECK unions_status_check: CHECK ((status = ANY (ARRAY['Active'::text, 'Separated'::text])))
 
 // --- ROW LEVEL SECURITY POLICIES ---
 // Table: acoes
@@ -940,7 +815,11 @@ export const Constants = {
 //     USING: true
 //     WITH CHECK: true
 // Table: capex_acao
-//   Policy "Insert capex_acao anon" (INSERT, PERMISSIVE) roles={anon}
+//   Policy "All capex_acao anon" (ALL, PERMISSIVE) roles={anon}
+//     USING: true
+//     WITH CHECK: true
+//   Policy "All capex_acao auth" (ALL, PERMISSIVE) roles={authenticated}
+//     USING: true
 //     WITH CHECK: true
 //   Policy "anon_read" (SELECT, PERMISSIVE) roles={anon}
 //     USING: true
@@ -948,6 +827,12 @@ export const Constants = {
 //     USING: true
 //     WITH CHECK: true
 // Table: capex_perdas
+//   Policy "All capex_perdas anon" (ALL, PERMISSIVE) roles={anon}
+//     USING: true
+//     WITH CHECK: true
+//   Policy "All capex_perdas auth" (ALL, PERMISSIVE) roles={authenticated}
+//     USING: true
+//     WITH CHECK: true
 //   Policy "Insert capex_acao anon" (INSERT, PERMISSIVE) roles={anon}
 //     WITH CHECK: true
 //   Policy "anon_read" (SELECT, PERMISSIVE) roles={anon}
@@ -1003,18 +888,14 @@ export const Constants = {
 //   Policy "authenticated_all" (ALL, PERMISSIVE) roles={authenticated}
 //     USING: true
 //     WITH CHECK: true
-// Table: members
-//   Policy "Admin full access for members" (ALL, PERMISSIVE) roles={authenticated}
+// Table: opex
+//   Policy "All opex anon" (ALL, PERMISSIVE) roles={anon}
 //     USING: true
 //     WITH CHECK: true
-//   Policy "Public insert access for members" (INSERT, PERMISSIVE) roles={public}
-//     WITH CHECK: ((status = 'Pendente'::text) OR (auth.role() = 'authenticated'::text))
-//   Policy "Public read access for active members" (SELECT, PERMISSIVE) roles={public}
-//     USING: ((status = 'Ativo'::text) OR (auth.role() = 'authenticated'::text))
-// Table: opex
-//   Policy "Insert capex_acao anon" (INSERT, PERMISSIVE) roles={anon}
+//   Policy "All opex auth" (ALL, PERMISSIVE) roles={authenticated}
+//     USING: true
 //     WITH CHECK: true
-//   Policy "Insert opex anon" (UPDATE, PERMISSIVE) roles={anon}
+//   Policy "Insert capex_acao anon" (INSERT, PERMISSIVE) roles={anon}
 //     WITH CHECK: true
 //   Policy "anon_read" (SELECT, PERMISSIVE) roles={anon}
 //     USING: true
@@ -1039,9 +920,3 @@ export const Constants = {
 //   Policy "authenticated_all" (ALL, PERMISSIVE) roles={authenticated}
 //     USING: true
 //     WITH CHECK: true
-// Table: unions
-//   Policy "Admin full access for unions" (ALL, PERMISSIVE) roles={authenticated}
-//     USING: true
-//     WITH CHECK: true
-//   Policy "Public read access for unions" (SELECT, PERMISSIVE) roles={public}
-//     USING: true

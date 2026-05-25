@@ -41,8 +41,10 @@ export function CrudTable({ table, title, cols, pk, filter }: any) {
   }
 
   const handleDelete = async (id: any) => {
-    await deleteRow(table, pk, id)
-    load()
+    if (window.confirm('Você tem certeza? Esta ação não pode ser desfeita.')) {
+      await deleteRow(table, pk, id)
+      load()
+    }
   }
 
   const startEdit = (row: any) => {
@@ -80,7 +82,7 @@ export function CrudTable({ table, title, cols, pk, filter }: any) {
           Adicionar
         </Button>
       </div>
-      <div className="overflow-x-auto">
+      <div className="overflow-y-auto max-h-[300px] border rounded-md">
         <Table>
           <TableHeader>
             <TableRow>

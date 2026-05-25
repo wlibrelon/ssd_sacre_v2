@@ -17,7 +17,7 @@ import {
 import { useToast } from '@/hooks/use-toast'
 
 export default function AuthPage() {
-  const { signIn, signUp, resetPassword } = useAuth()
+  const { signIn, signUp, resetPassword, isPending } = useAuth()
   const navigate = useNavigate()
   const { toast } = useToast()
   const [isLoading, setIsLoading] = useState(false)
@@ -36,18 +36,24 @@ export default function AuthPage() {
     if (error) {
       toast({ title: 'Erro no login', description: error.message, variant: 'destructive' })
     } else {
-      toast({ title: 'Login bem-sucedido', description: 'Bem-vindo à área restrita.' })
-      navigate('/restrito')
+      toast({ title: 'Login realizado', description: 'Aguarde a verificação de status...' })
+      setTimeout(() => navigate('/restrito'), 1000)
     }
   }
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
+    const name = (document.getElementById('reg-name') as HTMLInputElement).value
+    const org = (document.getElementById('reg-org') as HTMLInputElement).value
     const email = (document.getElementById('reg-email') as HTMLInputElement).value
     const pass = (document.getElementById('reg-pass') as HTMLInputElement).value
 
-    const { error } = await signUp(email, pass)
+    const { error } = await signUp(email, pass, {
+      nome: name,
+      organizacao: org,
+      nivel_acesso: role,
+    })
     setIsLoading(false)
 
     if (error) {
@@ -75,7 +81,17 @@ export default function AuthPage() {
             </TabsList>
 
             <TabsContent value="login">
-              {isRecovering ? (
+              {isPending ? (
+                <div className="text-center py-6 space-y-4">
+                  <h3 className="text-lg font-medium text-amber-600">Aprovação Pendente</h3>
+                  <p className="text-muted-foreground">
+                    Sua conta foi criada e está aguardando aprovação por um administrador.
+                  </p>
+                  <Button variant="outline" onClick={() => window.location.reload()}>
+                    Atualizar Status
+                  </Button>
+                </div>
+              ) : isRecovering ? (
                 <form
                   onSubmit={async (e) => {
                     e.preventDefault()

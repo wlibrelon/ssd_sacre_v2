@@ -1,4 +1,6 @@
+import { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
+import { supabase } from '@/lib/supabase/client'
 import {
   Building2,
   Activity,
@@ -28,8 +30,23 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { cn } from '@/lib/utils'
 
 export const AppSidebar = ({ onOpenSobre }: { onOpenSobre: () => void }) => {
-  const { isAuthenticated, logout, user } = useAuth()
+  const { isAuthenticated, signOut, user, profile } = useAuth()
   const location = useLocation()
+  const [allowedResources, setAllowedResources] = useState<string[]>([])
+
+  useEffect(() => {
+    if (profile?.id_ga) {
+      supabase
+        .from('recursos_app')
+        .select('nome_recurso')
+        .eq('id_ga', profile.id_ga)
+        .then(({ data }) => {
+          if (data) setAllowedResources(data.map((r) => r.nome_recurso))
+        })
+    } else {
+      setAllowedResources([])
+    }
+  }, [profile?.id_ga])
 
   const isActive = (path: string) => location.pathname === path
 
@@ -83,14 +100,16 @@ export const AppSidebar = ({ onOpenSobre }: { onOpenSobre: () => void }) => {
     {
       title: 'Acesso Restrito',
       icon: Lock,
-      items: [
-        { title: 'Dados dos projetos', url: '/restrito' },
-        { title: 'Inclusão de divulgações', url: '/restrito' },
-        { title: 'Cadastros', url: '/restrito' },
-        { title: 'Configurações', url: '/restrito' },
-      ],
+      items: [{ title: 'Painel Administrativo', url: '/restrito' }],
     },
   ]
+
+  const filteredGroups = navGroups.filter((g) => {
+    if (!isAuthenticated) {
+      return ['Institucional', 'Área de Estudo', 'Divulgação'].includes(g.title)
+    }
+    return allowedResources.includes(g.title)
+  })
 
   return (
     <Sidebar
@@ -99,7 +118,7 @@ export const AppSidebar = ({ onOpenSobre }: { onOpenSobre: () => void }) => {
       className="top-16 h-[calc(100svh-4rem)] z-40 border-r-border/50 shadow-sm"
     >
       <SidebarContent className="pt-4">
-        {navGroups.map((group) => (
+        {filteredGroups.map((group) => (
           <SidebarGroup key={group.title}>
             <SidebarMenuItem asChild>
               <Collapsible defaultOpen={false}>
@@ -148,13 +167,13 @@ export const AppSidebar = ({ onOpenSobre }: { onOpenSobre: () => void }) => {
       <SidebarFooter className="border-t border-sidebar-border/60 p-4 space-y-2 bg-sidebar/50">
         <SidebarMenu>
           <SidebarMenuItem>
-            {isAuthenticated ? (
-              <SidebarMenuButton onClick={logout} tooltip="Sair" className="text-destructive">
+            {user ? (
+              <SidebarMenuButton onClick={signOut} tooltip="Sair" className="text-destructive">
                 <LogOut className="h-4 w-4 shrink-0" />
                 <span className="flex flex-col items-start leading-none truncate">
                   <span>Sair</span>
                   <span className="text-[10px] text-muted-foreground truncate w-full mt-1">
-                    {user?.name}
+                    {profile?.nome || user.email}
                   </span>
                 </span>
               </SidebarMenuButton>

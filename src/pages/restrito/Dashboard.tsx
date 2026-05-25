@@ -1,76 +1,310 @@
+import { useState, useEffect } from 'react'
 import { useAuth } from '@/hooks/use-auth'
 import { Navigate } from 'react-router-dom'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Database, Megaphone, Users, Settings, ArrowRight } from 'lucide-react'
+import { supabase } from '@/lib/supabase/client'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { useToast } from '@/hooks/use-toast'
+import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { Textarea } from '@/components/ui/textarea'
 
 export default function Dashboard() {
-  const { user, isAuthenticated } = useAuth()
+  const { user, profile, isAuthenticated } = useAuth()
+  const { toast } = useToast()
 
-  if (!isAuthenticated) {
-    return <Navigate to="/auth" replace />
+  const [pendingUsers, setPendingUsers] = useState<any[]>([])
+  const [groups, setGroups] = useState<any[]>([])
+  const [documents, setDocuments] = useState<any[]>([])
+  const [contexto, setContexto] = useState('')
+  const [objetivos, setObjetivos] = useState('')
+
+  useEffect(() => {
+    if (!isAuthenticated) return
+    loadData()
+  }, [isAuthenticated])
+
+  const loadData = async () => {
+    const { data: usersData } = await supabase
+      .from('perfis_usuarios')
+      .select('*')
+      .eq('status', 'pendente')
+    if (usersData) setPendingUsers(usersData)
+
+    const { data: groupsData } = await supabase.from('grupo_acesso').select('*')
+    if (groupsData) setGroups(groupsData)
+
+    const { data: docsData } = await supabase
+      .from('documentos_publicos')
+      .select('*')
+      .order('criado_em', { ascending: false })
+    if (docsData) setDocuments(docsData)
+
+    const { data: contData } = await supabase.from('conteudo_estudo').select('*')
+    if (contData) {
+      const ctx = contData.find((c) => c.secao === 'contexto')
+      const obj = contData.find((c) => c.secao === 'objetivos')
+      if (ctx) setContexto(ctx.conteudo_html || '')
+      if (obj) setObjetivos(obj.conteudo_html || '')
+    }
   }
 
-  const areas = [
-    {
-      title: 'Dados dos Projetos',
-      icon: Database,
-      desc: 'Gerenciar matrizes de dados, fontes hidrológicas e parâmetros brutos para as simulações do SSD.',
-    },
-    {
-      title: 'Inclusão de Divulgações',
-      icon: Megaphone,
-      desc: 'Adicionar e editar publicações científicas, notícias na mídia, eventos e atividades sociais.',
-    },
-    {
-      title: 'Cadastros',
-      icon: Users,
-      desc: 'Gerir perfis de acesso, pesquisadores da equipe e conceder permissões para novos parceiros institucionais.',
-    },
-    {
-      title: 'Configurações',
-      icon: Settings,
-      desc: 'Ajustes gerais do portal, gestão de APIs externas e personalização da interface administrativa.',
-    },
-  ]
+  const approveUser = async (id: string, id_ga: number) => {
+    if (!id_ga) return toast({ title: 'Selecione um grupo', variant: 'destructive' })
+    await supabase.from('perfis_usuarios').update({ status: 'aprovado', id_ga }).eq('id', id)
+    toast({ title: 'Usuário aprovado' })
+    loadData()
+  }
+
+  const saveContent = async (secao: string, conteudo_html: string) => {
+    const { data } = await supabase
+      .from('conteudo_estudo')
+      .select('id')
+      .eq('secao', secao)
+      .maybeSingle()
+    if (data?.id) {
+      await supabase.from('conteudo_estudo').update({ conteudo_html }).eq('id', data.id)
+    } else {
+      await supabase.from('conteudo_estudo').insert({ secao, conteudo_html })
+    }
+    toast({ title: 'Conteúdo salvo' })
+  }
+
+  const uploadDoc = async (e: any) => {
+    const file = e.target.files[0]
+    if (!file) return
+    const filename = `${Date.now()}_${file.name}`
+    const { data: uploadData, error } = await supabase.storage
+      .from('documentos')
+      .upload(filename, file)
+    if (error) return toast({ title: 'Erro', description: error.message, variant: 'destructive' })
+
+    const { data: urlData } = supabase.storage.from('documentos').getPublicUrl(filename)
+    await supabase.from('documentos_publicos').insert({
+      nome: file.name,
+      descricao: '',
+      url_arquivo: urlData.publicUrl,
+    })
+    toast({ title: 'Documento enviado' })
+    loadData()
+  }
+
+  const deleteDoc = async (id: number, url: string) => {
+    await supabase.from('documentos_publicos').delete().eq('id', id)
+    const filename = url.split('/').pop()
+    if (filename) await supabase.storage.from('documentos').remove([filename])
+    loadData()
+  }
+
+  if (!isAuthenticated) return <Navigate to="/auth" replace />
+
+  const isAdmin = profile?.id_ga === 4
 
   return (
-    <div className="space-y-8 animate-fade-in max-w-6xl mx-auto">
+    <div className="space-y-8 animate-fade-in max-w-6xl mx-auto p-4">
       <div className="flex justify-between items-end border-b pb-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-primary">Acesso Restrito</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-primary">Painel Administrativo</h1>
           <p className="text-muted-foreground mt-2 text-lg">
-            Painel Administrativo. Autenticado como:{' '}
-            <strong className="text-secondary uppercase">{user?.role}</strong>
+            Autenticado como: <strong className="text-secondary">{profile?.nome}</strong>
           </p>
         </div>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-6">
-        {areas.map((area) => (
-          <Card
-            key={area.title}
-            className="hover:shadow-lg transition-all duration-300 group cursor-pointer border-l-4 border-l-transparent hover:border-l-secondary"
-          >
-            <CardHeader className="flex flex-row items-center gap-4 pb-2">
-              <div className="p-3 bg-secondary/10 rounded-lg group-hover:bg-secondary/20 transition-colors">
-                <area.icon className="h-6 w-6 text-secondary" />
-              </div>
-              <CardTitle className="text-xl group-hover:text-primary transition-colors">
-                {area.title}
-              </CardTitle>
+      <Tabs defaultValue="geral" className="w-full">
+        <TabsList className="flex flex-wrap h-auto gap-2 mb-6">
+          <TabsTrigger value="geral">Geral</TabsTrigger>
+          {isAdmin && <TabsTrigger value="usuarios">Aprovação de Usuários</TabsTrigger>}
+          {isAdmin && <TabsTrigger value="conteudo">Gestão de Conteúdo</TabsTrigger>}
+          {isAdmin && <TabsTrigger value="documentos">Documentos Públicos</TabsTrigger>}
+        </TabsList>
+
+        <TabsContent value="geral">
+          <Card>
+            <CardHeader>
+              <CardTitle>Bem-vindo</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-muted-foreground mb-4 min-h-[40px] leading-relaxed">
-                {area.desc}
+              <p>
+                Utilize o menu lateral para navegar nas ferramentas disponíveis para o seu nível de
+                acesso.
               </p>
-              <Button variant="ghost" className="w-full justify-between group-hover:bg-slate-50">
-                Acessar Módulo <ArrowRight className="h-4 w-4" />
-              </Button>
             </CardContent>
           </Card>
-        ))}
-      </div>
+        </TabsContent>
+
+        {isAdmin && (
+          <>
+            <TabsContent value="usuarios">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Usuários Pendentes</CardTitle>
+                  <CardDescription>
+                    Aprove os usuários e defina seus grupos de acesso.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-auto max-h-[400px]">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Nome</TableHead>
+                          <TableHead>E-mail</TableHead>
+                          <TableHead>Organização</TableHead>
+                          <TableHead>Grupo</TableHead>
+                          <TableHead>Ação</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {pendingUsers.map((u) => (
+                          <TableRow key={u.id}>
+                            <TableCell>{u.nome}</TableCell>
+                            <TableCell>{u.email}</TableCell>
+                            <TableCell>{u.organizacao}</TableCell>
+                            <TableCell>
+                              <Select
+                                onValueChange={(val) => {
+                                  u.selectedGa = parseInt(val)
+                                }}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Selecione..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {groups.map((g) => (
+                                    <SelectItem key={g.id_ga} value={g.id_ga.toString()}>
+                                      {g.nome_grupo}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </TableCell>
+                            <TableCell>
+                              <Button size="sm" onClick={() => approveUser(u.id, u.selectedGa)}>
+                                Aprovar
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                        {pendingUsers.length === 0 && (
+                          <TableRow>
+                            <TableCell colSpan={5} className="text-center">
+                              Nenhum usuário pendente.
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="conteudo">
+              <div className="grid md:grid-cols-2 gap-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Contexto (Área de Estudo)</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <Textarea
+                      rows={10}
+                      value={contexto}
+                      onChange={(e) => setContexto(e.target.value)}
+                      placeholder="HTML permitido..."
+                    />
+                    <Button onClick={() => saveContent('contexto', contexto)}>
+                      Salvar Contexto
+                    </Button>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Objetivos (Área de Estudo)</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <Textarea
+                      rows={10}
+                      value={objetivos}
+                      onChange={(e) => setObjetivos(e.target.value)}
+                      placeholder="HTML permitido..."
+                    />
+                    <Button onClick={() => saveContent('objetivos', objetivos)}>
+                      Salvar Objetivos
+                    </Button>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="documentos">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Documentos Públicos</CardTitle>
+                  <CardDescription>
+                    Faça upload de documentos para a Área de Estudo.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div>
+                    <Input type="file" onChange={uploadDoc} />
+                  </div>
+                  <div className="overflow-auto max-h-[300px] border rounded-md">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Nome</TableHead>
+                          <TableHead>Data</TableHead>
+                          <TableHead>Ações</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {documents.map((d) => (
+                          <TableRow key={d.id}>
+                            <TableCell>{d.nome}</TableCell>
+                            <TableCell>
+                              {new Date(d.criado_em).toLocaleDateString('pt-BR')}
+                            </TableCell>
+                            <TableCell className="space-x-2">
+                              <Button size="sm" variant="outline" asChild>
+                                <a href={d.url_arquivo} target="_blank" rel="noreferrer">
+                                  Ver
+                                </a>
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => deleteDoc(d.id, d.url_arquivo)}
+                              >
+                                Excluir
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </>
+        )}
+      </Tabs>
     </div>
   )
 }
