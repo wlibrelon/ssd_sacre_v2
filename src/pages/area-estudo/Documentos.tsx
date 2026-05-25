@@ -3,10 +3,8 @@ import { supabase } from '@/lib/supabase/client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { FileText, Download, ExternalLink } from 'lucide-react'
-
 export default function Documentos() {
   const [documents, setDocuments] = useState<any[]>([])
-
   useEffect(() => {
     supabase
       .from('documentos_publicos')
@@ -16,7 +14,6 @@ export default function Documentos() {
         if (data) setDocuments(data)
       })
   }, [])
-
   return (
     <div className="space-y-8 animate-fade-in max-w-5xl mx-auto p-4">
       <div>
@@ -29,17 +26,21 @@ export default function Documentos() {
             <CardHeader className="pb-2">
               <CardTitle className="text-lg flex flex-col items-start gap-1">
                 {doc.descricao ? (
-                  <div className="flex items-center gap-2">
-                    <FileText className="h-5 w-5 text-secondary" />
-                    <span className="truncate">{doc.descricao}</span>
+                  <div className="flex items-start gap-2">
+                    <FileText className="h-5 w-5 text-secondary flex-shrink-0" />
+                    <span className="break-words whitespace-pre-wrap">{doc.descricao}</span>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-2">
-                    <FileText className="h-5 w-5 text-secondary" />
-                    <span className="truncate">{doc.nome}</span>
+                  <div className="flex items-start gap-2">
+                    <FileText className="h-5 w-5 text-secondary flex-shrink-0" />
+                    <span className="break-words whitespace-pre-wrap">{doc.nome}</span>
                   </div>
                 )}
-                {doc.descricao && <span className="text-sm text-muted-foreground">{doc.nome}</span>}
+                {doc.descricao && (
+                  <span className="text-sm text-muted-foreground break-words whitespace-pre-wrap">
+                    {doc.nome}
+                  </span>
+                )}
               </CardTitle>
             </CardHeader>
             <CardContent>

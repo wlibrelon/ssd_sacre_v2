@@ -23,38 +23,32 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Textarea } from '@/components/ui/textarea'
-
 export default function Dashboard() {
   const { user, profile, isAuthenticated } = useAuth()
   const { toast } = useToast()
-
   const [pendingUsers, setPendingUsers] = useState<any[]>([])
   const [groups, setGroups] = useState<any[]>([])
   const [documents, setDocuments] = useState<any[]>([])
   const [contexto, setContexto] = useState('')
   const [objetivos, setObjetivos] = useState('')
-
+  const [descricaoDoc, setDescricaoDoc] = useState('')
   useEffect(() => {
     if (!isAuthenticated) return
     loadData()
   }, [isAuthenticated])
-
   const loadData = async () => {
     const { data: usersData } = await supabase
       .from('perfis_usuarios')
       .select('*')
       .eq('status', 'pendente')
     if (usersData) setPendingUsers(usersData)
-
     const { data: groupsData } = await supabase.from('grupo_acesso').select('*')
     if (groupsData) setGroups(groupsData)
-
     const { data: docsData } = await supabase
       .from('documentos_publicos')
       .select('*')
       .order('criado_em', { ascending: false })
     if (docsData) setDocuments(docsData)
-
     const { data: contData } = await supabase.from('conteudo_estudo').select('*')
     if (contData) {
       const ctx = contData.find((c) => c.secao === 'contexto')
@@ -63,14 +57,12 @@ export default function Dashboard() {
       if (obj) setObjetivos(obj.conteudo_html || '')
     }
   }
-
   const approveUser = async (id: string, id_ga: number) => {
     if (!id_ga) return toast({ title: 'Selecione um grupo', variant: 'destructive' })
     await supabase.from('perfis_usuarios').update({ status: 'aprovado', id_ga }).eq('id', id)
     toast({ title: 'Usuário aprovado' })
     loadData()
   }
-
   const saveContent = async (secao: string, conteudo_html: string) => {
     const { data } = await supabase
       .from('conteudo_estudo')
@@ -84,7 +76,6 @@ export default function Dashboard() {
     }
     toast({ title: 'Conteúdo salvo' })
   }
-
   const uploadDoc = async (e: any) => {
     const file = e.target.files[0]
     if (!file) return
@@ -93,28 +84,24 @@ export default function Dashboard() {
       .from('documentos')
       .upload(filename, file)
     if (error) return toast({ title: 'Erro', description: error.message, variant: 'destructive' })
-
     const { data: urlData } = supabase.storage.from('documentos').getPublicUrl(filename)
     await supabase.from('documentos_publicos').insert({
       nome: file.name,
-      descricao: '',
+      descricao: descricaoDoc,
       url_arquivo: urlData.publicUrl,
     })
     toast({ title: 'Documento enviado' })
+    setDescricaoDoc('')
     loadData()
   }
-
   const deleteDoc = async (id: number, url: string) => {
     await supabase.from('documentos_publicos').delete().eq('id', id)
     const filename = url.split('/').pop()
     if (filename) await supabase.storage.from('documentos').remove([filename])
     loadData()
   }
-
   if (!isAuthenticated) return <Navigate to="/auth" replace />
-
   const isAdmin = profile?.id_ga === 4
-
   return (
     <div className="space-y-8 animate-fade-in max-w-6xl mx-auto p-4">
       <div className="flex justify-between items-end border-b pb-4">
@@ -125,7 +112,6 @@ export default function Dashboard() {
           </p>
         </div>
       </div>
-
       <Tabs defaultValue="geral" className="w-full">
         <TabsList className="flex flex-wrap h-auto gap-2 mb-6">
           <TabsTrigger value="geral">Geral</TabsTrigger>
@@ -133,7 +119,6 @@ export default function Dashboard() {
           {isAdmin && <TabsTrigger value="conteudo">Gestão de Conteúdo</TabsTrigger>}
           {isAdmin && <TabsTrigger value="documentos">Documentos Públicos</TabsTrigger>}
         </TabsList>
-
         <TabsContent value="geral">
           <Card>
             <CardHeader>
@@ -147,7 +132,6 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         </TabsContent>
-
         {isAdmin && (
           <>
             <TabsContent value="usuarios">
@@ -214,7 +198,6 @@ export default function Dashboard() {
                 </CardContent>
               </Card>
             </TabsContent>
-
             <TabsContent value="conteudo">
               <div className="grid md:grid-cols-2 gap-6">
                 <Card>
@@ -251,7 +234,6 @@ export default function Dashboard() {
                 </Card>
               </div>
             </TabsContent>
-
             <TabsContent value="documentos">
               <Card>
                 <CardHeader>
@@ -261,7 +243,14 @@ export default function Dashboard() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  <div>
+                  <div className="space-y-2">
+                    <Input
+                      type="text"
+                      placeholder="Descrição do documento"
+                      value={descricaoDoc}
+                      onChange={(e) => setDescricaoDoc(e.target.value)}
+                      className="w-full"
+                    />
                     <Input type="file" onChange={uploadDoc} />
                   </div>
                   <div className="overflow-auto max-h-[300px] border rounded-md">
@@ -269,6 +258,7 @@ export default function Dashboard() {
                       <TableHeader>
                         <TableRow>
                           <TableHead>Nome</TableHead>
+                          <TableHead>Descrição</TableHead>
                           <TableHead>Data</TableHead>
                           <TableHead>Ações</TableHead>
                         </TableRow>
@@ -277,6 +267,7 @@ export default function Dashboard() {
                         {documents.map((d) => (
                           <TableRow key={d.id}>
                             <TableCell>{d.nome}</TableCell>
+                            <TableCell>{d.descricao}</TableCell>
                             <TableCell>
                               {new Date(d.criado_em).toLocaleDateString('pt-BR')}
                             </TableCell>
