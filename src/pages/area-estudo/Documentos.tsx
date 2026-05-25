@@ -25,9 +25,11 @@ export default function Documentos() {
           <Card key={doc.id} className="hover:shadow-md transition-shadow">
             <CardHeader className="pb-2">
               <CardTitle className="text-lg flex flex-col items-start gap-1">
-                {doc.descricao && <span className="h-5 w-5 text-secondary">{doc.descricao}</span>}
+                {doc.descricao && (
+                  <span className="text-sm text-muted-foreground">{doc.descricao}</span>
+                )}
                 <div className="flex items-center gap-2">
-                  <FileText className="text-sm text-muted-foreground" />
+                  <FileText className="h-5 w-5 text-secondary" />
                   <span className="truncate">{doc.nome}</span>
                 </div>
               </CardTitle>
