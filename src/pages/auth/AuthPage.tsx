@@ -179,9 +179,9 @@ export default function AuthPage() {
                       <SelectValue placeholder="Selecione..." />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="viewer">Visualizador Técnico</SelectItem>
-                      <SelectItem value="editor">Gestor de Cenários</SelectItem>
-                      <SelectItem value="admin">Administrador Institucional</SelectItem>
+                      <SelectItem value="viewer">Pesquisador</SelectItem>
+                      <SelectItem value="editor">Gestor Público</SelectItem>
+                      <SelectItem value="admin">Administrador APP</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
