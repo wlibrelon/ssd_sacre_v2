@@ -8,6 +8,9 @@ import Layout from './components/Layout'
 import Index from './pages/Index'
 import AuthPage from './pages/auth/AuthPage'
 import Dashboard from './pages/restrito/Dashboard'
+import ResetPassword from './pages/auth/ResetPassword'
+import AreaEstudoObjetivos from './pages/area-estudo/Objetivos'
+import AreaEstudoDocumentos from './pages/area-estudo/Documentos'
 import Projeto from './pages/institucional/Projeto'
 import Equipe from './pages/institucional/Equipe'
 import Cenarios from './pages/ssd/Cenarios'
@@ -29,6 +32,7 @@ const App = () => (
           <Route element={<Layout />}>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<AuthPage />} />
+            <Route path="/auth/reset-password" element={<ResetPassword />} />
 
             <Route path="/institucional/projeto" element={<Projeto />} />
             <Route
@@ -39,11 +43,8 @@ const App = () => (
             <Route path="/institucional/equipe" element={<Equipe />} />
 
             <Route path="/area-estudo/contexto" element={<Contexto />} />
-            <Route
-              path="/area-estudo/objetivos"
-              element={<Placeholder title="Objetivos da Área de Estudo" />}
-            />
-            <Route path="/area-estudo/documentos" element={<Placeholder title="Documentos" />} />
+            <Route path="/area-estudo/objetivos" element={<AreaEstudoObjetivos />} />
+            <Route path="/area-estudo/documentos" element={<AreaEstudoDocumentos />} />
             <Route path="/area-estudo/camadas" element={<Placeholder title="Camadas (Mapas)" />} />
 
             <Route

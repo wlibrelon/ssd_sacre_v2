@@ -90,7 +90,7 @@ export function GrupoCapexOpex() {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 gap-6 w-full">
         <div className="border p-4 rounded bg-white shadow space-y-4">
           <h3 className="font-semibold text-primary">CAPEX para Ações</h3>
           <NativeSelect
