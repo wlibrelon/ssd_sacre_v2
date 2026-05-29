@@ -7,7 +7,7 @@ export default function Projeto() {
       <section className="w-full">
         <div className="max-w-7xl mx-auto">
           <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-4 sm:mb-6 md:mb-8 leading-tight tracking-tight">
-            Projeto SACRE
+            Projeto SACRE.
           </h1>
           <div className="w-20 sm:w-24 md:w-28 lg:w-32 h-1.5 sm:h-2 md:h-2.5 bg-secondary mb-6 sm:mb-8 md:mb-10 rounded-full mx-auto sm:mx-0" />
           <div className="max-w-none text-gray-900 leading-relaxed md:leading-7 lg:leading-8 text-justify md:text-left hyphens-auto space-y-4 sm:space-y-5 md:space-y-6">
