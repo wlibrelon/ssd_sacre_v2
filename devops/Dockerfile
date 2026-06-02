@@ -16,11 +16,13 @@ RUN pnpm install --frozen-lockfile
 COPY . .
 
 # Argumentos de build para o Supabase (Vite precisa disso em tempo de build)
+ARG APP_DOMAIN
 ARG VITE_SUPABASE_URL
 ARG VITE_SUPABASE_PUBLISHABLE_KEY
 
-ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL
-ENV VITE_SUPABASE_PUBLISHABLE_KEY=$VITE_SUPABASE_PUBLISHABLE_KEY
+# Define variáveis de ambiente para o processo de build
+ENV VITE_SUPABASE_URL="${VITE_SUPABASE_URL}"
+ENV VITE_SUPABASE_PUBLISHABLE_KEY="${VITE_SUPABASE_PUBLISHABLE_KEY}"
 
 # Gera o build de produção
 RUN pnpm run build

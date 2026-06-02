@@ -6,12 +6,19 @@ services:
       context: ..
       dockerfile: devops/Dockerfile
       args:
-        - VITE_SUPABASE_URL=${VITE_SUPABASE_URL}
-        - VITE_SUPABASE_PUBLISHABLE_KEY=${VITE_SUPABASE_PUBLISHABLE_KEY}
+        APP_DOMAIN: ${APP_DOMAIN:-https://localhost}
+        VITE_SUPABASE_URL: ${APP_DOMAIN:-https://localhost}/supabase
+        VITE_SUPABASE_PUBLISHABLE_KEY: ${VITE_SUPABASE_PUBLISHABLE_KEY}
     container_name: sacre.app
     restart: unless-stopped
     networks:
       - sacre
+    env_file:
+      - .env
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:-https://localhost}
+      VITE_SUPABASE_URL: ${APP_DOMAIN:-https://localhost}/supabase
+      VITE_SUPABASE_PUBLISHABLE_KEY: ${VITE_SUPABASE_PUBLISHABLE_KEY}
 
   db:
     image: supabase/postgres:15.1.0.117
@@ -62,9 +69,9 @@ services:
       GOTRUE_SMTP_USER: ${GOTRUE_SMTP_USER}
       GOTRUE_SMTP_PASS: ${GOTRUE_SMTP_PASS}
       GOTRUE_SMTP_MAX_FREQUENCY: 1s
-      GOTRUE_SITE_URL: http://localhost
-      GOTRUE_EXTERNAL_URL: https://localhost/supabase/auth
-      API_EXTERNAL_URL: https://localhost/supabase/auth
+      GOTRUE_SITE_URL: ${APP_DOMAIN:-https://localhost}
+      GOTRUE_EXTERNAL_URL: ${APP_DOMAIN:-https://localhost}/supabase/auth
+      API_EXTERNAL_URL: ${APP_DOMAIN:-https://localhost}/supabase/auth
       GOTRUE_API_HOST: 0.0.0.0
       GOTRUE_API_PORT: 9999
     depends_on:
@@ -91,7 +98,7 @@ services:
     ports:
       - "127.0.0.1:8082:3000"
     environment:
-      SUPABASE_URL: https://localhost/supabase
+      SUPABASE_URL: ${APP_DOMAIN:-https://localhost}/supabase
       STUDIO_PG_META_URL: http://sacre.pg-meta:8080
       SUPABASE_ANON_KEY: ${VITE_SUPABASE_PUBLISHABLE_KEY}
       SUPABASE_SERVICE_KEY: ${SERVICE_ROLE_KEY}
@@ -101,7 +108,7 @@ services:
       # Bypass para o erro de Edge Functions
       EDGE_FUNCTIONS_MANAGEMENT_FOLDER: "/tmp"
       # Configurações de Auth para o Studio
-      SUPABASE_PUBLIC_URL: https://localhost/supabase
+      SUPABASE_PUBLIC_URL: ${APP_DOMAIN:-https://localhost}/supabase
       STUDIO_AUTH_JWT: ${STUDIO_AUTH_JWT}
     depends_on:
       - pg-meta

@@ -16,42 +16,50 @@ Este projeto foi criado de ponta a ponta com o [Skip](https://goskip.dev).
 
 ## 📋 Pré-requisitos
 
-- Node.js 18+
-- pnpm ou npm
-- Docker e Docker Compose (para instalação via Docker)
+- Docker e Docker Compose
 
-## 🔧 Instalação Local
+## 🚀 Instalação e Desenvolvimento (via Docker)
 
+Este projeto foi projetado para ser executado via Docker, garantindo que todo o ambiente (Frontend, Banco de Dados, Auth) esteja configurado corretamente.
+
+### 1. Configuração da Rede
+O Docker Compose espera uma rede externa chamada `sacre`. Se ainda não a criou:
 ```bash
-pnpm install
-# ou
-npm install
+docker network create sacre
 ```
 
-## 🐳 Instalação via Docker
+### 2. Configuração de Variáveis de Ambiente
+Crie o arquivo `.env` dentro da pasta `devops/`:
+```bash
+cp devops/.env.example devops/.env
+```
 
-Este projeto está configurado para ser executado via Docker utilizando o Docker Compose, incluindo serviços do Supabase local (Postgres, Auth, PostgREST, Studio).
+Edite o arquivo `devops/.env` e preencha as variáveis.
+- **APP_DOMAIN**: O domínio onde a aplicação rodará (padrão: `https://localhost`).
+- **VITE_SUPABASE_PUBLISHABLE_KEY**: Sua chave anônima do Supabase. **(Obrigatório)**
 
-### Configuração do Docker
-
-1. **Criar a rede externa**: O Docker Compose espera uma rede externa chamada `sacre`.
-   ```bash
-   docker network create sacre
-   ```
-
-2. **Variáveis de Ambiente**: Certifique-se de que as variáveis de ambiente necessárias estejam definidas. Você pode criar um arquivo `.env` na pasta `devops/` ou passar via linha de comando.
-
-### Executando os Containers
-
+### 3. Execução
+Para iniciar o ambiente completo:
 ```bash
 cd devops
-docker-compose up -d
+docker-compose up -d --build
 ```
 
-Isso iniciará os seguintes serviços:
-- **Frontend App**: [http://localhost](http://localhost) (via Nginx)
+> **Dica**: O parâmetro `--build` é fundamental sempre que você alterar chaves no seu arquivo `.env`, pois o Vite injeta essas variáveis no código durante o build da imagem.
+
+### Serviços Disponíveis
+- **Frontend App**: [https://localhost](https://localhost) (ou seu `APP_DOMAIN`)
 - **Supabase Studio**: [http://localhost:8082](http://localhost:8082)
 - **Banco de Dados**: Porta `5432`
+
+---
+
+## 💻 Scripts de Desenvolvimento (Dentro do Container)
+
+Se precisar rodar comandos dentro do container da aplicação:
+```bash
+docker exec -it sacre.app sh
+```
 
 ## 💻 Scripts Disponíveis
 
