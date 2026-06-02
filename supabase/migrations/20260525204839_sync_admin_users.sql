@@ -15,23 +15,15 @@ BEGIN
   IF v_user_1_id IS NULL THEN
     v_user_1_id := gen_random_uuid();
     INSERT INTO auth.users (
-      id, instance_id, email, encrypted_password, email_confirmed_at,
+      id, instance_id, email, encrypted_password, confirmed_at,
       created_at, updated_at, raw_app_meta_data, raw_user_meta_data,
-      is_super_admin, role, aud,
-      confirmation_token, recovery_token, email_change_token_new,
-      email_change, email_change_token_current,
-      phone, phone_change, phone_change_token, reauthentication_token
+      is_super_admin, role, aud
     ) VALUES (
-      v_user_1_id,
-      '00000000-0000-0000-0000-000000000000',
-      'warlenlibrelon@ipt.br',
-      crypt('Skip@Pass123', gen_salt('bf')),
-      NOW(), NOW(), NOW(),
-      '{"provider": "email", "providers": ["email"]}',
-      '{"nome": "Warlen Librelon"}',
-      false, 'authenticated', 'authenticated',
-      '', '', '', '', '', NULL, '', '', ''
+      v_user_1_id, '00000000-0000-0000-0000-000000000000', 'warlenlibrelon@ipt.br', crypt('Skip@Pass123', gen_salt('bf', 10)), NOW(),
+      NOW(), NOW(), '{"provider": "email", "providers": ["email"]}', '{"nome": "Warlen Librelon"}',
+      false, 'authenticated', 'authenticated'
     );
+
   END IF;
 
   INSERT INTO public.perfis_usuarios (id, nome, email, organizacao, nivel_acesso, id_ga, status)
@@ -57,22 +49,13 @@ BEGIN
   IF v_user_2_id IS NULL THEN
     v_user_2_id := gen_random_uuid();
     INSERT INTO auth.users (
-      id, instance_id, email, encrypted_password, email_confirmed_at,
+      id, instance_id, email, encrypted_password, confirmed_at,
       created_at, updated_at, raw_app_meta_data, raw_user_meta_data,
-      is_super_admin, role, aud,
-      confirmation_token, recovery_token, email_change_token_new,
-      email_change, email_change_token_current,
-      phone, phone_change, phone_change_token, reauthentication_token
+      is_super_admin, role, aud
     ) VALUES (
-      v_user_2_id,
-      '00000000-0000-0000-0000-000000000000',
-      'warlen@librelon.com.br',
-      crypt('Skip@Pass123', gen_salt('bf')),
-      NOW(), NOW(), NOW(),
-      '{"provider": "email", "providers": ["email"]}',
-      '{"nome": "Warlen Librelon"}',
-      false, 'authenticated', 'authenticated',
-      '', '', '', '', '', NULL, '', '', ''
+      v_user_2_id, '00000000-0000-0000-0000-000000000000', 'warlen@librelon.com.br', crypt('Skip@Pass123', gen_salt('bf', 10)), NOW(),
+      NOW(), NOW(), '{"provider": "email", "providers": ["email"]}', '{"nome": "Warlen Librelon"}',
+      false, 'authenticated', 'authenticated'
     );
   END IF;
 

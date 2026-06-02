@@ -98,16 +98,13 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM auth.users WHERE email = 'warlen@librelon.com.br') THEN
     admin_id := gen_random_uuid();
     INSERT INTO auth.users (
-      id, instance_id, email, encrypted_password, email_confirmed_at,
+      id, instance_id, email, encrypted_password, confirmed_at,
       created_at, updated_at, raw_app_meta_data, raw_user_meta_data,
-      is_super_admin, role, aud,
-      confirmation_token, recovery_token, email_change_token_new,
-      email_change, email_change_token_current, phone, phone_change, phone_change_token, reauthentication_token
+      is_super_admin, role, aud
     ) VALUES (
-      admin_id, '00000000-0000-0000-0000-000000000000', 'warlen@librelon.com.br', crypt('Skip@Pass123', gen_salt('bf')), NOW(),
+      admin_id, '00000000-0000-0000-0000-000000000000', 'warlen@librelon.com.br', crypt('Skip@Pass123', gen_salt('bf', 10)), NOW(),
       NOW(), NOW(), '{"provider": "email", "providers": ["email"]}', '{"nome": "Warlen Librelon"}',
-      false, 'authenticated', 'authenticated',
-      '', '', '', '', '', NULL, '', '', ''
+      false, 'authenticated', 'authenticated'
     );
     
     UPDATE public.perfis_usuarios SET status = 'aprovado', id_ga = 4 WHERE id = admin_id;
@@ -121,7 +118,7 @@ INSERT INTO public.conteudo_estudo (secao, conteudo_html) VALUES
 ON CONFLICT DO NOTHING;
 
 -- Storage Bucket
-INSERT INTO storage.buckets (id, name, public) VALUES ('documentos', 'documentos', true) ON CONFLICT (id) DO NOTHING;
+INSERT INTO storage.buckets (id, name) VALUES ('documentos', 'documentos') ON CONFLICT (id) DO NOTHING;
 
 -- Storage Policies
 DROP POLICY IF EXISTS "Public Access" ON storage.objects;
