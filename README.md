@@ -17,13 +17,41 @@ Este projeto foi criado de ponta a ponta com o [Skip](https://goskip.dev).
 ## 📋 Pré-requisitos
 
 - Node.js 18+
-- npm
+- pnpm ou npm
+- Docker e Docker Compose (para instalação via Docker)
 
-## 🔧 Instalação
+## 🔧 Instalação Local
 
 ```bash
+pnpm install
+# ou
 npm install
 ```
+
+## 🐳 Instalação via Docker
+
+Este projeto está configurado para ser executado via Docker utilizando o Docker Compose, incluindo serviços do Supabase local (Postgres, Auth, PostgREST, Studio).
+
+### Configuração do Docker
+
+1. **Criar a rede externa**: O Docker Compose espera uma rede externa chamada `sacre`.
+   ```bash
+   docker network create sacre
+   ```
+
+2. **Variáveis de Ambiente**: Certifique-se de que as variáveis de ambiente necessárias estejam definidas. Você pode criar um arquivo `.env` na pasta `devops/` ou passar via linha de comando.
+
+### Executando os Containers
+
+```bash
+cd devops
+docker-compose up -d
+```
+
+Isso iniciará os seguintes serviços:
+- **Frontend App**: [http://localhost](http://localhost) (via Nginx)
+- **Supabase Studio**: [http://localhost:8082](http://localhost:8082)
+- **Banco de Dados**: Porta `5432`
 
 ## 💻 Scripts Disponíveis
 
@@ -112,13 +140,13 @@ Este template inclui uma biblioteca completa de componentes Shadcn UI baseados e
 
 ## 🔄 Workflow de Desenvolvimento
 
-1. Instale as dependências: `npm install`
-2. Inicie o servidor de desenvolvimento: `npm start`
+1. Instale as dependências: `pnpm install` ou `npm install`
+2. Inicie o servidor de desenvolvimento: `pnpm start` ou `npm start`
 3. Faça suas alterações
-4. Verifique o código: `npm run lint`
-5. Formate o código: `npm run format`
-6. Crie a build: `npm run build`
-7. Visualize a build: `npm run preview`
+4. Verifique o código: `pnpm run lint` ou `npm run lint`
+5. Formate o código: `pnpm run format` ou `npm run format`
+6. Crie a build: `pnpm run build` ou `npm run build`
+7. Visualize a build: `pnpm run preview` ou `npm run preview`
 
 ## 📦 Build e Deploy
 
