@@ -27,10 +27,34 @@ export function Importacao() {
     setSelectedModels((prev) => ({ ...prev, [id_fonte]: id_mod }))
   }
 
-  const fetchCSV = async (path: string) => {
-    if (!path) return []
-    const { data, error } = await supabase.storage.from('dados_brutos').download(path)
-    if (error || !data) return []
+  // Normaliza o caminho removendo barras duplicadas e espaços
+  const normalizePath = (path: string): string => {
+    return path
+      .trim()
+      .replace(/\\/g, '/') // troca backslash por slash
+      .replace(/\/+/g, '/') // remove barras duplicadas
+      .replace(/^\//, '') // remove barra inicial se houver
+  }
+
+  const fetchCSV = async (
+    path: string | null | undefined,
+    label = '',
+  ): Promise<{ tempo: string; valor: number }[]> => {
+    // CORRIGIDO: checar null/undefined/string vazia explicitamente
+    if (path == null || path.trim() === '') return []
+
+    const cleanPath = normalizePath(path)
+
+    const { data, error } = await supabase.storage.from('dados_brutos').download(cleanPath)
+
+    // CORRIGIDO: logar o erro real em vez de engolir silenciosamente
+    if (error) {
+      console.error(`[fetchCSV] Erro ao baixar "${cleanPath}" (${label}):`, error.message)
+      toast.error(`Arquivo não encontrado no storage: ${cleanPath}`)
+      return []
+    }
+    if (!data) return []
+
     const text = await data.text()
     const lines = text
       .split('\n')
@@ -40,10 +64,10 @@ export function Importacao() {
 
     const header = lines[0].toLowerCase().split(/[,;]/)
 
-    // BUG 1 CORRIGIDO: lógica de tIdx/vIdx reescrita de forma robusta
+    // tIdx: coluna com 'tempo'; fallback para coluna 0
     const tIdx = header.findIndex((h) => h.includes('tempo'))
     const tIdxFinal = tIdx >= 0 ? tIdx : 0
-    // vIdx é o primeiro índice que NÃO é o índice de tempo
+    // vIdx: primeiro índice diferente de tIdxFinal
     const vIdx = header.findIndex((_, i) => i !== tIdxFinal)
     const vIdxFinal = vIdx >= 0 ? vIdx : tIdxFinal === 0 ? 1 : 0
 
@@ -57,15 +81,8 @@ export function Importacao() {
         let valor = 0
         if (parts[vIdxFinal]) {
           const raw = parts[vIdxFinal].trim()
-          // BUG 2 CORRIGIDO: detecta se o separador decimal é vírgula ou ponto
-          // Se contém vírgula, assume formato PT-BR (milhar=ponto, decimal=vírgula)
-          // Se contém apenas ponto, assume formato internacional
-          let vRaw: string
-          if (raw.includes(',')) {
-            vRaw = raw.replace(/\./g, '').replace(',', '.')
-          } else {
-            vRaw = raw
-          }
+          // Detecta formato: vírgula = PT-BR (milhar=ponto, decimal=vírgula)
+          const vRaw = raw.includes(',') ? raw.replace(/\./g, '').replace(',', '.') : raw
           valor = parseFloat(vRaw)
         }
         return { tempo, valor: isNaN(valor) ? 0 : valor }
@@ -97,12 +114,12 @@ export function Importacao() {
       if (!mod) continue
 
       const [modData, perdasData, demData, capexEData, capexPData, opexData] = await Promise.all([
-        fetchCSV(mod.arq_mod),
-        fetchCSV(mod.arq_perdas),
-        fetchCSV(mod.arq_demanda),
-        fetchCSV(mod.arq_capex_estrategias),
-        fetchCSV(mod.arq_capex_perdas),
-        fetchCSV(mod.arq_opex),
+        fetchCSV(mod.arq_mod, `volume_captado [${mod.fonte_agua?.nome_fonte}]`),
+        fetchCSV(mod.arq_perdas, `perdas [${mod.fonte_agua?.nome_fonte}]`),
+        fetchCSV(mod.arq_demanda, `demanda [${mod.fonte_agua?.nome_fonte}]`),
+        fetchCSV(mod.arq_capex_estrategias, `capex_estrategia [${mod.fonte_agua?.nome_fonte}]`),
+        fetchCSV(mod.arq_capex_perdas, `capex_perdas [${mod.fonte_agua?.nome_fonte}]`),
+        fetchCSV(mod.arq_opex, `opex [${mod.fonte_agua?.nome_fonte}]`),
       ])
 
       // BUG 3 CORRIGIDO: incluir TODOS os arrays na união de tempos,
@@ -144,7 +161,10 @@ export function Importacao() {
       if (inds) {
         for (const ia of inds) {
           if (ia.indicadores?.id_fonte === mod.id_fonte) {
-            const indData = await fetchCSV(`indicadores/${ia.arquivo}`)
+            const indData = await fetchCSV(
+              `indicadores/${ia.arquivo}`,
+              `indicador [${ia.indicadores?.campo_extra}]`,
+            )
             indData.forEach((d) => {
               if (mergedByTempo[d.tempo]) {
                 mergedByTempo[d.tempo].valores_extras[ia.indicadores.campo_extra] = d.valor
