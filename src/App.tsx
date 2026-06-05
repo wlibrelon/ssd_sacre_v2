@@ -15,6 +15,7 @@ import Projeto from './pages/institucional/Projeto'
 import Equipe from './pages/institucional/Equipe'
 import Cenarios from './pages/ssd/Cenarios'
 import Configuracoes from './pages/ssd/Configuracoes'
+import ParametrosPage from './pages/ssd/parametros/ParametrosPage'
 import Publicacoes from './pages/divulgacao/Publicacoes'
 import Midia from './pages/divulgacao/Midia'
 import Congressos from './pages/divulgacao/Congressos'
@@ -58,6 +59,7 @@ const App = () => (
 
             <Route path="/ssd/cenarios" element={<Cenarios />} />
             <Route path="/ssd/configuracoes" element={<Configuracoes />} />
+            <Route path="/ssd/parametros" element={<ParametrosPage />} />
 
             <Route path="/divulgacao/publicacoes" element={<Publicacoes />} />
             <Route path="/divulgacao/midia" element={<Midia />} />

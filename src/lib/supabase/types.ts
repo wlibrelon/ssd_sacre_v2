@@ -281,6 +281,27 @@ export type Database = {
           },
         ]
       }
+      conteudo_estudo: {
+        Row: {
+          conteudo_html: string | null
+          id: number
+          ordem: number | null
+          secao: string
+        }
+        Insert: {
+          conteudo_html?: string | null
+          id?: number
+          ordem?: number | null
+          secao: string
+        }
+        Update: {
+          conteudo_html?: string | null
+          id?: number
+          ordem?: number | null
+          secao?: string
+        }
+        Relationships: []
+      }
       dados_simulacao: {
         Row: {
           capex: number | null
@@ -395,6 +416,30 @@ export type Database = {
           },
         ]
       }
+      documentos_publicos: {
+        Row: {
+          criado_em: string | null
+          descricao: string | null
+          id: number
+          nome: string
+          url_arquivo: string | null
+        }
+        Insert: {
+          criado_em?: string | null
+          descricao?: string | null
+          id?: number
+          nome: string
+          url_arquivo?: string | null
+        }
+        Update: {
+          criado_em?: string | null
+          descricao?: string | null
+          id?: number
+          nome?: string
+          url_arquivo?: string | null
+        }
+        Relationships: []
+      }
       fonte_agua: {
         Row: {
           id_fonte: number
@@ -410,6 +455,21 @@ export type Database = {
           id_fonte?: number
           nome_fonte?: string | null
           sujeito_perdas?: boolean | null
+        }
+        Relationships: []
+      }
+      grupo_acesso: {
+        Row: {
+          id_ga: number
+          nome_grupo: string
+        }
+        Insert: {
+          id_ga?: number
+          nome_grupo: string
+        }
+        Update: {
+          id_ga?: number
+          nome_grupo?: string
         }
         Relationships: []
       }
@@ -430,6 +490,76 @@ export type Database = {
           tempo?: string | null
         }
         Relationships: []
+      }
+      perfis_usuarios: {
+        Row: {
+          created_at: string | null
+          email: string
+          id: string
+          id_ga: number | null
+          nivel_acesso: string | null
+          nome: string
+          objetivo_acesso: string | null
+          organizacao: string | null
+          status: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          id: string
+          id_ga?: number | null
+          nivel_acesso?: string | null
+          nome: string
+          objetivo_acesso?: string | null
+          organizacao?: string | null
+          status?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          id?: string
+          id_ga?: number | null
+          nivel_acesso?: string | null
+          nome?: string
+          objetivo_acesso?: string | null
+          organizacao?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'perfis_usuarios_id_ga_fkey'
+            columns: ['id_ga']
+            isOneToOne: false
+            referencedRelation: 'grupo_acesso'
+            referencedColumns: ['id_ga']
+          },
+        ]
+      }
+      recursos_app: {
+        Row: {
+          id_ga: number | null
+          id_rapp: number
+          nome_recurso: string
+        }
+        Insert: {
+          id_ga?: number | null
+          id_rapp?: number
+          nome_recurso: string
+        }
+        Update: {
+          id_ga?: number | null
+          id_rapp?: number
+          nome_recurso?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'recursos_app_id_ga_fkey'
+            columns: ['id_ga']
+            isOneToOne: false
+            referencedRelation: 'grupo_acesso'
+            referencedColumns: ['id_ga']
+          },
+        ]
       }
       simulacao_ssd: {
         Row: {
@@ -517,7 +647,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      is_admin: { Args: never; Returns: boolean }
     }
     Enums: {
       [_ in never]: never
@@ -705,6 +835,11 @@ export const Constants = {
 //   id_cf: integer (not null)
 //   id_fonte: integer (nullable)
 //   id_tc: integer (nullable)
+// Table: conteudo_estudo
+//   id: integer (not null, default: nextval('conteudo_estudo_id_seq'::regclass))
+//   secao: text (not null)
+//   conteudo_html: text (nullable)
+//   ordem: integer (nullable, default: 0)
 // Table: dados_simulacao
 //   id_ds: integer (not null)
 //   id_s: integer (nullable)
@@ -722,14 +857,37 @@ export const Constants = {
 //   rebaixamento: double precision (nullable)
 //   demanda: double precision (nullable)
 //   perdas: double precision (nullable)
+// Table: documentos_publicos
+//   id: integer (not null, default: nextval('documentos_publicos_id_seq'::regclass))
+//   nome: text (not null)
+//   descricao: text (nullable)
+//   url_arquivo: text (nullable)
+//   criado_em: timestamp with time zone (nullable, default: now())
 // Table: fonte_agua
 //   id_fonte: integer (not null)
 //   nome_fonte: character varying (nullable)
 //   sujeito_perdas: boolean (nullable, default: true)
+// Table: grupo_acesso
+//   id_ga: integer (not null, default: nextval('grupo_acesso_id_ga_seq'::regclass))
+//   nome_grupo: character varying (not null)
 // Table: opex
 //   id_oa: integer (not null, default: nextval('opex_id_oa_seq'::regclass))
 //   tempo: character varying (nullable)
 //   opex: double precision (nullable)
+// Table: perfis_usuarios
+//   id: uuid (not null)
+//   nome: text (not null)
+//   email: text (not null)
+//   organizacao: text (nullable)
+//   nivel_acesso: text (nullable)
+//   objetivo_acesso: text (nullable)
+//   id_ga: integer (nullable)
+//   status: text (nullable, default: 'pendente'::text)
+//   created_at: timestamp with time zone (nullable, default: now())
+// Table: recursos_app
+//   id_rapp: integer (not null, default: nextval('recursos_app_id_rapp_seq'::regclass))
+//   nome_recurso: character varying (not null)
+//   id_ga: integer (nullable)
 // Table: simulacao_ssd
 //   id_s: integer (not null)
 //   descricao: character varying (nullable)
@@ -778,6 +936,8 @@ export const Constants = {
 //   FOREIGN KEY cenarios_fonte_id_fonte_fkey: FOREIGN KEY (id_fonte) REFERENCES fonte_agua(id_fonte) ON DELETE CASCADE
 //   FOREIGN KEY cenarios_fonte_id_tc_fkey: FOREIGN KEY (id_tc) REFERENCES tipos_cenarios(id_tc) ON DELETE CASCADE
 //   PRIMARY KEY cenarios_fonte_pkey: PRIMARY KEY (id_cf)
+// Table: conteudo_estudo
+//   PRIMARY KEY conteudo_estudo_pkey: PRIMARY KEY (id)
 // Table: dados_simulacao
 //   FOREIGN KEY dados_simulacao_id_acao_fkey: FOREIGN KEY (id_acao) REFERENCES acoes(id_acao) ON DELETE CASCADE
 //   FOREIGN KEY dados_simulacao_id_c_fkey: FOREIGN KEY (id_c) REFERENCES cenarios(id_cenarios) ON DELETE CASCADE
@@ -788,10 +948,21 @@ export const Constants = {
 //   FOREIGN KEY dados_simulacao_id_s_fkey: FOREIGN KEY (id_s) REFERENCES simulacao_ssd(id_s) ON DELETE CASCADE
 //   FOREIGN KEY dados_simulacao_id_tc_fkey: FOREIGN KEY (id_tc) REFERENCES tipos_cenarios(id_tc) ON DELETE CASCADE
 //   PRIMARY KEY dados_simulacao_pkey: PRIMARY KEY (id_ds)
+// Table: documentos_publicos
+//   PRIMARY KEY documentos_publicos_pkey: PRIMARY KEY (id)
 // Table: fonte_agua
 //   PRIMARY KEY fonte_agua_pkey: PRIMARY KEY (id_fonte)
+// Table: grupo_acesso
+//   PRIMARY KEY grupo_acesso_pkey: PRIMARY KEY (id_ga)
 // Table: opex
 //   PRIMARY KEY opex_pkey: PRIMARY KEY (id_oa)
+// Table: perfis_usuarios
+//   FOREIGN KEY perfis_usuarios_id_fkey: FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE
+//   FOREIGN KEY perfis_usuarios_id_ga_fkey: FOREIGN KEY (id_ga) REFERENCES grupo_acesso(id_ga)
+//   PRIMARY KEY perfis_usuarios_pkey: PRIMARY KEY (id)
+// Table: recursos_app
+//   FOREIGN KEY recursos_app_id_ga_fkey: FOREIGN KEY (id_ga) REFERENCES grupo_acesso(id_ga) ON DELETE CASCADE
+//   PRIMARY KEY recursos_app_pkey: PRIMARY KEY (id_rapp)
 // Table: simulacao_ssd
 //   PRIMARY KEY simulacao_ssd_pkey: PRIMARY KEY (id_s)
 // Table: tipo_cenario_cenario
@@ -876,18 +1047,33 @@ export const Constants = {
 //   Policy "authenticated_all" (ALL, PERMISSIVE) roles={authenticated}
 //     USING: true
 //     WITH CHECK: true
+// Table: conteudo_estudo
+//   Policy "ce_admin" (ALL, PERMISSIVE) roles={public}
+//     USING: is_admin()
+//   Policy "ce_select" (SELECT, PERMISSIVE) roles={public}
+//     USING: true
 // Table: dados_simulacao
 //   Policy "anon_read" (SELECT, PERMISSIVE) roles={anon}
 //     USING: true
 //   Policy "authenticated_all" (ALL, PERMISSIVE) roles={authenticated}
 //     USING: true
 //     WITH CHECK: true
+// Table: documentos_publicos
+//   Policy "dp_admin" (ALL, PERMISSIVE) roles={public}
+//     USING: is_admin()
+//   Policy "dp_select" (SELECT, PERMISSIVE) roles={public}
+//     USING: true
 // Table: fonte_agua
 //   Policy "anon_read" (SELECT, PERMISSIVE) roles={anon}
 //     USING: true
 //   Policy "authenticated_all" (ALL, PERMISSIVE) roles={authenticated}
 //     USING: true
 //     WITH CHECK: true
+// Table: grupo_acesso
+//   Policy "ga_admin" (ALL, PERMISSIVE) roles={public}
+//     USING: is_admin()
+//   Policy "ga_select" (SELECT, PERMISSIVE) roles={public}
+//     USING: true
 // Table: opex
 //   Policy "All opex anon" (ALL, PERMISSIVE) roles={anon}
 //     USING: true
@@ -902,6 +1088,16 @@ export const Constants = {
 //   Policy "authenticated_all" (ALL, PERMISSIVE) roles={authenticated}
 //     USING: true
 //     WITH CHECK: true
+// Table: perfis_usuarios
+//   Policy "pu_admin" (ALL, PERMISSIVE) roles={public}
+//     USING: is_admin()
+//   Policy "pu_select" (SELECT, PERMISSIVE) roles={public}
+//     USING: ((auth.uid() = id) OR is_admin())
+// Table: recursos_app
+//   Policy "rapp_admin" (ALL, PERMISSIVE) roles={public}
+//     USING: is_admin()
+//   Policy "rapp_select" (SELECT, PERMISSIVE) roles={public}
+//     USING: true
 // Table: simulacao_ssd
 //   Policy "anon_read" (SELECT, PERMISSIVE) roles={anon}
 //     USING: true
@@ -920,3 +1116,42 @@ export const Constants = {
 //   Policy "authenticated_all" (ALL, PERMISSIVE) roles={authenticated}
 //     USING: true
 //     WITH CHECK: true
+
+// --- DATABASE FUNCTIONS ---
+// FUNCTION handle_new_user()
+//   CREATE OR REPLACE FUNCTION public.handle_new_user()
+//    RETURNS trigger
+//    LANGUAGE plpgsql
+//    SECURITY DEFINER
+//   AS $function$
+//   BEGIN
+//     INSERT INTO public.perfis_usuarios (id, nome, email, organizacao, nivel_acesso, objetivo_acesso, status)
+//     VALUES (
+//       NEW.id,
+//       COALESCE(NEW.raw_user_meta_data->>'nome', ''),
+//       NEW.email,
+//       NEW.raw_user_meta_data->>'organizacao',
+//       NEW.raw_user_meta_data->>'nivel_acesso',
+//       NEW.raw_user_meta_data->>'objetivo_acesso',
+//       'pendente'
+//     )
+//     ON CONFLICT (id) DO NOTHING;
+//     RETURN NEW;
+//   END;
+//   $function$
+//
+// FUNCTION is_admin()
+//   CREATE OR REPLACE FUNCTION public.is_admin()
+//    RETURNS boolean
+//    LANGUAGE plpgsql
+//    SECURITY DEFINER
+//    SET search_path TO 'public'
+//   AS $function$
+//   DECLARE
+//     v_id_ga integer;
+//   BEGIN
+//     SELECT id_ga INTO v_id_ga FROM public.perfis_usuarios WHERE id = auth.uid();
+//     RETURN (v_id_ga = 4);
+//   END;
+//   $function$
+//
