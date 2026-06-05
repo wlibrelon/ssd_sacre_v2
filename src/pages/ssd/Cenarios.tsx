@@ -91,106 +91,90 @@ export default function Cenarios() {
   }
 
   const applyFinancialMetrics = async (simId: number) => {
-    // ✅ CORRIGIDO: Validar simId antes de usar
     if (typeof simId !== 'number' || isNaN(simId)) {
-      console.error('[applyFinancialMetrics] ID de simulação inválido:', simId)
+      console.error('[DEBUG] ID de simulação inválido:', simId)
       return []
     }
 
-    console.log('[applyFinancialMetrics] Iniciando com filtros:', {
+    console.log('[DEBUG] ========== INICIANDO QUERY ==========')
+    console.log('[DEBUG] Filtros aplicados:', {
       id_s: filters.id_s,
       ano_inicio: filters.ano_inicio,
       ano_fim: filters.ano_fim,
-      meses: filters.meses?.length || 0,
+      meses: filters.meses,
     })
 
-    let q = supabase.from('dados_simulacao').select('*')
+    // ✅ PASSO 1: Query APENAS com id_s (baseline)
+    let q = supabase.from('dados_simulacao').select('*').eq('id_s', simId)
+    const { data: baselineData, error: baselineError } = await q
+    console.log('[DEBUG] Baseline (apenas id_s):', baselineData?.length || 0, 'registros')
+    if (baselineError) console.error('[DEBUG] Erro baseline:', baselineError)
 
-    // ✅ CORRIGIDO: Usar simId validado
-    q = q.eq('id_s', simId)
+    if (!baselineData || baselineData.length === 0) {
+      console.error('[DEBUG] FALHA CRÍTICA: Nenhum dado para id_s =', simId)
+      return []
+    }
 
-    // ✅ CORRIGIDO: Validar anos antes de usar
+    // ✅ PASSO 2: Aplicar filtro de período (ano_inicio e ano_fim)
+    let q2 = supabase.from('dados_simulacao').select('*').eq('id_s', simId)
+
     if (filters.ano_inicio && !isNaN(parseInt(filters.ano_inicio))) {
-      q = q.gte('tempo', `${filters.ano_inicio}-01`)
+      const tempoInicio = `${filters.ano_inicio}-01`
+      q2 = q2.gte('tempo', tempoInicio)
+      console.log('[DEBUG] Filtro ano_inicio aplicado:', tempoInicio)
     }
 
     if (filters.ano_fim && !isNaN(parseInt(filters.ano_fim))) {
-      q = q.lte('tempo', `${filters.ano_fim}-12`)
+      const tempoFim = `${filters.ano_fim}-12`
+      q2 = q2.lte('tempo', tempoFim)
+      console.log('[DEBUG] Filtro ano_fim aplicado:', tempoFim)
     }
 
-    // ✅ CORRIGIDO: Construir OR corretamente para Supabase
+    const { data: periodData, error: periodError } = await q2
+    console.log('[DEBUG] Após filtro de período:', periodData?.length || 0, 'registros')
+    if (periodError) console.error('[DEBUG] Erro período:', periodError)
+
+    // ✅ PASSO 3: Aplicar filtro de meses (CORRIGIDO)
+    let finalData = periodData || []
+
     if (filters.meses && filters.meses.length > 0) {
-      const orConditions = filters.meses
-        .map((m: string) => `tempo.ilike.%-${m.padStart(2, '0')}`)
-        .join(',')
-      console.log('[applyFinancialMetrics] Condições OR para meses:', orConditions)
-      q = q.or(orConditions)
+      console.log('[DEBUG] Filtrando por meses:', filters.meses)
+
+      // ✅ CORRIGIDO: Filtrar meses NO JAVASCRIPT (não no Supabase)
+      // Porque Supabase não suporta bem .or() com ilike em arrays
+      finalData = finalData.filter((row: any) => {
+        if (!row.tempo) return false
+        const mesRow = row.tempo.split('-')[1] // Extrai mês de YYYY-MM
+        return filters.meses.includes(mesRow)
+      })
+      console.log('[DEBUG] Após filtro de meses:', finalData.length, 'registros')
     }
 
+    console.log('[DEBUG] ========== FIM QUERY ==========')
+
+    if (finalData.length === 0) {
+      console.warn('[DEBUG] RESULTADO FINAL: Nenhum dado encontrado')
+      return []
+    }
+
+    // ✅ Resto do processamento (capex, opex, etc.)
     const [
       { data: capexAcao, error: capexAcaoError },
       { data: acoesFonte, error: acoesFonteError },
       { data: capexPerdas, error: capexPerdasError },
       { data: opexData, error: opexError },
-      { data: dsData, error: dsError },
     ] = await Promise.all([
       supabase.from('capex_acao').select('*'),
       supabase.from('acoes_fonte').select('*'),
       supabase.from('capex_perdas').select('*'),
       supabase.from('opex').select('*'),
-      q,
     ])
 
-    // ✅ CORRIGIDO: Logging detalhado de erros
-    if (dsError) {
-      console.error('[applyFinancialMetrics] Erro ao buscar dados_simulacao:', dsError)
-      return []
-    }
+    if (capexAcaoError) console.error('[DEBUG] Erro capexAcao:', capexAcaoError)
+    if (acoesFonteError) console.error('[DEBUG] Erro acoesFonte:', acoesFonteError)
+    if (capexPerdasError) console.error('[DEBUG] Erro capexPerdas:', capexPerdasError)
+    if (opexError) console.error('[DEBUG] Erro opex:', opexError)
 
-    if (capexAcaoError) console.error('[applyFinancialMetrics] Erro capexAcao:', capexAcaoError)
-    if (acoesFonteError) console.error('[applyFinancialMetrics] Erro acoesFonte:', acoesFonteError)
-    if (capexPerdasError)
-      console.error('[applyFinancialMetrics] Erro capexPerdas:', capexPerdasError)
-    if (opexError) console.error('[applyFinancialMetrics] Erro opex:', opexError)
-
-    // ✅ CORRIGIDO: Validar dsData antes de processar
-    if (!dsData || dsData.length === 0) {
-      console.warn('[applyFinancialMetrics] Nenhum dado encontrado com filtros atuais')
-      console.warn(
-        '[applyFinancialMetrics] Tentando fallback: buscar TODOS os dados para id_s',
-        simId,
-      )
-
-      // Fallback: buscar sem filtros de período/mês para diagnosticar
-      const { data: fallbackData, error: fallbackError } = await supabase
-        .from('dados_simulacao')
-        .select('*')
-        .eq('id_s', simId)
-        .limit(10)
-
-      if (fallbackError) {
-        console.error('[applyFinancialMetrics] Erro no fallback:', fallbackError)
-        return []
-      }
-
-      if (!fallbackData || fallbackData.length === 0) {
-        console.error(
-          '[applyFinancialMetrics] Nenhum dado encontrado NEM MESMO no fallback para id_s:',
-          simId,
-        )
-        return []
-      }
-
-      console.warn(
-        '[applyFinancialMetrics] Fallback retornou dados. Problema está nos filtros de período/mês',
-      )
-      console.log('[applyFinancialMetrics] Amostra de dados disponíveis:', fallbackData.slice(0, 3))
-      return []
-    }
-
-    console.log('[applyFinancialMetrics] Dados encontrados:', dsData.length, 'registros')
-
-    // ✅ CORRIGIDO: Processar dados com validação
     const capexAcaoMap: Record<string, number> = {}
     if (capexAcao && acoesFonte) {
       capexAcao.forEach((ca) => {
@@ -217,7 +201,7 @@ export default function Cenarios() {
     }
 
     const updates: any[] = []
-    const dsUpdated = dsData.map((row) => {
+    const dsUpdated = finalData.map((row) => {
       let newCapex = 0
       if (row.tempo && row.id_fonte) {
         newCapex += capexAcaoMap[`${row.tempo}_${row.id_fonte}`] || 0
@@ -239,7 +223,6 @@ export default function Cenarios() {
       return row
     })
 
-    // ✅ CORRIGIDO: Upsert em lotes com tratamento de erro
     if (updates.length > 0) {
       const batchSize = 1000
       for (let i = 0; i < updates.length; i += batchSize) {
@@ -249,22 +232,14 @@ export default function Cenarios() {
           .upsert(batch, { onConflict: 'id_s,id_mod,id_fonte,tempo' })
 
         if (upsertError) {
-          console.error(
-            `[applyFinancialMetrics] Erro ao fazer upsert do lote ${i / batchSize}:`,
-            upsertError,
-          )
+          console.error(`[DEBUG] Erro upsert lote ${i / batchSize}:`, upsertError)
         }
       }
-      console.log(
-        '[applyFinancialMetrics] Upsert concluído:',
-        updates.length,
-        'registros atualizados',
-      )
     }
 
+    console.log('[DEBUG] Retornando', dsUpdated.length, 'registros processados')
     return dsUpdated
   }
-
   const handleSimulate = async () => {
     setLoading(true)
     let resData = await applyFinancialMetrics(parseInt(filters.id_s))
