@@ -188,7 +188,10 @@ export function SimulacoesConfig() {
             <tr>
               <th className="p-2 text-left">Descrição</th>
               <th className="p-2 text-left">População</th>
-              <th className="p-2 text-left">Auto Calc</th>
+              <th className="p-2 text-left">Início Perdas</th>
+              <th className="p-2 text-left">% Ini. Perdas</th>
+              <th className="p-2 text-left text-center">Auto Demanda</th>
+              <th className="p-2 text-left text-center">Auto Perdas</th>
               <th className="p-2 w-24">Ações</th>
             </tr>
           </thead>
@@ -201,9 +204,10 @@ export function SimulacoesConfig() {
               >
                 <td className="p-2">{s.descricao}</td>
                 <td className="p-2">{s.pop_inicial}</td>
-                <td className="p-2">
-                  {s.demanda_auto ? 'D' : ''} {s.perdas_auto ? 'P' : ''}
-                </td>
+                <td className="p-2">{s.inicio_perdas}</td>
+                <td className="p-2">{s.perc_inicial_perdas}</td>
+                <td className="p-2 text-center">{s.demanda_auto ? 'Sim' : 'Não'}</td>
+                <td className="p-2 text-center">{s.perdas_auto ? 'Sim' : 'Não'}</td>
                 <td className="p-2 flex space-x-1">
                   <Button
                     variant="ghost"

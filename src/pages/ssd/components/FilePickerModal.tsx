@@ -34,7 +34,7 @@ export function FilePickerModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-4xl">
         <DialogHeader>
           <DialogTitle>Selecionar arquivo (.csv)</DialogTitle>
           <p className="text-sm text-muted-foreground">Pasta: {folder}</p>

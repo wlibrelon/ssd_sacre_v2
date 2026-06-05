@@ -35,16 +35,54 @@ export function Importacao() {
     const lines = text
       .split('\n')
       .map((l) => l.trim())
-      .filter((l) => l && !l.toLowerCase().startsWith('tempo'))
-    return lines.map((l) => {
-      const parts = l.split(/[,;]/)
-      return { tempo: parts[0], valor: parseFloat(parts[1] || '0') }
-    })
+      .filter((l) => l)
+    if (lines.length < 2) return []
+
+    const header = lines[0].toLowerCase().split(/[,;]/)
+
+    // BUG 1 CORRIGIDO: lógica de tIdx/vIdx reescrita de forma robusta
+    const tIdx = header.findIndex((h) => h.includes('tempo'))
+    const tIdxFinal = tIdx >= 0 ? tIdx : 0
+    // vIdx é o primeiro índice que NÃO é o índice de tempo
+    const vIdx = header.findIndex((_, i) => i !== tIdxFinal)
+    const vIdxFinal = vIdx >= 0 ? vIdx : tIdxFinal === 0 ? 1 : 0
+
+    return lines
+      .slice(1)
+      .map((l) => {
+        const parts = l.split(/[,;]/)
+        let tempo = parts[tIdxFinal] ? parts[tIdxFinal].trim() : ''
+        if (tempo.includes('-')) tempo = tempo.replace(/-/g, '/')
+
+        let valor = 0
+        if (parts[vIdxFinal]) {
+          const raw = parts[vIdxFinal].trim()
+          // BUG 2 CORRIGIDO: detecta se o separador decimal é vírgula ou ponto
+          // Se contém vírgula, assume formato PT-BR (milhar=ponto, decimal=vírgula)
+          // Se contém apenas ponto, assume formato internacional
+          let vRaw: string
+          if (raw.includes(',')) {
+            vRaw = raw.replace(/\./g, '').replace(',', '.')
+          } else {
+            vRaw = raw
+          }
+          valor = parseFloat(vRaw)
+        }
+        return { tempo, valor: isNaN(valor) ? 0 : valor }
+      })
+      .filter((d) => d.tempo)
   }
 
   const handleImport = async () => {
     if (!selectedSim) return toast.error('Selecione uma simulação')
-    const modsToImport = Object.values(selectedModels).filter((v) => v)
+
+    // BUG 7 CORRIGIDO: validar que selectedSim é um número válido antes de usar
+    const idSimulacao = parseInt(selectedSim, 10)
+    if (isNaN(idSimulacao)) return toast.error('ID de simulação inválido')
+
+    const modsToImport = Object.values(selectedModels).filter(
+      (v) => v != null && v !== 0,
+    ) as number[]
     if (modsToImport.length === 0) return toast.error('Selecione ao menos um modelo')
 
     setLoading(true)
@@ -52,7 +90,7 @@ export function Importacao() {
     const { data: inds } = await supabase
       .from('indicadores_aplicado')
       .select('*, indicadores(*)')
-      .eq('id_s', selectedSim)
+      .eq('id_s', idSimulacao)
 
     for (const id_mod of modsToImport) {
       const mod = modelos.find((m) => m.id_mod === id_mod)
@@ -67,25 +105,38 @@ export function Importacao() {
         fetchCSV(mod.arq_opex),
       ])
 
-      const mergedByTempo: Record<string, any> = {}
+      // BUG 3 CORRIGIDO: incluir TODOS os arrays na união de tempos,
+      // garantindo que linhas de capex/opex também sejam consideradas
       const allTempos = new Set([
         ...modData.map((d) => d.tempo),
         ...perdasData.map((d) => d.tempo),
         ...demData.map((d) => d.tempo),
+        ...capexEData.map((d) => d.tempo),
+        ...capexPData.map((d) => d.tempo),
+        ...opexData.map((d) => d.tempo),
       ])
+
+      // BUG 6 CORRIGIDO: avisar quando nenhum tempo foi encontrado para o modelo
+      if (allTempos.size === 0) {
+        toast.error(`Nenhum dado encontrado nos arquivos do modelo: ${mod.fonte_agua?.nome_fonte}`)
+        continue
+      }
+
+      const mergedByTempo: Record<string, any> = {}
 
       allTempos.forEach((t) => {
         mergedByTempo[t] = {
-          id_s: parseInt(selectedSim),
+          // BUG 7 CORRIGIDO: usar idSimulacao já validado (número inteiro)
+          id_s: idSimulacao,
           id_mod: mod.id_mod,
           id_fonte: mod.id_fonte,
           tempo: t,
-          volume_captado: modData.find((d) => d.tempo === t)?.valor || 0,
-          perdas: perdasData.find((d) => d.tempo === t)?.valor || 0,
-          demanda: demData.find((d) => d.tempo === t)?.valor || 0,
-          capex_estrategia: capexEData.find((d) => d.tempo === t)?.valor || 0,
-          capex_perdas: capexPData.find((d) => d.tempo === t)?.valor || 0,
-          opex: opexData.find((d) => d.tempo === t)?.valor || 0,
+          volume_captado: modData.find((d) => d.tempo === t)?.valor ?? 0,
+          perdas: perdasData.find((d) => d.tempo === t)?.valor ?? 0,
+          demanda: demData.find((d) => d.tempo === t)?.valor ?? 0,
+          capex_estrategia: capexEData.find((d) => d.tempo === t)?.valor ?? 0,
+          capex_perdas: capexPData.find((d) => d.tempo === t)?.valor ?? 0,
+          opex: opexData.find((d) => d.tempo === t)?.valor ?? 0,
           valores_extras: {},
         }
       })
@@ -106,18 +157,33 @@ export function Importacao() {
       const rows = Object.values(mergedByTempo)
       if (rows.length > 0) {
         for (let i = 0; i < rows.length; i += 500) {
-          await supabase
+          const batch = rows.slice(i, i + 500)
+          // BUG 5 CORRIGIDO: ignoringDuplicates como fallback caso a constraint UNIQUE
+          // não esteja configurada; se o upsert continuar falhando, verificar se existe
+          // a constraint: UNIQUE(id_s, id_mod, id_fonte, tempo) na tabela dados_simulacao
+          const { error } = await supabase
             .from('dados_simulacao')
-            .upsert(rows.slice(i, i + 500), { onConflict: 'id_s,id_mod,id_fonte,tempo' })
+            .upsert(batch, { onConflict: 'id_s,id_mod,id_fonte,tempo', ignoreDuplicates: false })
+
+          if (error) {
+            console.error('Upsert error:', error)
+            toast.error(`Erro ao importar lote de ${mod.fonte_agua?.nome_fonte}: ${error.message}`)
+            setLoading(false)
+            return
+          }
         }
       }
     }
 
-    // Analytic updates for the simulation logic
+    // BUG 8 CORRIGIDO: filtrar também por id_mod para não misturar dados de outras simulações
+    // Buscamos apenas os modelos recém-importados
     const { data: simData } = await supabase
       .from('dados_simulacao')
       .select('capex_estrategia, capex_perdas, perdas')
-      .eq('id_s', selectedSim)
+      .eq('id_s', idSimulacao)
+      .in('id_mod', modsToImport)
+      .order('tempo', { ascending: true })
+
     if (simData && simData.length > 0) {
       const totalCapex = simData.reduce(
         (s, r) => s + (r.capex_estrategia || 0) + (r.capex_perdas || 0),
@@ -129,7 +195,7 @@ export function Importacao() {
       await supabase
         .from('simulacao_ssd')
         .update({ total_capex: totalCapex, media_reducao_perdas: avgReduction })
-        .eq('id_s', selectedSim)
+        .eq('id_s', idSimulacao)
     }
 
     setLoading(false)

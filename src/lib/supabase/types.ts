@@ -1053,6 +1053,7 @@ export const Constants = {
 //   FOREIGN KEY dados_simulacao_id_mod_fkey: FOREIGN KEY (id_mod) REFERENCES modelos(id_mod) ON DELETE CASCADE
 //   FOREIGN KEY dados_simulacao_id_s_fkey: FOREIGN KEY (id_s) REFERENCES simulacao_ssd(id_s) ON DELETE CASCADE
 //   PRIMARY KEY dados_simulacao_pkey: PRIMARY KEY (id_ds)
+//   UNIQUE dados_simulacao_ukey: UNIQUE (id_s, id_mod, id_fonte, tempo)
 // Table: documentos_publicos
 //   PRIMARY KEY documentos_publicos_pkey: PRIMARY KEY (id)
 // Table: fonte_agua
@@ -1190,8 +1191,9 @@ export const Constants = {
 //   Policy "ga_select" (SELECT, PERMISSIVE) roles={public}
 //     USING: true
 // Table: indicadores
-//   Policy "indicadores_all" (ALL, PERMISSIVE) roles={public}
+//   Policy "indicadores_all" (ALL, PERMISSIVE) roles={authenticated}
 //     USING: true
+//     WITH CHECK: true
 // Table: indicadores_aplicado
 //   Policy "indicadores_aplicado_all" (ALL, PERMISSIVE) roles={authenticated}
 //     USING: true
@@ -1281,3 +1283,7 @@ export const Constants = {
 //   END;
 //   $function$
 //
+
+// --- INDEXES ---
+// Table: dados_simulacao
+//   CREATE UNIQUE INDEX dados_simulacao_ukey ON public.dados_simulacao USING btree (id_s, id_mod, id_fonte, tempo)
