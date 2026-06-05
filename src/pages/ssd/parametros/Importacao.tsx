@@ -32,7 +32,7 @@ export function Importacao() {
     return path
       .trim()
       .replace(/\/g, '/') // troca backslash por slash
-      .replace(/\/+/g, '/') // remove barras duplicadas
+      .replace(/\/+/g, '/') // remove barras duplicadas 
       .replace(/^\//, '') // remove barra inicial se houver
   }
 
