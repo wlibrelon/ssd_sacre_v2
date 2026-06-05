@@ -304,57 +304,51 @@ export type Database = {
       }
       dados_simulacao: {
         Row: {
-          capex: number | null
+          capex_estrategia: number | null
+          capex_perdas: number | null
           demanda: number | null
           id_acao: number | null
-          id_c: number | null
-          id_cc: number | null
-          id_cd: number | null
-          id_cp: number | null
           id_ds: number
           id_fonte: number | null
+          id_mod: number | null
           id_s: number | null
-          id_tc: number | null
           opex: number | null
           perdas: number | null
           rebaixamento: number | null
           tempo: string | null
+          valores_extras: Json | null
           volume_captado: number | null
         }
         Insert: {
-          capex?: number | null
+          capex_estrategia?: number | null
+          capex_perdas?: number | null
           demanda?: number | null
           id_acao?: number | null
-          id_c?: number | null
-          id_cc?: number | null
-          id_cd?: number | null
-          id_cp?: number | null
           id_ds?: number
           id_fonte?: number | null
+          id_mod?: number | null
           id_s?: number | null
-          id_tc?: number | null
           opex?: number | null
           perdas?: number | null
           rebaixamento?: number | null
           tempo?: string | null
+          valores_extras?: Json | null
           volume_captado?: number | null
         }
         Update: {
-          capex?: number | null
+          capex_estrategia?: number | null
+          capex_perdas?: number | null
           demanda?: number | null
           id_acao?: number | null
-          id_c?: number | null
-          id_cc?: number | null
-          id_cd?: number | null
-          id_cp?: number | null
           id_ds?: number
           id_fonte?: number | null
+          id_mod?: number | null
           id_s?: number | null
-          id_tc?: number | null
           opex?: number | null
           perdas?: number | null
           rebaixamento?: number | null
           tempo?: string | null
+          valores_extras?: Json | null
           volume_captado?: number | null
         }
         Relationships: [
@@ -366,34 +360,6 @@ export type Database = {
             referencedColumns: ['id_acao']
           },
           {
-            foreignKeyName: 'dados_simulacao_id_c_fkey'
-            columns: ['id_c']
-            isOneToOne: false
-            referencedRelation: 'cenarios'
-            referencedColumns: ['id_cenarios']
-          },
-          {
-            foreignKeyName: 'dados_simulacao_id_cc_fkey'
-            columns: ['id_cc']
-            isOneToOne: false
-            referencedRelation: 'cenario_consumo'
-            referencedColumns: ['id_cc']
-          },
-          {
-            foreignKeyName: 'dados_simulacao_id_cd_fkey'
-            columns: ['id_cd']
-            isOneToOne: false
-            referencedRelation: 'cenario_demanda'
-            referencedColumns: ['id_cd']
-          },
-          {
-            foreignKeyName: 'dados_simulacao_id_cp_fkey'
-            columns: ['id_cp']
-            isOneToOne: false
-            referencedRelation: 'cenario_perdas'
-            referencedColumns: ['id_cp']
-          },
-          {
             foreignKeyName: 'dados_simulacao_id_fonte_fkey'
             columns: ['id_fonte']
             isOneToOne: false
@@ -401,18 +367,18 @@ export type Database = {
             referencedColumns: ['id_fonte']
           },
           {
+            foreignKeyName: 'dados_simulacao_id_mod_fkey'
+            columns: ['id_mod']
+            isOneToOne: false
+            referencedRelation: 'modelos'
+            referencedColumns: ['id_mod']
+          },
+          {
             foreignKeyName: 'dados_simulacao_id_s_fkey'
             columns: ['id_s']
             isOneToOne: false
             referencedRelation: 'simulacao_ssd'
             referencedColumns: ['id_s']
-          },
-          {
-            foreignKeyName: 'dados_simulacao_id_tc_fkey'
-            columns: ['id_tc']
-            isOneToOne: false
-            referencedRelation: 'tipos_cenarios'
-            referencedColumns: ['id_tc']
           },
         ]
       }
@@ -472,6 +438,121 @@ export type Database = {
           nome_grupo?: string
         }
         Relationships: []
+      }
+      indicadores: {
+        Row: {
+          campo_extra: string | null
+          descricao: string | null
+          id_fonte: number | null
+          id_indicador: number
+          unidade: string | null
+        }
+        Insert: {
+          campo_extra?: string | null
+          descricao?: string | null
+          id_fonte?: number | null
+          id_indicador?: number
+          unidade?: string | null
+        }
+        Update: {
+          campo_extra?: string | null
+          descricao?: string | null
+          id_fonte?: number | null
+          id_indicador?: number
+          unidade?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'indicadores_id_fonte_fkey'
+            columns: ['id_fonte']
+            isOneToOne: false
+            referencedRelation: 'fonte_agua'
+            referencedColumns: ['id_fonte']
+          },
+        ]
+      }
+      indicadores_aplicado: {
+        Row: {
+          arquivo: string | null
+          id_ia: number
+          id_indicador: number | null
+          id_s: number | null
+        }
+        Insert: {
+          arquivo?: string | null
+          id_ia?: number
+          id_indicador?: number | null
+          id_s?: number | null
+        }
+        Update: {
+          arquivo?: string | null
+          id_ia?: number
+          id_indicador?: number | null
+          id_s?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'indicadores_aplicado_id_indicador_fkey'
+            columns: ['id_indicador']
+            isOneToOne: false
+            referencedRelation: 'indicadores'
+            referencedColumns: ['id_indicador']
+          },
+          {
+            foreignKeyName: 'indicadores_aplicado_id_s_fkey'
+            columns: ['id_s']
+            isOneToOne: false
+            referencedRelation: 'simulacao_ssd'
+            referencedColumns: ['id_s']
+          },
+        ]
+      }
+      modelos: {
+        Row: {
+          arq_capex_estrategias: string | null
+          arq_capex_perdas: string | null
+          arq_demanda: string | null
+          arq_mod: string | null
+          arq_opex: string | null
+          arq_perdas: string | null
+          cenario: string | null
+          estrategia: string | null
+          id_fonte: number | null
+          id_mod: number
+        }
+        Insert: {
+          arq_capex_estrategias?: string | null
+          arq_capex_perdas?: string | null
+          arq_demanda?: string | null
+          arq_mod?: string | null
+          arq_opex?: string | null
+          arq_perdas?: string | null
+          cenario?: string | null
+          estrategia?: string | null
+          id_fonte?: number | null
+          id_mod?: number
+        }
+        Update: {
+          arq_capex_estrategias?: string | null
+          arq_capex_perdas?: string | null
+          arq_demanda?: string | null
+          arq_mod?: string | null
+          arq_opex?: string | null
+          arq_perdas?: string | null
+          cenario?: string | null
+          estrategia?: string | null
+          id_fonte?: number | null
+          id_mod?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'modelos_id_fonte_fkey'
+            columns: ['id_fonte']
+            isOneToOne: false
+            referencedRelation: 'fonte_agua'
+            referencedColumns: ['id_fonte']
+          },
+        ]
       }
       opex: {
         Row: {
@@ -567,27 +648,33 @@ export type Database = {
           descricao: string | null
           id_s: number
           inicio_perdas: string | null
+          media_reducao_perdas: number | null
           perc_inicial_perdas: number | null
           perdas_auto: boolean | null
           pop_inicial: number | null
+          total_capex: number | null
         }
         Insert: {
           demanda_auto?: boolean | null
           descricao?: string | null
           id_s?: number
           inicio_perdas?: string | null
+          media_reducao_perdas?: number | null
           perc_inicial_perdas?: number | null
           perdas_auto?: boolean | null
           pop_inicial?: number | null
+          total_capex?: number | null
         }
         Update: {
           demanda_auto?: boolean | null
           descricao?: string | null
           id_s?: number
           inicio_perdas?: string | null
+          media_reducao_perdas?: number | null
           perc_inicial_perdas?: number | null
           perdas_auto?: boolean | null
           pop_inicial?: number | null
+          total_capex?: number | null
         }
         Relationships: []
       }
@@ -845,18 +932,16 @@ export const Constants = {
 //   id_s: integer (nullable)
 //   tempo: character varying (nullable)
 //   id_fonte: integer (nullable)
-//   id_tc: integer (nullable)
-//   id_c: integer (nullable)
 //   id_acao: integer (nullable)
-//   id_cd: integer (nullable)
-//   id_cc: integer (nullable)
-//   id_cp: integer (nullable)
 //   volume_captado: double precision (nullable)
-//   capex: double precision (nullable)
+//   capex_estrategia: double precision (nullable)
 //   opex: double precision (nullable)
 //   rebaixamento: double precision (nullable)
 //   demanda: double precision (nullable)
 //   perdas: double precision (nullable)
+//   id_mod: integer (nullable)
+//   capex_perdas: double precision (nullable)
+//   valores_extras: jsonb (nullable, default: '{}'::jsonb)
 // Table: documentos_publicos
 //   id: integer (not null, default: nextval('documentos_publicos_id_seq'::regclass))
 //   nome: text (not null)
@@ -870,6 +955,28 @@ export const Constants = {
 // Table: grupo_acesso
 //   id_ga: integer (not null, default: nextval('grupo_acesso_id_ga_seq'::regclass))
 //   nome_grupo: character varying (not null)
+// Table: indicadores
+//   id_indicador: integer (not null, default: nextval('indicadores_id_indicador_seq'::regclass))
+//   id_fonte: integer (nullable)
+//   descricao: character varying (nullable)
+//   unidade: character varying (nullable)
+//   campo_extra: character varying (nullable)
+// Table: indicadores_aplicado
+//   id_ia: integer (not null, default: nextval('indicadores_aplicado_id_ia_seq'::regclass))
+//   id_s: integer (nullable)
+//   id_indicador: integer (nullable)
+//   arquivo: character varying (nullable)
+// Table: modelos
+//   id_mod: integer (not null, default: nextval('modelos_id_mod_seq'::regclass))
+//   id_fonte: integer (nullable)
+//   cenario: character varying (nullable)
+//   estrategia: character varying (nullable)
+//   arq_mod: text (nullable)
+//   arq_perdas: text (nullable)
+//   arq_demanda: text (nullable)
+//   arq_capex_estrategias: text (nullable)
+//   arq_capex_perdas: text (nullable)
+//   arq_opex: text (nullable)
 // Table: opex
 //   id_oa: integer (not null, default: nextval('opex_id_oa_seq'::regclass))
 //   tempo: character varying (nullable)
@@ -896,6 +1003,8 @@ export const Constants = {
 //   pop_inicial: double precision (nullable)
 //   inicio_perdas: character varying (nullable)
 //   perc_inicial_perdas: double precision (nullable)
+//   total_capex: double precision (nullable)
+//   media_reducao_perdas: double precision (nullable)
 // Table: tipo_cenario_cenario
 //   id_tcc: integer (not null)
 //   id_tc: integer (nullable)
@@ -940,13 +1049,9 @@ export const Constants = {
 //   PRIMARY KEY conteudo_estudo_pkey: PRIMARY KEY (id)
 // Table: dados_simulacao
 //   FOREIGN KEY dados_simulacao_id_acao_fkey: FOREIGN KEY (id_acao) REFERENCES acoes(id_acao) ON DELETE CASCADE
-//   FOREIGN KEY dados_simulacao_id_c_fkey: FOREIGN KEY (id_c) REFERENCES cenarios(id_cenarios) ON DELETE CASCADE
-//   FOREIGN KEY dados_simulacao_id_cc_fkey: FOREIGN KEY (id_cc) REFERENCES cenario_consumo(id_cc) ON DELETE CASCADE
-//   FOREIGN KEY dados_simulacao_id_cd_fkey: FOREIGN KEY (id_cd) REFERENCES cenario_demanda(id_cd) ON DELETE CASCADE
-//   FOREIGN KEY dados_simulacao_id_cp_fkey: FOREIGN KEY (id_cp) REFERENCES cenario_perdas(id_cp) ON DELETE CASCADE
 //   FOREIGN KEY dados_simulacao_id_fonte_fkey: FOREIGN KEY (id_fonte) REFERENCES fonte_agua(id_fonte) ON DELETE CASCADE
+//   FOREIGN KEY dados_simulacao_id_mod_fkey: FOREIGN KEY (id_mod) REFERENCES modelos(id_mod) ON DELETE CASCADE
 //   FOREIGN KEY dados_simulacao_id_s_fkey: FOREIGN KEY (id_s) REFERENCES simulacao_ssd(id_s) ON DELETE CASCADE
-//   FOREIGN KEY dados_simulacao_id_tc_fkey: FOREIGN KEY (id_tc) REFERENCES tipos_cenarios(id_tc) ON DELETE CASCADE
 //   PRIMARY KEY dados_simulacao_pkey: PRIMARY KEY (id_ds)
 // Table: documentos_publicos
 //   PRIMARY KEY documentos_publicos_pkey: PRIMARY KEY (id)
@@ -954,6 +1059,16 @@ export const Constants = {
 //   PRIMARY KEY fonte_agua_pkey: PRIMARY KEY (id_fonte)
 // Table: grupo_acesso
 //   PRIMARY KEY grupo_acesso_pkey: PRIMARY KEY (id_ga)
+// Table: indicadores
+//   FOREIGN KEY indicadores_id_fonte_fkey: FOREIGN KEY (id_fonte) REFERENCES fonte_agua(id_fonte) ON DELETE CASCADE
+//   PRIMARY KEY indicadores_pkey: PRIMARY KEY (id_indicador)
+// Table: indicadores_aplicado
+//   FOREIGN KEY indicadores_aplicado_id_indicador_fkey: FOREIGN KEY (id_indicador) REFERENCES indicadores(id_indicador) ON DELETE CASCADE
+//   FOREIGN KEY indicadores_aplicado_id_s_fkey: FOREIGN KEY (id_s) REFERENCES simulacao_ssd(id_s) ON DELETE CASCADE
+//   PRIMARY KEY indicadores_aplicado_pkey: PRIMARY KEY (id_ia)
+// Table: modelos
+//   FOREIGN KEY modelos_id_fonte_fkey: FOREIGN KEY (id_fonte) REFERENCES fonte_agua(id_fonte) ON DELETE CASCADE
+//   PRIMARY KEY modelos_pkey: PRIMARY KEY (id_mod)
 // Table: opex
 //   PRIMARY KEY opex_pkey: PRIMARY KEY (id_oa)
 // Table: perfis_usuarios
@@ -1073,6 +1188,15 @@ export const Constants = {
 //   Policy "ga_admin" (ALL, PERMISSIVE) roles={public}
 //     USING: is_admin()
 //   Policy "ga_select" (SELECT, PERMISSIVE) roles={public}
+//     USING: true
+// Table: indicadores
+//   Policy "indicadores_all" (ALL, PERMISSIVE) roles={public}
+//     USING: true
+// Table: indicadores_aplicado
+//   Policy "indicadores_aplicado_all" (ALL, PERMISSIVE) roles={public}
+//     USING: true
+// Table: modelos
+//   Policy "modelos_all" (ALL, PERMISSIVE) roles={public}
 //     USING: true
 // Table: opex
 //   Policy "All opex anon" (ALL, PERMISSIVE) roles={anon}

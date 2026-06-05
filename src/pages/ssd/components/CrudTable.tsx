@@ -12,8 +12,9 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Trash2, Edit2, Save, X } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
-export function CrudTable({ table, title, cols, pk, filter }: any) {
+export function CrudTable({ table, title, cols, pk, filter, onSelect, selectedId }: any) {
   const [data, setData] = useState<any[]>([])
   const [form, setForm] = useState<any>({})
   const [editId, setEditId] = useState<any>(null)
@@ -94,7 +95,14 @@ export function CrudTable({ table, title, cols, pk, filter }: any) {
           </TableHeader>
           <TableBody>
             {data.map((row) => (
-              <TableRow key={row[pk]}>
+              <TableRow
+                key={row[pk]}
+                onClick={() => onSelect && onSelect(row[pk])}
+                className={cn(
+                  onSelect ? 'cursor-pointer transition-colors hover:bg-muted/50' : '',
+                  onSelect && selectedId === row[pk] ? 'bg-muted' : '',
+                )}
+              >
                 {cols.map((c: any) => (
                   <TableCell key={c.key} className="py-2 text-sm">
                     {editId === row[pk] ? (

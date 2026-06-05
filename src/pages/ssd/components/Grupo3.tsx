@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { getTable, insertRow, deleteRow } from '@/services/ssd'
 import { CrudTable } from './CrudTable'
 import { useSsdData } from '@/hooks/use-ssd-data'
+import { supabase } from '@/lib/supabase/client'
 import {
   Table,
   TableBody,
@@ -13,8 +14,11 @@ import {
 import { NativeSelect } from './NativeSelect'
 import { Button } from '@/components/ui/button'
 import { Trash2 } from 'lucide-react'
+import { FilePickerModal } from './FilePickerModal'
+import { useToast } from '@/hooks/use-toast'
 
 export function Grupo3() {
+  const { toast } = useToast()
   const { fonte_agua, tipos_cenarios, cenarios, acoes, simulacao_ssd } = useSsdData()
   const [activeSim, setActiveSim] = useState('')
   const [cs, setCs] = useState<any[]>([])
@@ -45,12 +49,61 @@ export function Grupo3() {
   const getC = (id: any) => cenarios.find((x: any) => x.id_cenarios === id)?.cenarios
   const getAcao = (id: any) => acoes.find((x: any) => x.id_acao === id)?.descricao
 
+  // Indicators Section
+  const [selectedSim, setSelectedSim] = useState<number | null>(null)
+  const [indicadores, setIndicadores] = useState<any[]>([])
+  const [indicadoresAplicado, setIndicadoresAplicado] = useState<any[]>([])
+  const [idIndicador, setIdIndicador] = useState('')
+  const [arquivoInd, setArquivoInd] = useState('')
+  const [indPickerOpen, setIndPickerOpen] = useState(false)
+
+  const loadIndicadores = async () => setIndicadores(await getTable('indicadores'))
+
+  const loadIndicadoresAplicado = async () => {
+    if (!selectedSim) return setIndicadoresAplicado([])
+    const { data } = await supabase.from('indicadores_aplicado').select('*').eq('id_s', selectedSim)
+    setIndicadoresAplicado(data || [])
+  }
+
+  useEffect(() => {
+    loadIndicadores()
+  }, [])
+  useEffect(() => {
+    loadIndicadoresAplicado()
+  }, [selectedSim])
+
+  const handleIncludeIndicador = async () => {
+    if (!selectedSim)
+      return toast({ title: 'Selecione uma simulação primeiro', variant: 'destructive' })
+    if (!idIndicador || !arquivoInd)
+      return toast({ title: 'Preencha o indicador e selecione o arquivo', variant: 'destructive' })
+
+    await insertRow('indicadores_aplicado', {
+      id_s: selectedSim,
+      id_indicador: parseInt(idIndicador),
+      arquivo: arquivoInd,
+    })
+    setIdIndicador('')
+    setArquivoInd('')
+    loadIndicadoresAplicado()
+  }
+
+  const handleDeleteIndicador = async (id: number) => {
+    await deleteRow('indicadores_aplicado', 'id_ia', id)
+    loadIndicadoresAplicado()
+  }
+
+  const getIndicadorDesc = (id: number) =>
+    indicadores.find((i) => i.id_indicador === id)?.descricao || id
+
   return (
     <div className="space-y-6">
       <CrudTable
         table="simulacao_ssd"
-        title="Simulações"
+        title="Simulações (clique para selecionar)"
         pk="id_s"
+        onSelect={setSelectedSim}
+        selectedId={selectedSim}
         cols={[
           { key: 'descricao', label: 'Descrição da Simulação' },
           { key: 'pop_inicial', label: 'População Inicial' },
@@ -164,6 +217,102 @@ export function Grupo3() {
           </>
         )}
       </div>
+
+      {selectedSim && (
+        <div className="bg-white p-4 shadow rounded border space-y-4 animate-fade-in">
+          <h3 className="font-semibold text-lg">Indicadores aplicados na simulação selecionada</h3>
+
+          <div className="flex flex-col md:flex-row gap-4 items-end">
+            <div className="flex-1 w-full">
+              <label className="text-sm font-semibold mb-1 block">Indicador</label>
+              <NativeSelect
+                options={indicadores.map((i) => ({ value: i.id_indicador, label: i.descricao }))}
+                value={idIndicador}
+                onChange={setIdIndicador}
+                placeholder="Selecione um indicador..."
+              />
+            </div>
+            <div className="flex-1 w-full">
+              <label className="text-sm font-semibold mb-1 block">Arquivo de Dados (.csv)</label>
+              <div className="flex gap-2 items-center w-full">
+                <Button
+                  variant="outline"
+                  onClick={() => setIndPickerOpen(true)}
+                  className="flex-1 truncate max-w-[250px]"
+                >
+                  {arquivoInd || 'Selecionar arquivo'}
+                </Button>
+                {arquivoInd && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setArquivoInd('')}
+                    title="Limpar"
+                  >
+                    <Trash2 className="w-4 h-4 text-red-500" />
+                  </Button>
+                )}
+              </div>
+            </div>
+            <Button onClick={handleIncludeIndicador} className="w-full md:w-auto">
+              Incluir indicador
+            </Button>
+          </div>
+
+          <div className="overflow-x-auto mt-4">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="py-2">Indicador</TableHead>
+                  <TableHead className="py-2">Arquivo</TableHead>
+                  <TableHead className="py-2 w-12"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {indicadoresAplicado.map((row) => (
+                  <TableRow key={row.id_ia}>
+                    <TableCell className="py-1 text-sm">
+                      {getIndicadorDesc(row.id_indicador)}
+                    </TableCell>
+                    <TableCell className="py-1 text-sm">{row.arquivo}</TableCell>
+                    <TableCell className="py-1 text-sm">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => handleDeleteIndicador(row.id_ia)}
+                      >
+                        <Trash2 className="w-4 h-4 text-red-500" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {indicadoresAplicado.length === 0 && (
+                  <TableRow>
+                    <TableCell
+                      colSpan={3}
+                      className="py-4 text-center text-muted-foreground text-sm"
+                    >
+                      Nenhum indicador vinculado a esta simulação.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
+      )}
+
+      <FilePickerModal
+        open={indPickerOpen}
+        onOpenChange={setIndPickerOpen}
+        bucket="dados_brutos"
+        folder="indicadores"
+        onSelect={(fileName) => {
+          setArquivoInd(fileName)
+          setIndPickerOpen(false)
+        }}
+      />
     </div>
   )
 }
