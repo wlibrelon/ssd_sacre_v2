@@ -1193,11 +1193,13 @@ export const Constants = {
 //   Policy "indicadores_all" (ALL, PERMISSIVE) roles={public}
 //     USING: true
 // Table: indicadores_aplicado
-//   Policy "indicadores_aplicado_all" (ALL, PERMISSIVE) roles={public}
+//   Policy "indicadores_aplicado_all" (ALL, PERMISSIVE) roles={authenticated}
 //     USING: true
+//     WITH CHECK: true
 // Table: modelos
-//   Policy "modelos_all" (ALL, PERMISSIVE) roles={public}
+//   Policy "modelos_all" (ALL, PERMISSIVE) roles={authenticated}
 //     USING: true
+//     WITH CHECK: true
 // Table: opex
 //   Policy "All opex anon" (ALL, PERMISSIVE) roles={anon}
 //     USING: true

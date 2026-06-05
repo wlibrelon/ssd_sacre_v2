@@ -3,9 +3,10 @@ import { supabase } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
-import { Trash2, Edit2 } from 'lucide-react'
+import { Trash2, Edit2, Search } from 'lucide-react'
 import { NativeSelect } from '../components/NativeSelect'
 import { Checkbox } from '@/components/ui/checkbox'
+import { FilePickerModal } from '../components/FilePickerModal'
 
 export function SimulacoesConfig() {
   const [simulacoes, setSimulacoes] = useState<any[]>([])
@@ -25,6 +26,7 @@ export function SimulacoesConfig() {
   const [selectedSim, setSelectedSim] = useState<number | null>(null)
   const [indicadoresAplicados, setIndicadoresAplicados] = useState<any[]>([])
   const [indForm, setIndForm] = useState({ id_indicador: '', arquivo: '' })
+  const [indPickerOpen, setIndPickerOpen] = useState(false)
 
   const loadData = async () => {
     const [sRes, iRes, fRes] = await Promise.all([
@@ -237,11 +239,11 @@ export function SimulacoesConfig() {
           <h4 className="font-semibold mb-4 text-primary">
             Indicadores aplicados na simulação selecionada
           </h4>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 items-end">
             <div>
-              <label className="text-xs font-semibold">Indicador</label>
+              <label className="text-xs font-semibold mb-1 block">Indicador</label>
               <NativeSelect
-                className="w-full mt-1"
+                className="w-full"
                 value={indForm.id_indicador}
                 onChange={(v) => setIndForm({ ...indForm, id_indicador: v })}
                 options={indicadores.map((i) => ({ value: i.id_indicador, label: i.descricao }))}
@@ -249,20 +251,34 @@ export function SimulacoesConfig() {
               />
             </div>
             <div>
-              <label className="text-xs font-semibold">Arquivo (pasta indicadores/)</label>
-              <NativeSelect
-                className="w-full mt-1"
-                value={indForm.arquivo}
-                onChange={(v) => setIndForm({ ...indForm, arquivo: v })}
-                options={arquivos.map((f) => ({ value: f.name, label: f.name }))}
-                placeholder="Selecione"
-              />
+              <label className="text-xs font-semibold mb-1 block">Arquivo de dados</label>
+              <div className="flex gap-2 items-center w-full">
+                <Button
+                  variant="outline"
+                  onClick={() => setIndPickerOpen(true)}
+                  className="flex-1 truncate justify-start"
+                >
+                  <Search className="w-4 h-4 mr-2" />
+                  {indForm.arquivo || 'Selecionar arquivo...'}
+                </Button>
+                {indForm.arquivo && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setIndForm({ ...indForm, arquivo: '' })}
+                    title="Limpar"
+                  >
+                    <Trash2 className="w-4 h-4 text-red-500" />
+                  </Button>
+                )}
+              </div>
             </div>
-            <div className="flex items-end">
-              <Button onClick={handleAddInd}>Incluir indicador</Button>
+            <div>
+              <Button onClick={handleAddInd} className="w-full">
+                Incluir indicador
+              </Button>
             </div>
           </div>
-
           <div className="border rounded bg-white">
             <table className="w-full text-sm">
               <thead className="bg-slate-100">
@@ -301,6 +317,17 @@ export function SimulacoesConfig() {
           </div>
         </div>
       )}
+
+      <FilePickerModal
+        open={indPickerOpen}
+        onOpenChange={setIndPickerOpen}
+        bucket="dados_brutos"
+        folder="indicadores"
+        onSelect={(fileName) => {
+          setIndForm({ ...indForm, arquivo: fileName })
+          setIndPickerOpen(false)
+        }}
+      />
     </div>
   )
 }

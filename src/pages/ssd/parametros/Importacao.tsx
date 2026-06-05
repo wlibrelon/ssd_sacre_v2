@@ -3,12 +3,13 @@ import { supabase } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import { NativeSelect } from '../components/NativeSelect'
+import { Checkbox } from '@/components/ui/checkbox'
 
 export function Importacao() {
   const [simulacoes, setSimulacoes] = useState<any[]>([])
   const [modelos, setModelos] = useState<any[]>([])
   const [selectedSim, setSelectedSim] = useState('')
-  const [selectedModels, setSelectedModels] = useState<Record<string, number>>({})
+  const [selectedModels, setSelectedModels] = useState<Record<number, number | null>>({})
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
@@ -22,11 +23,9 @@ export function Importacao() {
       .then((res) => setModelos(res.data || []))
   }, [])
 
-  const handleSelectModel = (id_fonte: number, id_mod: number) => {
+  const handleSelectModel = (id_fonte: number, id_mod: number | null) => {
     setSelectedModels((prev) => ({ ...prev, [id_fonte]: id_mod }))
   }
-
-  const fontesUnicas = Array.from(new Set(modelos.map((m) => m.id_fonte)))
 
   const fetchCSV = async (path: string) => {
     if (!path) return []
@@ -106,13 +105,10 @@ export function Importacao() {
 
       const rows = Object.values(mergedByTempo)
       if (rows.length > 0) {
-        await supabase
-          .from('dados_simulacao')
-          .delete()
-          .eq('id_s', selectedSim)
-          .eq('id_mod', mod.id_mod)
         for (let i = 0; i < rows.length; i += 500) {
-          await supabase.from('dados_simulacao').insert(rows.slice(i, i + 500))
+          await supabase
+            .from('dados_simulacao')
+            .upsert(rows.slice(i, i + 500), { onConflict: 'id_s,id_mod,id_fonte,tempo' })
         }
       }
     }
@@ -153,38 +149,40 @@ export function Importacao() {
         />
       </div>
 
-      <div className="border rounded overflow-hidden">
+      <div className="border rounded overflow-hidden max-h-96 overflow-y-auto">
         <table className="w-full text-sm">
-          <thead className="bg-slate-100">
+          <thead className="bg-slate-100 sticky top-0 z-10">
             <tr>
+              <th className="p-2 w-12 text-center">Imp</th>
               <th className="p-2 text-left">Fonte de Água</th>
-              <th className="p-2 text-left">Modelo Selecionado</th>
+              <th className="p-2 text-left">Cenário</th>
+              <th className="p-2 text-left">Estratégia</th>
             </tr>
           </thead>
           <tbody className="divide-y">
-            {fontesUnicas.map((id_fonte) => {
-              const fonteName = modelos.find((m) => m.id_fonte === id_fonte)?.fonte_agua?.nome_fonte
-              const modelsForFont = modelos.filter((m) => m.id_fonte === id_fonte)
-              return (
-                <tr key={id_fonte} className="hover:bg-slate-50">
-                  <td className="p-2 font-medium">{fonteName}</td>
-                  <td className="p-2">
-                    <NativeSelect
-                      className="w-full"
-                      value={selectedModels[id_fonte] || ''}
-                      onChange={(v) => handleSelectModel(id_fonte, Number(v))}
-                      options={[
-                        { value: '', label: 'Não importar' },
-                        ...modelsForFont.map((m) => ({
-                          value: m.id_mod,
-                          label: `${m.cenario} - ${m.estrategia}`,
-                        })),
-                      ]}
-                    />
-                  </td>
-                </tr>
-              )
-            })}
+            {modelos.map((m) => (
+              <tr key={m.id_mod} className="hover:bg-slate-50">
+                <td className="p-2 text-center">
+                  <Checkbox
+                    checked={selectedModels[m.id_fonte] === m.id_mod}
+                    onCheckedChange={(c) => {
+                      if (c) handleSelectModel(m.id_fonte, m.id_mod)
+                      else handleSelectModel(m.id_fonte, null)
+                    }}
+                  />
+                </td>
+                <td className="p-2 font-medium">{m.fonte_agua?.nome_fonte}</td>
+                <td className="p-2">{m.cenario}</td>
+                <td className="p-2">{m.estrategia}</td>
+              </tr>
+            ))}
+            {modelos.length === 0 && (
+              <tr>
+                <td colSpan={4} className="p-4 text-center text-muted-foreground">
+                  Nenhum modelo cadastrado
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>

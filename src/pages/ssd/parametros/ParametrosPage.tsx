@@ -6,6 +6,9 @@ import {
 } from '@/components/ui/accordion'
 import { GrupoUpload } from '../components/GrupoUpload'
 import { GrupoModelos } from '../components/GrupoModelos'
+import { Indicadores } from './Indicadores'
+import { SimulacoesConfig } from './SimulacoesConfig'
+import { Importacao } from './Importacao'
 
 export default function ParametrosPage() {
   return (
@@ -33,6 +36,33 @@ export default function ParametrosPage() {
           </AccordionTrigger>
           <AccordionContent className="pt-2 pb-6">
             <GrupoModelos />
+          </AccordionContent>
+        </AccordionItem>
+
+        <AccordionItem value="indicadores" className="border rounded-lg px-4 bg-white shadow-sm">
+          <AccordionTrigger className="text-xl font-bold hover:no-underline text-left">
+            Gestão de Indicadores
+          </AccordionTrigger>
+          <AccordionContent className="pt-2 pb-6">
+            <Indicadores />
+          </AccordionContent>
+        </AccordionItem>
+
+        <AccordionItem value="simulacoes" className="border rounded-lg px-4 bg-white shadow-sm">
+          <AccordionTrigger className="text-xl font-bold hover:no-underline text-left">
+            Configuração de Simulações
+          </AccordionTrigger>
+          <AccordionContent className="pt-2 pb-6">
+            <SimulacoesConfig />
+          </AccordionContent>
+        </AccordionItem>
+
+        <AccordionItem value="importacao" className="border rounded-lg px-4 bg-white shadow-sm">
+          <AccordionTrigger className="text-xl font-bold hover:no-underline text-left">
+            Importação de Dados
+          </AccordionTrigger>
+          <AccordionContent className="pt-2 pb-6">
+            <Importacao />
           </AccordionContent>
         </AccordionItem>
       </Accordion>
