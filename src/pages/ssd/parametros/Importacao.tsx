@@ -31,7 +31,7 @@ export function Importacao() {
   const normalizePath = (path: string): string => {
     return path
       .trim()
-      .replace(/\\/g, '/') // troca backslash por slash
+      .replace(/\/g, '/') // troca backslash por slash
       .replace(/\/+/g, '/') // remove barras duplicadas
       .replace(/^\//, '') // remove barra inicial se houver
   }
@@ -42,11 +42,8 @@ export function Importacao() {
   ): Promise<{ tempo: string; valor: number }[]> => {
     // CORRIGIDO: checar null/undefined/string vazia explicitamente
     if (path == null || path.trim() === '') return []
-
     const cleanPath = normalizePath(path)
-
     const { data, error } = await supabase.storage.from('dados_brutos').download(cleanPath)
-
     // CORRIGIDO: logar o erro real em vez de engolir silenciosamente
     if (error) {
       console.error(`[fetchCSV] Erro ao baixar "${cleanPath}" (${label}):`, error.message)
@@ -54,30 +51,25 @@ export function Importacao() {
       return []
     }
     if (!data) return []
-
     const text = await data.text()
     const lines = text
       .split('\n')
       .map((l) => l.trim())
       .filter((l) => l)
     if (lines.length < 2) return []
-
     const header = lines[0].toLowerCase().split(/[,;]/)
-
     // tIdx: coluna com 'tempo'; fallback para coluna 0
     const tIdx = header.findIndex((h) => h.includes('tempo'))
     const tIdxFinal = tIdx >= 0 ? tIdx : 0
     // vIdx: primeiro índice diferente de tIdxFinal
     const vIdx = header.findIndex((_, i) => i !== tIdxFinal)
     const vIdxFinal = vIdx >= 0 ? vIdx : tIdxFinal === 0 ? 1 : 0
-
     return lines
       .slice(1)
       .map((l) => {
         const parts = l.split(/[,;]/)
         let tempo = parts[tIdxFinal] ? parts[tIdxFinal].trim() : ''
         if (tempo.includes('-')) tempo = tempo.replace(/-/g, '/')
-
         let valor = 0
         if (parts[vIdxFinal]) {
           const raw = parts[vIdxFinal].trim()
@@ -92,18 +84,14 @@ export function Importacao() {
 
   const handleImport = async () => {
     if (!selectedSim) return toast.error('Selecione uma simulação')
-
     // BUG 7 CORRIGIDO: validar que selectedSim é um número válido antes de usar
     const idSimulacao = parseInt(selectedSim, 10)
     if (isNaN(idSimulacao)) return toast.error('ID de simulação inválido')
-
     const modsToImport = Object.values(selectedModels).filter(
       (v) => v != null && v !== 0,
     ) as number[]
     if (modsToImport.length === 0) return toast.error('Selecione ao menos um modelo')
-
     setLoading(true)
-
     const { data: inds } = await supabase
       .from('indicadores_aplicado')
       .select('*, indicadores(*)')
@@ -112,11 +100,8 @@ export function Importacao() {
     for (const id_mod of modsToImport) {
       const mod = modelos.find((m) => m.id_mod === id_mod)
       if (!mod) continue
-      // Monta caminho completo: pasta fixa do bucket + nome do arquivo salvo no BD
-      const p = (folder: string, file: string | null | undefined) =>
-        file ? `${folder}/${file.trim()}` : null
 
-      // Monta caminho completo: pasta fixa no bucket + nome do arquivo salvo no BD
+      // ✅ CORRIGIDO: Monta caminho completo - ÚNICA DECLARAÇÃO
       const p = (folder: string, file: string | null | undefined) =>
         file ? `${folder}/${file.trim()}` : null
 
@@ -135,8 +120,7 @@ export function Importacao() {
         fetchCSV(p('opex', mod.arq_opex), `opex [${mod.fonte_agua?.nome_fonte}]`),
       ])
 
-      // BUG 3 CORRIGIDO: incluir TODOS os arrays na união de tempos,
-      // garantindo que linhas de capex/opex também sejam consideradas
+      // BUG 3 CORRIGIDO: incluir TODOS os arrays na união de tempos
       const allTempos = new Set([
         ...modData.map((d) => d.tempo),
         ...perdasData.map((d) => d.tempo),
@@ -146,17 +130,15 @@ export function Importacao() {
         ...opexData.map((d) => d.tempo),
       ])
 
-      // BUG 6 CORRIGIDO: avisar quando nenhum tempo foi encontrado para o modelo
+      // BUG 6 CORRIGIDO: avisar quando nenhum tempo foi encontrado
       if (allTempos.size === 0) {
         toast.error(`Nenhum dado encontrado nos arquivos do modelo: ${mod.fonte_agua?.nome_fonte}`)
         continue
       }
 
       const mergedByTempo: Record<string, any> = {}
-
       allTempos.forEach((t) => {
         mergedByTempo[t] = {
-          // BUG 7 CORRIGIDO: usar idSimulacao já validado (número inteiro)
           id_s: idSimulacao,
           id_mod: mod.id_mod,
           id_fonte: mod.id_fonte,
@@ -191,13 +173,9 @@ export function Importacao() {
       if (rows.length > 0) {
         for (let i = 0; i < rows.length; i += 500) {
           const batch = rows.slice(i, i + 500)
-          // BUG 5 CORRIGIDO: ignoringDuplicates como fallback caso a constraint UNIQUE
-          // não esteja configurada; se o upsert continuar falhando, verificar se existe
-          // a constraint: UNIQUE(id_s, id_mod, id_fonte, tempo) na tabela dados_simulacao
           const { error } = await supabase
             .from('dados_simulacao')
             .upsert(batch, { onConflict: 'id_s,id_mod,id_fonte,tempo', ignoreDuplicates: false })
-
           if (error) {
             console.error('Upsert error:', error)
             toast.error(`Erro ao importar lote de ${mod.fonte_agua?.nome_fonte}: ${error.message}`)
@@ -208,8 +186,7 @@ export function Importacao() {
       }
     }
 
-    // BUG 8 CORRIGIDO: filtrar também por id_mod para não misturar dados de outras simulações
-    // Buscamos apenas os modelos recém-importados
+    // BUG 8 CORRIGIDO: filtrar também por id_mod
     const { data: simData } = await supabase
       .from('dados_simulacao')
       .select('capex_estrategia, capex_perdas, perdas')
@@ -247,7 +224,6 @@ export function Importacao() {
           placeholder="Selecione"
         />
       </div>
-
       <div className="border rounded overflow-hidden max-h-96 overflow-y-auto">
         <table className="w-full text-sm">
           <thead className="bg-slate-100 sticky top-0 z-10">
@@ -285,7 +261,6 @@ export function Importacao() {
           </tbody>
         </table>
       </div>
-
       <div className="flex justify-end">
         <Button onClick={handleImport} disabled={loading || !selectedSim} className="w-48">
           {loading ? 'Importando...' : 'Executar Importação'}
