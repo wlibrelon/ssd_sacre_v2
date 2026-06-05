@@ -31,8 +31,8 @@ export function Importacao() {
   const normalizePath = (path: string): string => {
     return path
       .trim()
-      .replace(/\/g, '/') // troca backslash por slash
-      .replace(/\/+/g, '/') // remove barras duplicadas 
+      .replace(/\\/g, '/') // ✅ CORRIGIDO: troca backslash por slash
+      .replace(/\/+/g, '/') // remove barras duplicadas
       .replace(/^\//, '') // remove barra inicial se houver
   }
 
@@ -40,11 +40,9 @@ export function Importacao() {
     path: string | null | undefined,
     label = '',
   ): Promise<{ tempo: string; valor: number }[]> => {
-    // CORRIGIDO: checar null/undefined/string vazia explicitamente
     if (path == null || path.trim() === '') return []
     const cleanPath = normalizePath(path)
     const { data, error } = await supabase.storage.from('dados_brutos').download(cleanPath)
-    // CORRIGIDO: logar o erro real em vez de engolir silenciosamente
     if (error) {
       console.error(`[fetchCSV] Erro ao baixar "${cleanPath}" (${label}):`, error.message)
       toast.error(`Arquivo não encontrado no storage: ${cleanPath}`)
@@ -58,10 +56,8 @@ export function Importacao() {
       .filter((l) => l)
     if (lines.length < 2) return []
     const header = lines[0].toLowerCase().split(/[,;]/)
-    // tIdx: coluna com 'tempo'; fallback para coluna 0
     const tIdx = header.findIndex((h) => h.includes('tempo'))
     const tIdxFinal = tIdx >= 0 ? tIdx : 0
-    // vIdx: primeiro índice diferente de tIdxFinal
     const vIdx = header.findIndex((_, i) => i !== tIdxFinal)
     const vIdxFinal = vIdx >= 0 ? vIdx : tIdxFinal === 0 ? 1 : 0
     return lines
@@ -73,7 +69,6 @@ export function Importacao() {
         let valor = 0
         if (parts[vIdxFinal]) {
           const raw = parts[vIdxFinal].trim()
-          // Detecta formato: vírgula = PT-BR (milhar=ponto, decimal=vírgula)
           const vRaw = raw.includes(',') ? raw.replace(/\./g, '').replace(',', '.') : raw
           valor = parseFloat(vRaw)
         }
@@ -84,7 +79,6 @@ export function Importacao() {
 
   const handleImport = async () => {
     if (!selectedSim) return toast.error('Selecione uma simulação')
-    // BUG 7 CORRIGIDO: validar que selectedSim é um número válido antes de usar
     const idSimulacao = parseInt(selectedSim, 10)
     if (isNaN(idSimulacao)) return toast.error('ID de simulação inválido')
     const modsToImport = Object.values(selectedModels).filter(
@@ -101,7 +95,7 @@ export function Importacao() {
       const mod = modelos.find((m) => m.id_mod === id_mod)
       if (!mod) continue
 
-      // ✅ CORRIGIDO: Monta caminho completo - ÚNICA DECLARAÇÃO
+      // ✅ ÚNICA DECLARAÇÃO DE p
       const p = (folder: string, file: string | null | undefined) =>
         file ? `${folder}/${file.trim()}` : null
 
@@ -120,7 +114,6 @@ export function Importacao() {
         fetchCSV(p('opex', mod.arq_opex), `opex [${mod.fonte_agua?.nome_fonte}]`),
       ])
 
-      // BUG 3 CORRIGIDO: incluir TODOS os arrays na união de tempos
       const allTempos = new Set([
         ...modData.map((d) => d.tempo),
         ...perdasData.map((d) => d.tempo),
@@ -130,7 +123,6 @@ export function Importacao() {
         ...opexData.map((d) => d.tempo),
       ])
 
-      // BUG 6 CORRIGIDO: avisar quando nenhum tempo foi encontrado
       if (allTempos.size === 0) {
         toast.error(`Nenhum dado encontrado nos arquivos do modelo: ${mod.fonte_agua?.nome_fonte}`)
         continue
@@ -186,7 +178,6 @@ export function Importacao() {
       }
     }
 
-    // BUG 8 CORRIGIDO: filtrar também por id_mod
     const { data: simData } = await supabase
       .from('dados_simulacao')
       .select('capex_estrategia, capex_perdas, perdas')
