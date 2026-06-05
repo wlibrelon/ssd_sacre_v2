@@ -91,23 +91,48 @@ export default function Cenarios() {
   }
 
   const applyFinancialMetrics = async (simId: number) => {
+    // ✅ CORRIGIDO: Validar simId antes de usar
+    if (typeof simId !== 'number' || isNaN(simId)) {
+      console.error('[applyFinancialMetrics] ID de simulação inválido:', simId)
+      return []
+    }
+
+    console.log('[applyFinancialMetrics] Iniciando com filtros:', {
+      id_s: filters.id_s,
+      ano_inicio: filters.ano_inicio,
+      ano_fim: filters.ano_fim,
+      meses: filters.meses?.length || 0,
+    })
+
     let q = supabase.from('dados_simulacao').select('*')
-    if (filters.id_s) q = q.eq('id_s', filters.id_s)
-    if (filters.ano_inicio) q = q.gte('tempo', `${filters.ano_inicio}-01`)
-    if (filters.ano_fim) q = q.lte('tempo', `${filters.ano_fim}-12`)
+
+    // ✅ CORRIGIDO: Usar simId validado
+    q = q.eq('id_s', simId)
+
+    // ✅ CORRIGIDO: Validar anos antes de usar
+    if (filters.ano_inicio && !isNaN(parseInt(filters.ano_inicio))) {
+      q = q.gte('tempo', `${filters.ano_inicio}-01`)
+    }
+
+    if (filters.ano_fim && !isNaN(parseInt(filters.ano_fim))) {
+      q = q.lte('tempo', `${filters.ano_fim}-12`)
+    }
+
+    // ✅ CORRIGIDO: Construir OR corretamente para Supabase
     if (filters.meses && filters.meses.length > 0) {
-      const orString = filters.meses
+      const orConditions = filters.meses
         .map((m: string) => `tempo.ilike.%-${m.padStart(2, '0')}`)
         .join(',')
-      q = q.or(orString)
+      console.log('[applyFinancialMetrics] Condições OR para meses:', orConditions)
+      q = q.or(orConditions)
     }
 
     const [
-      { data: capexAcao },
-      { data: acoesFonte },
-      { data: capexPerdas },
-      { data: opexData },
-      { data: dsData, error },
+      { data: capexAcao, error: capexAcaoError },
+      { data: acoesFonte, error: acoesFonteError },
+      { data: capexPerdas, error: capexPerdasError },
+      { data: opexData, error: opexError },
+      { data: dsData, error: dsError },
     ] = await Promise.all([
       supabase.from('capex_acao').select('*'),
       supabase.from('acoes_fonte').select('*'),
@@ -116,9 +141,56 @@ export default function Cenarios() {
       q,
     ])
 
-    if (error) console.error(error)
-    if (!dsData) return []
+    // ✅ CORRIGIDO: Logging detalhado de erros
+    if (dsError) {
+      console.error('[applyFinancialMetrics] Erro ao buscar dados_simulacao:', dsError)
+      return []
+    }
 
+    if (capexAcaoError) console.error('[applyFinancialMetrics] Erro capexAcao:', capexAcaoError)
+    if (acoesFonteError) console.error('[applyFinancialMetrics] Erro acoesFonte:', acoesFonteError)
+    if (capexPerdasError)
+      console.error('[applyFinancialMetrics] Erro capexPerdas:', capexPerdasError)
+    if (opexError) console.error('[applyFinancialMetrics] Erro opex:', opexError)
+
+    // ✅ CORRIGIDO: Validar dsData antes de processar
+    if (!dsData || dsData.length === 0) {
+      console.warn('[applyFinancialMetrics] Nenhum dado encontrado com filtros atuais')
+      console.warn(
+        '[applyFinancialMetrics] Tentando fallback: buscar TODOS os dados para id_s',
+        simId,
+      )
+
+      // Fallback: buscar sem filtros de período/mês para diagnosticar
+      const { data: fallbackData, error: fallbackError } = await supabase
+        .from('dados_simulacao')
+        .select('*')
+        .eq('id_s', simId)
+        .limit(10)
+
+      if (fallbackError) {
+        console.error('[applyFinancialMetrics] Erro no fallback:', fallbackError)
+        return []
+      }
+
+      if (!fallbackData || fallbackData.length === 0) {
+        console.error(
+          '[applyFinancialMetrics] Nenhum dado encontrado NEM MESMO no fallback para id_s:',
+          simId,
+        )
+        return []
+      }
+
+      console.warn(
+        '[applyFinancialMetrics] Fallback retornou dados. Problema está nos filtros de período/mês',
+      )
+      console.log('[applyFinancialMetrics] Amostra de dados disponíveis:', fallbackData.slice(0, 3))
+      return []
+    }
+
+    console.log('[applyFinancialMetrics] Dados encontrados:', dsData.length, 'registros')
+
+    // ✅ CORRIGIDO: Processar dados com validação
     const capexAcaoMap: Record<string, number> = {}
     if (capexAcao && acoesFonte) {
       capexAcao.forEach((ca) => {
@@ -159,19 +231,35 @@ export default function Cenarios() {
         newOpex = opexMap[row.tempo] || 0
       }
 
-      if (row.capex !== newCapex || row.opex !== newOpex) {
-        const updatedRow = { ...row, capex: newCapex, opex: newOpex }
+      if (row.capex_estrategia !== newCapex || row.opex !== newOpex) {
+        const updatedRow = { ...row, capex_estrategia: newCapex, opex: newOpex }
         updates.push(updatedRow)
         return updatedRow
       }
       return row
     })
 
+    // ✅ CORRIGIDO: Upsert em lotes com tratamento de erro
     if (updates.length > 0) {
       const batchSize = 1000
       for (let i = 0; i < updates.length; i += batchSize) {
-        await supabase.from('dados_simulacao').upsert(updates.slice(i, i + batchSize))
+        const batch = updates.slice(i, i + batchSize)
+        const { error: upsertError } = await supabase
+          .from('dados_simulacao')
+          .upsert(batch, { onConflict: 'id_s,id_mod,id_fonte,tempo' })
+
+        if (upsertError) {
+          console.error(
+            `[applyFinancialMetrics] Erro ao fazer upsert do lote ${i / batchSize}:`,
+            upsertError,
+          )
+        }
       }
+      console.log(
+        '[applyFinancialMetrics] Upsert concluído:',
+        updates.length,
+        'registros atualizados',
+      )
     }
 
     return dsUpdated
