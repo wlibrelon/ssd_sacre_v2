@@ -112,14 +112,27 @@ export function Importacao() {
     for (const id_mod of modsToImport) {
       const mod = modelos.find((m) => m.id_mod === id_mod)
       if (!mod) continue
+      // Monta caminho completo: pasta fixa do bucket + nome do arquivo salvo no BD
+      const p = (folder: string, file: string | null | undefined) =>
+        file ? `${folder}/${file.trim()}` : null
+
+      // Monta caminho completo: pasta fixa no bucket + nome do arquivo salvo no BD
+      const p = (folder: string, file: string | null | undefined) =>
+        file ? `${folder}/${file.trim()}` : null
 
       const [modData, perdasData, demData, capexEData, capexPData, opexData] = await Promise.all([
-        fetchCSV(mod.arq_mod, `volume_captado [${mod.fonte_agua?.nome_fonte}]`),
-        fetchCSV(mod.arq_perdas, `perdas [${mod.fonte_agua?.nome_fonte}]`),
-        fetchCSV(mod.arq_demanda, `demanda [${mod.fonte_agua?.nome_fonte}]`),
-        fetchCSV(mod.arq_capex_estrategias, `capex_estrategia [${mod.fonte_agua?.nome_fonte}]`),
-        fetchCSV(mod.arq_capex_perdas, `capex_perdas [${mod.fonte_agua?.nome_fonte}]`),
-        fetchCSV(mod.arq_opex, `opex [${mod.fonte_agua?.nome_fonte}]`),
+        fetchCSV(p('modelos', mod.arq_mod), `volume_captado [${mod.fonte_agua?.nome_fonte}]`),
+        fetchCSV(p('perdas', mod.arq_perdas), `perdas [${mod.fonte_agua?.nome_fonte}]`),
+        fetchCSV(p('demadas', mod.arq_demanda), `demanda [${mod.fonte_agua?.nome_fonte}]`),
+        fetchCSV(
+          p('capex_estrategias', mod.arq_capex_estrategias),
+          `capex_estrategia [${mod.fonte_agua?.nome_fonte}]`,
+        ),
+        fetchCSV(
+          p('capex_perdas', mod.arq_capex_perdas),
+          `capex_perdas [${mod.fonte_agua?.nome_fonte}]`,
+        ),
+        fetchCSV(p('opex', mod.arq_opex), `opex [${mod.fonte_agua?.nome_fonte}]`),
       ])
 
       // BUG 3 CORRIGIDO: incluir TODOS os arrays na união de tempos,
