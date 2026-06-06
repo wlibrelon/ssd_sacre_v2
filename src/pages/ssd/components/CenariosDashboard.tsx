@@ -34,6 +34,21 @@ const CHART_COLORS = [
   '#4f46e5',
 ]
 
+const MONTH_LABELS = [
+  'Jan',
+  'Fev',
+  'Mar',
+  'Abr',
+  'Mai',
+  'Jun',
+  'Jul',
+  'Ago',
+  'Set',
+  'Out',
+  'Nov',
+  'Dez',
+]
+
 const ChartWrapper = ({ title, data, children }: any) => {
   const [isOpen, setIsOpen] = useState(false)
 
@@ -93,6 +108,163 @@ const ChartWrapper = ({ title, data, children }: any) => {
   )
 }
 
+// ── Mapa de calor de déficit ──────────────────────────────────────────────────
+// deficitMonths: array de strings no formato "AAAA/MM"
+// deficitValues: Record<"AAAA/MM", number> com o valor do saldo (negativo = déficit)
+const DeficitHeatmap = ({
+  deficitMonths,
+  allMonths,
+  deficitValues,
+}: {
+  deficitMonths: string[]
+  allMonths: string[]
+  deficitValues: Record<string, number>
+}) => {
+  if (allMonths.length === 0) return null
+
+  // Extrai anos e meses presentes nos dados
+  const anosSet = new Set<string>()
+  const mesesSet = new Set<number>()
+  allMonths.forEach((t) => {
+    const [ano, mes] = t.split('/')
+    anosSet.add(ano)
+    mesesSet.add(parseInt(mes))
+  })
+  const anos = Array.from(anosSet).sort()
+  const meses = Array.from(mesesSet).sort((a, b) => a - b)
+
+  const deficitSet = new Set(deficitMonths)
+
+  // Intensidade: normaliza o déficit mais negativo → célula mais escura
+  const deficitNums = deficitMonths.map((t) => deficitValues[t] ?? 0)
+  const minVal = Math.min(...deficitNums, 0)
+
+  const getIntensity = (val: number): number => {
+    if (minVal === 0) return 0.6
+    return Math.min(0.9, 0.3 + (Math.abs(val) / Math.abs(minVal)) * 0.6)
+  }
+
+  return (
+    <Card className="border-red-200 bg-red-50/30">
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-sm text-red-700">Mapa de Déficit Hídrico</CardTitle>
+          <div className="flex items-center gap-3 text-[11px] text-slate-500">
+            <div className="flex items-center gap-1">
+              <span className="w-4 h-4 rounded-sm inline-block bg-slate-100 border border-slate-200" />
+              Sem dados
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="w-4 h-4 rounded-sm inline-block bg-emerald-100 border border-emerald-200" />
+              Superávit
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="w-4 h-4 rounded-sm inline-block bg-red-400 border border-red-500" />
+              Déficit
+            </div>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-xs">
+            <thead>
+              <tr>
+                {/* Coluna de ano */}
+                <th className="text-left px-2 py-1.5 font-semibold text-slate-500 w-16 sticky left-0 bg-red-50/30">
+                  Ano
+                </th>
+                {meses.map((m) => (
+                  <th
+                    key={m}
+                    className="text-center px-1 py-1.5 font-semibold text-slate-500 min-w-[36px]"
+                  >
+                    {MONTH_LABELS[m - 1]}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {anos.map((ano) => (
+                <tr key={ano} className="border-t border-red-100">
+                  <td className="px-2 py-1 font-bold text-slate-600 sticky left-0 bg-red-50/30">
+                    {ano}
+                  </td>
+                  {meses.map((m) => {
+                    const mesStr = String(m).padStart(2, '0')
+                    const key = `${ano}/${mesStr}`
+                    const hasData = allMonths.includes(key)
+                    const isDeficit = deficitSet.has(key)
+                    const val = deficitValues[key]
+
+                    if (!hasData) {
+                      return (
+                        <td key={m} className="px-1 py-1 text-center">
+                          <div className="w-8 h-7 mx-auto rounded-sm bg-slate-100 border border-slate-200" />
+                        </td>
+                      )
+                    }
+
+                    if (isDeficit) {
+                      const intensity = getIntensity(val)
+                      const alpha = Math.round(intensity * 255)
+                        .toString(16)
+                        .padStart(2, '0')
+                      return (
+                        <td
+                          key={m}
+                          className="px-1 py-1 text-center"
+                          title={`${key}: ${val?.toLocaleString('pt-BR', { maximumFractionDigits: 0 })} m³`}
+                        >
+                          <div
+                            className="w-8 h-7 mx-auto rounded-sm border border-red-400 flex items-center justify-center cursor-default"
+                            style={{ backgroundColor: `#ef4444${alpha}` }}
+                          >
+                            <span className="text-[9px] font-bold text-white drop-shadow-sm leading-none">
+                              ✕
+                            </span>
+                          </div>
+                        </td>
+                      )
+                    }
+
+                    return (
+                      <td key={m} className="px-1 py-1 text-center" title={`${key}: superávit`}>
+                        <div className="w-8 h-7 mx-auto rounded-sm bg-emerald-100 border border-emerald-200 flex items-center justify-center">
+                          <span className="text-[9px] font-bold text-emerald-600 leading-none">
+                            ✓
+                          </span>
+                        </div>
+                      </td>
+                    )
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Legenda de intensidade */}
+        {deficitMonths.length > 0 && minVal < 0 && (
+          <div className="mt-3 flex items-center gap-2 text-[11px] text-slate-500">
+            <span>Intensidade do déficit:</span>
+            <div className="flex items-center gap-0.5">
+              {[0.3, 0.5, 0.7, 0.9].map((op) => (
+                <div
+                  key={op}
+                  className="w-5 h-3 rounded-sm"
+                  style={{ backgroundColor: `rgba(239,68,68,${op})` }}
+                />
+              ))}
+            </div>
+            <span>menor → maior</span>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
 export function CenariosDashboard({ data, fontesMap }: any) {
   const timeMap: any = {}
   let totalCapex = 0
@@ -145,6 +317,13 @@ export function CenariosDashboard({ data, fontesMap }: any) {
   const avgDem =
     chartData.reduce((acc: any, curr: any) => acc + curr.demanda, 0) / (chartData.length || 1)
   const fontesKeys = Object.values(fontesMap) as string[]
+
+  // Mapa de calor: todos os tempos presentes e quais têm déficit
+  const allMonths = chartData.map((x: any) => x.tempo)
+  const deficitValues: Record<string, number> = {}
+  chartData.forEach((x: any) => {
+    deficitValues[x.tempo] = x.deficit
+  })
   const deficitMonths = chartData.filter((x: any) => x.deficit < 0).map((x: any) => x.tempo)
 
   const formatBRL = (v: number) =>
@@ -217,18 +396,12 @@ export function CenariosDashboard({ data, fontesMap }: any) {
         </Card>
       </div>
 
-      {deficitMonths.length > 0 && (
-        <Card className="bg-red-50/50 border-red-200">
-          <CardHeader>
-            <CardTitle className="text-sm text-red-700">Histórico de Déficit</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-red-600 font-medium break-words">
-              {deficitMonths.join(', ')}
-            </p>
-          </CardContent>
-        </Card>
-      )}
+      {/* Mapa de calor substituindo o card de texto */}
+      <DeficitHeatmap
+        deficitMonths={deficitMonths}
+        allMonths={allMonths}
+        deficitValues={deficitValues}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <ChartWrapper title="Volume Captado por Fonte" data={chartData}>
