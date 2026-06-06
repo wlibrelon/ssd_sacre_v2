@@ -20,7 +20,7 @@ export default function ParametrosPage() {
         </p>
       </div>
 
-      <Accordion type="multiple" defaultValue={['upload', 'modelos']} className="w-full space-y-4">
+      <Accordion type="multiple" defaultValue={[]} className="w-full space-y-4">
         <AccordionItem value="upload" className="border rounded-lg px-4 bg-white shadow-sm">
           <AccordionTrigger className="text-xl font-bold hover:no-underline text-left">
             Upload de arquivos de dados
