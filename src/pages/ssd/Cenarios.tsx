@@ -21,7 +21,7 @@ import {
 const MONTHS = [
   { v: '1', l: 'Janeiro' },
   { v: '2', l: 'Fevereiro' },
-  { v: '3', l: 'Março' },
+  { v: '3', l: 'MarÃ§o' },
   { v: '4', l: 'Abril' },
   { v: '5', l: 'Maio' },
   { v: '6', l: 'Junho' },
@@ -35,7 +35,7 @@ const MONTHS = [
 
 const LINE_COLORS = ['#2563eb', '#16a34a', '#dc2626', '#d97706', '#7c3aed', '#0891b2', '#be185d']
 
-// ── helpers de segurança hídrica ─────────────────────────────────────────────
+// â”€â”€ helpers de seguranÃ§a hÃ­drica â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 type StatusSeg = 'seguro' | 'alerta' | 'crise'
 
@@ -63,7 +63,7 @@ const STATUS_BADGE: Record<StatusSeg, string> = {
   crise: 'bg-red-100 text-red-700',
 }
 
-// Tooltip customizado para o gráfico de segurança hídrica
+// Tooltip customizado para o grÃ¡fico de seguranÃ§a hÃ­drica
 const TooltipSeguranca = ({ active, payload, label, limiarAlerta, limiarCrise }: any) => {
   if (!active || !payload || payload.length === 0) return null
   return (
@@ -86,7 +86,7 @@ const TooltipSeguranca = ({ active, payload, label, limiarAlerta, limiarCrise }:
             </div>
             <div className="pl-4 space-y-0.5 text-slate-500">
               <div>
-                Índice:{' '}
+                Ãndice:{' '}
                 <span className={`font-bold ${STATUS_COLORS[status].text}`}>
                   {indice.toLocaleString('pt-BR', {
                     minimumFractionDigits: 2,
@@ -101,11 +101,11 @@ const TooltipSeguranca = ({ active, payload, label, limiarAlerta, limiarCrise }:
               </div>
               {vol != null && (
                 <div>
-                  Vol. distribuído: {vol.toLocaleString('pt-BR', { maximumFractionDigits: 0 })} m³
+                  Vol. distribuÃ­do: {vol.toLocaleString('pt-BR', { maximumFractionDigits: 0 })} mÂ³
                 </div>
               )}
               {dem != null && (
-                <div>Demanda: {dem.toLocaleString('pt-BR', { maximumFractionDigits: 0 })} m³</div>
+                <div>Demanda: {dem.toLocaleString('pt-BR', { maximumFractionDigits: 0 })} mÂ³</div>
               )}
             </div>
           </div>
@@ -115,7 +115,7 @@ const TooltipSeguranca = ({ active, payload, label, limiarAlerta, limiarCrise }:
   )
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export default function Cenarios() {
   const {
@@ -136,7 +136,7 @@ export default function Cenarios() {
   const [loading, setLoading] = useState(false)
   const [ran, setRan] = useState(false)
 
-  // Segurança hídrica
+  // SeguranÃ§a hÃ­drica
   const [segurancaHidrica, setSegurancaHidrica] = useState<{
     porFonte: Record<
       number,
@@ -409,11 +409,11 @@ export default function Cenarios() {
       }))
       .sort((a: any, b: any) => a.tempo.localeCompare(b.tempo))
 
-    // ── Calcula segurança hídrica a partir de processedData ──────────────────
+    // â”€â”€ Calcula seguranÃ§a hÃ­drica a partir de processedData â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const limiarAlerta = activeSimObj?.limiar_alerta ?? 0.8
     const limiarCrise = activeSimObj?.limiar_crise ?? 0.6
 
-    // Agrupa por tempo+fonte (média quando há múltiplos id_mod)
+    // Agrupa por tempo+fonte (mÃ©dia quando hÃ¡ mÃºltiplos id_mod)
     const segMap: Record<
       string,
       { vol: number; dem: number; count: number; id_fonte: number; tempo: string }
@@ -427,7 +427,7 @@ export default function Cenarios() {
       segMap[key].count += 1
     })
 
-    // Por fonte: lista de índices mensais
+    // Por fonte: lista de Ã­ndices mensais
     const porFonte: Record<
       number,
       { indicesMes: { tempo: string; indice: number; vol: number; dem: number }[] }
@@ -443,7 +443,7 @@ export default function Cenarios() {
     const fontesPresentes = Object.keys(porFonte).map(Number)
 
     // chartData: uma entrada por tempo, chave = nome da fonte
-    // chaves auxiliares __vol_ e __dem_ para o tooltip (não renderizadas como Line)
+    // chaves auxiliares __vol_ e __dem_ para o tooltip (nÃ£o renderizadas como Line)
     const temposUnicos = Array.from(new Set(Object.values(segMap).map((r) => r.tempo))).sort()
     const fontesMapLocal = fonte_agua.reduce(
       (acc: any, f: any) => ({ ...acc, [f.id_fonte]: f.nome_fonte }),
@@ -463,7 +463,7 @@ export default function Cenarios() {
       return point
     })
 
-    // Períodos críticos (alerta ou crise)
+    // PerÃ­odos crÃ­ticos (alerta ou crise)
     const criticos: {
       tempo: string
       id_fonte: number
@@ -483,7 +483,7 @@ export default function Cenarios() {
     criticos.sort((a, b) => a.tempo.localeCompare(b.tempo) || a.id_fonte - b.id_fonte)
 
     setSegurancaHidrica({ porFonte, chartData: chartDataSeg, criticos, fontes: fontesPresentes })
-    // ────────────────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     setData(processedData)
     setGroupedData(groupedArray)
@@ -500,7 +500,7 @@ export default function Cenarios() {
   const limiarAlerta = activeSimObj?.limiar_alerta ?? 0.8
   const limiarCrise = activeSimObj?.limiar_crise ?? 0.6
 
-  // Monta gráficos de indicadores selecionados
+  // Monta grÃ¡ficos de indicadores selecionados
   const indicadoresCharts = (() => {
     if (!ran || data.length === 0 || selectedIndicadores.length === 0) return []
 
@@ -529,7 +529,7 @@ export default function Cenarios() {
               .map(Number)
             if (values.length > 0) {
               const avg = values.reduce((a: number, b: number) => a + b, 0) / values.length
-              const key = `${fontesMap[id_fonte] || id_fonte} — ${ind.descricao || campo}`
+              const key = `${fontesMap[id_fonte] || id_fonte} â€” ${ind.descricao || campo}`
               point[key] = avg
             }
           })
@@ -540,7 +540,7 @@ export default function Cenarios() {
       const linhas: string[] = []
       fontes.forEach((id_fonte) => {
         inds.forEach((ind) => {
-          const key = `${fontesMap[id_fonte] || id_fonte} — ${ind.descricao || ind.campo_extra}`
+          const key = `${fontesMap[id_fonte] || id_fonte} â€” ${ind.descricao || ind.campo_extra}`
           const temData = chartData.some((pt: any) => pt[key] != null)
           if (temData) linhas.push(key)
         })
@@ -552,7 +552,7 @@ export default function Cenarios() {
     })
   })()
 
-  // Cards de segurança derivados do estado
+  // Cards de seguranÃ§a derivados do estado
   const segCards = segurancaHidrica
     ? segurancaHidrica.fontes.map((id_fonte) => {
         const { indicesMes } = segurancaHidrica.porFonte[id_fonte]
@@ -575,22 +575,22 @@ export default function Cenarios() {
   return (
     <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
       <div>
-        <h1 className="text-3xl font-bold text-primary mb-2">Simulação de Cenários</h1>
+        <h1 className="text-3xl font-bold text-primary mb-2">SimulaÃ§Ã£o de CenÃ¡rios</h1>
         <p className="text-muted-foreground">
-          Filtre os parâmetros desejados para visualizar o comportamento do sistema de recursos
-          hídricos.
+          Filtre os parÃ¢metros desejados para visualizar o comportamento do sistema de recursos
+          hÃ­dricos.
         </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-fade-in">
         <div className="space-y-6 md:col-span-2">
-          {/* Simulação */}
+          {/* SimulaÃ§Ã£o */}
           <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200 w-full">
             <h3 className="font-semibold text-primary border-b pb-3 mb-4 text-sm uppercase tracking-wider">
-              Cenários para Simulação
+              CenÃ¡rios para SimulaÃ§Ã£o
             </h3>
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-muted-foreground">Simulação</label>
+              <label className="text-xs font-semibold text-muted-foreground">SimulaÃ§Ã£o</label>
               <NativeSelect
                 className="w-full"
                 options={simulacao_ssd.map((o: any) => ({
@@ -599,16 +599,16 @@ export default function Cenarios() {
                 }))}
                 value={filters.id_s || ''}
                 onChange={(v: any) => setFilters({ ...filters, id_s: v })}
-                placeholder="Escolha uma Simulação"
+                placeholder="Escolha uma SimulaÃ§Ã£o"
               />
             </div>
           </div>
 
-          {/* Demanda e Perdas (Automático) */}
+          {/* Demanda e Perdas (AutomÃ¡tico) */}
           {activeSimObj && (activeSimObj.demanda_auto || activeSimObj.perdas_auto) && (
             <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200 w-full">
               <h3 className="font-semibold text-primary border-b pb-3 mb-4 text-sm uppercase tracking-wider">
-                Demanda e Perdas (Automático)
+                Demanda e Perdas (AutomÃ¡tico)
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {activeSimObj.demanda_auto && (
@@ -622,7 +622,7 @@ export default function Cenarios() {
                       }))}
                       value={filters.id_cd_auto || ''}
                       onChange={(v: any) => setFilters({ ...filters, id_cd_auto: v })}
-                      placeholder="Cenário Demanda"
+                      placeholder="CenÃ¡rio Demanda"
                     />
                     <NativeSelect
                       className="w-full"
@@ -632,7 +632,7 @@ export default function Cenarios() {
                       }))}
                       value={filters.id_cc_auto || ''}
                       onChange={(v: any) => setFilters({ ...filters, id_cc_auto: v })}
-                      placeholder="Cenário Consumo"
+                      placeholder="CenÃ¡rio Consumo"
                     />
                   </div>
                 )}
@@ -647,7 +647,7 @@ export default function Cenarios() {
                       }))}
                       value={filters.id_cp_auto || ''}
                       onChange={(v: any) => setFilters({ ...filters, id_cp_auto: v })}
-                      placeholder="Cenário Perdas"
+                      placeholder="CenÃ¡rio Perdas"
                     />
                   </div>
                 )}
@@ -663,13 +663,13 @@ export default function Cenarios() {
               </h3>
               {indicadores.length === 0 ? (
                 <p className="text-xs text-muted-foreground">
-                  Nenhum indicador configurado para esta simulação.
+                  Nenhum indicador configurado para esta simulaÃ§Ã£o.
                 </p>
               ) : (
                 <div className="space-y-2">
                   <p className="text-xs text-muted-foreground mb-3">
-                    Selecione os indicadores para gerar gráficos de série histórica por fonte de
-                    água.
+                    Selecione os indicadores para gerar grÃ¡ficos de sÃ©rie histÃ³rica por fonte de
+                    Ã¡gua.
                   </p>
                   {indicadores.map((ind) => (
                     <label
@@ -695,14 +695,14 @@ export default function Cenarios() {
             </div>
           )}
 
-          {/* Período */}
+          {/* PerÃ­odo */}
           <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200 flex flex-col w-full">
             <h3 className="font-semibold text-primary border-b pb-3 mb-4 text-sm uppercase tracking-wider">
-              Período
+              PerÃ­odo
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1">
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-muted-foreground">Ano Início</label>
+                <label className="text-xs font-semibold text-muted-foreground">Ano InÃ­cio</label>
                 <NativeSelect
                   className="w-full"
                   options={[
@@ -711,7 +711,7 @@ export default function Cenarios() {
                   ].map((y) => ({ value: y, label: y.toString() }))}
                   value={filters.ano_inicio || ''}
                   onChange={(v: any) => setFilters({ ...filters, ano_inicio: v })}
-                  placeholder="Início"
+                  placeholder="InÃ­cio"
                 />
               </div>
               <div className="space-y-1">
@@ -731,7 +731,7 @@ export default function Cenarios() {
             <div className="space-y-2 mt-4">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-semibold text-muted-foreground">
-                  Meses (Múltipla Seleção)
+                  Meses (MÃºltipla SeleÃ§Ã£o)
                 </label>
                 <div className="space-x-2">
                   <button
@@ -781,11 +781,11 @@ export default function Cenarios() {
                 disabled={loading || !filters.id_s}
                 className="w-full h-11 shadow-sm text-base disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loading ? 'Processando...' : 'Executar Simulação'}
+                {loading ? 'Processando...' : 'Executar SimulaÃ§Ã£o'}
               </Button>
               {!filters.id_s && (
                 <p className="text-xs text-red-500 text-center font-medium">
-                  Selecione uma simulação para executar.
+                  Selecione uma simulaÃ§Ã£o para executar.
                 </p>
               )}
             </div>
@@ -798,15 +798,15 @@ export default function Cenarios() {
       {ran && data.length === 0 && (
         <div className="text-center p-12 bg-white rounded-lg border border-dashed">
           <p className="text-muted-foreground">
-            Nenhum dado de simulação encontrado para estes filtros.
+            Nenhum dado de simulaÃ§Ã£o encontrado para estes filtros.
           </p>
         </div>
       )}
 
-      {/* ── BLOCO 1: Cards de segurança hídrica por fonte ──────────────────── */}
+      {/* â”€â”€ BLOCO 1: Cards de seguranÃ§a hÃ­drica por fonte â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {segurancaHidrica && segCards.length > 0 && (
         <div>
-          <h2 className="text-lg font-semibold text-primary mb-3">Índice de Segurança Hídrica</h2>
+          <h2 className="text-lg font-semibold text-primary mb-3">Ãndice de SeguranÃ§a HÃ­drica</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {segCards.map(({ id_fonte, indicesMedio, mesesAlerta, mesesCrise, statusGeral }) => {
               const c = STATUS_COLORS[statusGeral]
@@ -832,19 +832,19 @@ export default function Cenarios() {
                       maximumFractionDigits: 2,
                     })}
                   </div>
-                  <p className="text-[11px] text-slate-500 -mt-2">índice médio do período</p>
+                  <p className="text-[11px] text-slate-500 -mt-2">Ã­ndice mÃ©dio do perÃ­odo</p>
 
                   <div className="flex gap-4 text-xs pt-1 border-t border-slate-200">
                     <div>
                       <span className="font-bold text-amber-600">{mesesAlerta}</span>
                       <span className="text-slate-500 ml-1">
-                        {mesesAlerta === 1 ? 'mês em alerta' : 'meses em alerta'}
+                        {mesesAlerta === 1 ? 'mÃªs em alerta' : 'meses em alerta'}
                       </span>
                     </div>
                     <div>
                       <span className="font-bold text-red-600">{mesesCrise}</span>
                       <span className="text-slate-500 ml-1">
-                        {mesesCrise === 1 ? 'mês em crise' : 'meses em crise'}
+                        {mesesCrise === 1 ? 'mÃªs em crise' : 'meses em crise'}
                       </span>
                     </div>
                   </div>
@@ -855,11 +855,11 @@ export default function Cenarios() {
         </div>
       )}
 
-      {/* ── BLOCO 2: Gráfico do índice de segurança hídrica ───────────────── */}
+      {/* â”€â”€ BLOCO 2: GrÃ¡fico do Ã­ndice de seguranÃ§a hÃ­drica â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {segurancaHidrica && segurancaHidrica.chartData.length > 0 && (
         <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200">
           <h3 className="font-semibold text-primary border-b pb-3 mb-4 text-sm uppercase tracking-wider">
-            Série Temporal — Índice de Segurança Hídrica
+            SÃ©rie Temporal â€” Ãndice de SeguranÃ§a HÃ­drica
           </h3>
           <div className="flex flex-wrap gap-6 text-xs text-slate-500 mb-4">
             <div className="flex items-center gap-1.5">
@@ -906,7 +906,7 @@ export default function Cenarios() {
                 tick={{ fontSize: 11 }}
                 tickFormatter={(v) => v.toFixed(1)}
                 label={{
-                  value: 'Índice (0–1)',
+                  value: 'Ãndice (0â€“1)',
                   angle: -90,
                   position: 'insideLeft',
                   offset: 10,
@@ -950,21 +950,21 @@ export default function Cenarios() {
         </div>
       )}
 
-      {/* ── BLOCO 3: Tabela de períodos críticos ──────────────────────────── */}
+      {/* â”€â”€ BLOCO 3: Tabela de perÃ­odos crÃ­ticos â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {segurancaHidrica && segurancaHidrica.criticos.length > 0 && (
         <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200">
           <h3 className="font-semibold text-primary border-b pb-3 mb-4 text-sm uppercase tracking-wider">
-            Períodos Críticos
+            PerÃ­odos CrÃ­ticos
           </h3>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-slate-50 text-xs text-slate-500 uppercase tracking-wider">
-                  <th className="px-3 py-2 text-left font-semibold">Período</th>
+                  <th className="px-3 py-2 text-left font-semibold">PerÃ­odo</th>
                   <th className="px-3 py-2 text-left font-semibold">Fonte</th>
-                  <th className="px-3 py-2 text-right font-semibold">Índice</th>
+                  <th className="px-3 py-2 text-right font-semibold">Ãndice</th>
                   <th className="px-3 py-2 text-center font-semibold">Status</th>
-                  <th className="px-3 py-2 text-right font-semibold">Déficit (m³)</th>
+                  <th className="px-3 py-2 text-right font-semibold">DÃ©ficit (mÂ³)</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -998,10 +998,10 @@ export default function Cenarios() {
         </div>
       )}
 
-      {/* CenariosDashboard — sem alteração */}
+      {/* CenariosDashboard â€” sem alteraÃ§Ã£o */}
       {data.length > 0 && <CenariosDashboard data={data} fontesMap={fontesMap} />}
 
-      {/* Gráficos de Indicadores — sem alteração */}
+      {/* GrÃ¡ficos de Indicadores â€” sem alteraÃ§Ã£o */}
       {indicadoresCharts.length > 0 && (
         <div className="space-y-6">
           {indicadoresCharts.map(({ unidade, chartData, linhas, titulo }) => (
