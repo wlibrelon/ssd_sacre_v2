@@ -3,13 +3,15 @@ import { supabase } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
-import { Trash2, Edit2, Search } from 'lucide-react'
+import { Trash2, Edit2, Search, Check, X } from 'lucide-react'
 import { NativeSelect } from '../components/NativeSelect'
 import { FilePickerModal } from '../components/FilePickerModal'
 
 export function ModelosHidro() {
   const [modelos, setModelos] = useState<any[]>([])
   const [fontes, setFontes] = useState<any[]>([])
+  const [editingId, setEditingId] = useState<number | null>(null)
+  const [editForm, setEditForm] = useState({ cenario: '', estrategia: '' })
   const [form, setForm] = useState({
     id_mod: null as number | null,
     id_fonte: '',
@@ -22,21 +24,24 @@ export function ModelosHidro() {
     arq_capex_perdas: '',
     arq_opex: '',
   })
+  const [filesInBucket, setFilesInBucket] = useState<any[]>([])
   const [pickerState, setPickerState] = useState<{ open: boolean; field: string }>({
     open: false,
     field: '',
   })
 
   const loadData = async () => {
-    const [mRes, fRes] = await Promise.all([
+    const [mRes, fRes, bRes] = await Promise.all([
       supabase
         .from('modelos')
         .select('*, fonte_agua(nome_fonte)')
         .order('id_mod', { ascending: false }),
       supabase.from('fonte_agua').select('*'),
+      supabase.storage.from('dados_brutos').list('', { limit: 200 }),
     ])
     if (mRes.data) setModelos(mRes.data)
     if (fRes.data) setFontes(fRes.data)
+    if (bRes.data) setFilesInBucket(bRes.data.filter((x) => x.id))
   }
 
   useEffect(() => {
@@ -57,14 +62,9 @@ export function ModelosHidro() {
       arq_capex_perdas: form.arq_capex_perdas || null,
       arq_opex: form.arq_opex || null,
     }
-    let error
-    if (form.id_mod) {
-      const res = await supabase.from('modelos').update(payload).eq('id_mod', form.id_mod)
-      error = res.error
-    } else {
-      const res = await supabase.from('modelos').insert(payload)
-      error = res.error
-    }
+    const { error } = form.id_mod
+      ? await supabase.from('modelos').update(payload).eq('id_mod', form.id_mod)
+      : await supabase.from('modelos').insert(payload)
     if (error) toast.error('Erro ao salvar')
     else {
       toast.success(form.id_mod ? 'Modelo atualizado' : 'Modelo salvo')
@@ -80,6 +80,19 @@ export function ModelosHidro() {
         arq_capex_perdas: '',
         arq_opex: '',
       })
+      loadData()
+    }
+  }
+
+  const handleInlineSave = async (id: number) => {
+    const { error } = await supabase
+      .from('modelos')
+      .update({ cenario: editForm.cenario, estrategia: editForm.estrategia })
+      .eq('id_mod', id)
+    if (error) toast.error('Erro ao atualizar')
+    else {
+      toast.success('Atualizado')
+      setEditingId(null)
       loadData()
     }
   }
@@ -200,12 +213,6 @@ export function ModelosHidro() {
               <th className="p-2 text-left">Fonte</th>
               <th className="p-2 text-left">Cenário</th>
               <th className="p-2 text-left">Estratégia</th>
-              <th className="p-2 text-left">Mod</th>
-              <th className="p-2 text-left">Perdas</th>
-              <th className="p-2 text-left">Demanda</th>
-              <th className="p-2 text-left">Capex Est.</th>
-              <th className="p-2 text-left">Capex Perd.</th>
-              <th className="p-2 text-left">Opex</th>
               <th className="p-2 w-24 text-center">Ações</th>
             </tr>
           </thead>
@@ -216,41 +223,72 @@ export function ModelosHidro() {
                 className={`hover:bg-slate-50 ${form.id_mod === m.id_mod ? 'bg-primary/5' : ''}`}
               >
                 <td className="p-2">{m.fonte_agua?.nome_fonte}</td>
-                <td className="p-2">{m.cenario}</td>
-                <td className="p-2">{m.estrategia}</td>
-                <td className="p-2 text-xs">{m.arq_mod || '-'}</td>
-                <td className="p-2 text-xs">{m.arq_perdas || '-'}</td>
-                <td className="p-2 text-xs">{m.arq_demanda || '-'}</td>
-                <td className="p-2 text-xs">{m.arq_capex_estrategias || '-'}</td>
-                <td className="p-2 text-xs">{m.arq_capex_perdas || '-'}</td>
-                <td className="p-2 text-xs">{m.arq_opex || '-'}</td>
+                <td className="p-2">
+                  {editingId === m.id_mod ? (
+                    <Input
+                      value={editForm.cenario}
+                      onChange={(e) => setEditForm({ ...editForm, cenario: e.target.value })}
+                    />
+                  ) : (
+                    m.cenario
+                  )}
+                </td>
+                <td className="p-2">
+                  {editingId === m.id_mod ? (
+                    <Input
+                      value={editForm.estrategia}
+                      onChange={(e) => setEditForm({ ...editForm, estrategia: e.target.value })}
+                    />
+                  ) : (
+                    m.estrategia
+                  )}
+                </td>
                 <td className="p-2 flex space-x-1 justify-center">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-primary"
-                    onClick={() => handleEdit(m)}
-                  >
-                    <Edit2 className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-destructive"
-                    onClick={() => handleDelete(m.id_mod)}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
+                  {editingId === m.id_mod ? (
+                    <>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-green-600"
+                        onClick={() => handleInlineSave(m.id_mod)}
+                      >
+                        <Check className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-red-600"
+                        onClick={() => setEditingId(null)}
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-primary"
+                        onClick={() => {
+                          setEditingId(m.id_mod)
+                          setEditForm({ cenario: m.cenario, estrategia: m.estrategia })
+                        }}
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-destructive"
+                        onClick={() => handleDelete(m.id_mod)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </>
+                  )}
                 </td>
               </tr>
             ))}
-            {modelos.length === 0 && (
-              <tr>
-                <td colSpan={10} className="p-4 text-center text-muted-foreground">
-                  Nenhum modelo cadastrado
-                </td>
-              </tr>
-            )}
           </tbody>
         </table>
       </div>
