@@ -1,17 +1,20 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useSsdData } from '@/hooks/use-ssd-data'
 import { NativeSelect } from './components/NativeSelect'
 import { Button } from '@/components/ui/button'
 import { supabase } from '@/lib/supabase/client'
 import { CenariosDashboard } from './components/CenariosDashboard'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from 'recharts'
 
 const MONTHS = [
   { v: '1', l: 'Janeiro' },
@@ -27,6 +30,8 @@ const MONTHS = [
   { v: '11', l: 'Novembro' },
   { v: '12', l: 'Dezembro' },
 ]
+
+const LINE_COLORS = ['#2563eb', '#16a34a', '#dc2626', '#d97706', '#7c3aed', '#0891b2', '#be185d']
 
 export default function Cenarios() {
   const {
@@ -46,6 +51,43 @@ export default function Cenarios() {
   const [groupedData, setGroupedData] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [ran, setRan] = useState(false)
+
+  // Indicadores
+  const [indicadores, setIndicadores] = useState<any[]>([])
+  const [selectedIndicadores, setSelectedIndicadores] = useState<number[]>([])
+
+  // Carregar indicadores vinculados à simulação selecionada
+  useEffect(() => {
+    if (!filters.id_s) {
+      setIndicadores([])
+      setSelectedIndicadores([])
+      return
+    }
+    supabase
+      .from('indicadores_aplicado')
+      .select('*, indicadores(*)')
+      .eq('id_s', filters.id_s)
+      .then(({ data: rows }) => {
+        if (!rows) return
+        // deduplica por id_indicador
+        const unique = Object.values(
+          rows.reduce((acc: any, r: any) => {
+            if (r.indicadores && !acc[r.indicadores.id_indicador]) {
+              acc[r.indicadores.id_indicador] = r.indicadores
+            }
+            return acc
+          }, {}),
+        )
+        setIndicadores(unique as any[])
+        setSelectedIndicadores([])
+      })
+  }, [filters.id_s])
+
+  const toggleIndicador = (id: number) => {
+    setSelectedIndicadores((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    )
+  }
 
   const aplicarCalculosModulares = (data: any[], sim: any, cd: any, cc: any, cp: any) => {
     const tempos = Array.from(new Set(data.map((d) => d.tempo))).sort()
@@ -226,7 +268,6 @@ export default function Cenarios() {
       const perdas_percentual = row.perdas || 0
       const volume_distribuido = volume_captado * (1 - perdas_percentual / 100)
       const demanda = row.demanda || 0
-
       const capex = (row.capex_estrategia || 0) + (row.capex_perdas || 0)
 
       return {
@@ -285,15 +326,63 @@ export default function Cenarios() {
   )
 
   const activeSimObj = simulacao_ssd.find((s: any) => s.id_s === parseInt(filters.id_s))
-  const contextData =
-    activeSimObj && cenario_simulacao
-      ? cenario_simulacao.filter((cs: any) => cs.id_s === activeSimObj.id_s)
-      : []
 
-  const getF = (id: any) => fonte_agua.find((x: any) => x.id_fonte === id)?.nome_fonte
-  const getTc = (id: any) => tipos_cenarios.find((x: any) => x.id_tc === id)?.descricao
-  const getC = (id: any) => cenarios.find((x: any) => x.id_cenarios === id)?.cenarios
-  const getAcao = (id: any) => acoes.find((x: any) => x.id_acao === id)?.descricao
+  // Monta gráficos de indicadores selecionados
+  // Agrupa por unidade; dentro de cada unidade, uma linha por fonte de água
+  const indicadoresCharts = (() => {
+    if (!ran || data.length === 0 || selectedIndicadores.length === 0) return []
+
+    // Filtra apenas os indicadores selecionados
+    const indsSelected = indicadores.filter((ind) => selectedIndicadores.includes(ind.id_indicador))
+
+    // Agrupa indicadores por unidade
+    const porUnidade: Record<string, any[]> = {}
+    indsSelected.forEach((ind) => {
+      const unidade = ind.unidade || 'sem_unidade'
+      if (!porUnidade[unidade]) porUnidade[unidade] = []
+      porUnidade[unidade].push(ind)
+    })
+
+    return Object.entries(porUnidade).map(([unidade, inds]) => {
+      // Para cada unidade, monta série temporal por fonte
+      // data tem valores_extras (jsonb) com campo_extra de cada indicador
+      const tempos = Array.from(new Set(data.map((d: any) => d.tempo))).sort()
+      const fontes = Array.from(new Set(data.map((d: any) => d.id_fonte))) as number[]
+
+      const chartData = tempos.map((tempo) => {
+        const point: any = { tempo }
+        fontes.forEach((id_fonte) => {
+          // Pode haver múltiplos registros para tempo+fonte (por id_mod); usa média
+          const rows = data.filter((d: any) => d.tempo === tempo && d.id_fonte === id_fonte)
+          inds.forEach((ind) => {
+            const campo = ind.campo_extra
+            const values = rows
+              .map((r: any) => r.valores_extras?.[campo])
+              .filter((v: any) => v != null && !isNaN(Number(v)))
+              .map(Number)
+            if (values.length > 0) {
+              const avg = values.reduce((a: number, b: number) => a + b, 0) / values.length
+              const key = `${fontesMap[id_fonte] || id_fonte} — ${ind.nome_indicador || campo}`
+              point[key] = avg
+            }
+          })
+        })
+        return point
+      })
+
+      // Linhas a renderizar
+      const linhas: string[] = []
+      fontes.forEach((id_fonte) => {
+        inds.forEach((ind) => {
+          const campo = ind.campo_extra
+          const key = `${fontesMap[id_fonte] || id_fonte} — ${ind.nome_indicador || campo}`
+          linhas.push(key)
+        })
+      })
+
+      return { unidade, chartData, linhas }
+    })
+  })()
 
   return (
     <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
@@ -304,54 +393,32 @@ export default function Cenarios() {
           hídricos.
         </p>
       </div>
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-fade-in">
         <div className="space-y-6 md:col-span-2">
+          {/* Simulação — sem tabela cenario_simulacao */}
           <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200 w-full">
             <h3 className="font-semibold text-primary border-b pb-3 mb-4 text-sm uppercase tracking-wider">
               Cenários para Simulação
             </h3>
-            <div className="space-y-3">
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-muted-foreground">Simulação</label>
-                <NativeSelect
-                  className="w-full"
-                  options={simulacao_ssd.map((o: any) => ({
-                    value: o.id_s,
-                    label: o.descricao,
-                  }))}
-                  value={filters.id_s || ''}
-                  onChange={(v: any) => setFilters({ ...filters, id_s: v })}
-                  placeholder="Escolha uma Simulação"
-                />
-              </div>
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-muted-foreground">Simulação</label>
+              <NativeSelect
+                className="w-full"
+                options={simulacao_ssd.map((o: any) => ({
+                  value: o.id_s,
+                  label: o.descricao,
+                }))}
+                value={filters.id_s || ''}
+                onChange={(v: any) => setFilters({ ...filters, id_s: v })}
+                placeholder="Escolha uma Simulação"
+              />
             </div>
-            {activeSimObj && (
-              <div className="mt-4 border rounded-md overflow-hidden animate-fade-in-up">
-                <Table>
-                  <TableHeader className="bg-slate-50">
-                    <TableRow>
-                      <TableHead className="text-xs">Fonte</TableHead>
-                      <TableHead className="text-xs">Tipo Cenário</TableHead>
-                      <TableHead className="text-xs">Cenário</TableHead>
-                      <TableHead className="text-xs">Ação</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {contextData.map((row: any) => (
-                      <TableRow key={row.id_cs}>
-                        <TableCell className="text-xs py-2">{getF(row.id_fonte)}</TableCell>
-                        <TableCell className="text-xs py-2">{getTc(row.id_tc)}</TableCell>
-                        <TableCell className="text-xs py-2">{getC(row.id_c)}</TableCell>
-                        <TableCell className="text-xs py-2">{getAcao(row.id_acao)}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
           </div>
+
+          {/* Demanda e Perdas (Automático) */}
           {activeSimObj && (activeSimObj.demanda_auto || activeSimObj.perdas_auto) && (
-            <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200 w-full mt-6">
+            <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200 w-full">
               <h3 className="font-semibold text-primary border-b pb-3 mb-4 text-sm uppercase tracking-wider">
                 Demanda e Perdas (Automático)
               </h3>
@@ -399,7 +466,49 @@ export default function Cenarios() {
               </div>
             </div>
           )}
-          <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200 flex flex-col w-full mt-6">
+
+          {/* Indicadores */}
+          {filters.id_s && (
+            <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200 w-full">
+              <h3 className="font-semibold text-primary border-b pb-3 mb-4 text-sm uppercase tracking-wider">
+                Indicadores
+              </h3>
+              {indicadores.length === 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  Nenhum indicador configurado para esta simulação.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground mb-3">
+                    Selecione os indicadores para gerar gráficos de série histórica por fonte de
+                    água.
+                  </p>
+                  {indicadores.map((ind) => (
+                    <label
+                      key={ind.id_indicador}
+                      className="flex items-center gap-3 border p-2.5 rounded-md hover:bg-slate-50 cursor-pointer"
+                    >
+                      <Checkbox
+                        checked={selectedIndicadores.includes(ind.id_indicador)}
+                        onCheckedChange={() => toggleIndicador(ind.id_indicador)}
+                      />
+                      <span className="text-sm font-medium flex-1">
+                        {ind.nome_indicador || ind.campo_extra}
+                      </span>
+                      {ind.unidade && (
+                        <span className="text-xs text-muted-foreground bg-slate-100 px-2 py-0.5 rounded">
+                          {ind.unidade}
+                        </span>
+                      )}
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Período */}
+          <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200 flex flex-col w-full">
             <h3 className="font-semibold text-primary border-b pb-3 mb-4 text-sm uppercase tracking-wider">
               Período
             </h3>
@@ -411,10 +520,7 @@ export default function Cenarios() {
                   options={[
                     2026, 2027, 2028, 2029, 2030, 2031, 2032, 2033, 2034, 2035, 2036, 2037, 2038,
                     2039, 2040, 2041, 2042, 2043, 2044, 2045, 2046, 2047, 2048, 2049, 2050,
-                  ].map((y) => ({
-                    value: y,
-                    label: y.toString(),
-                  }))}
+                  ].map((y) => ({ value: y, label: y.toString() }))}
                   value={filters.ano_inicio || ''}
                   onChange={(v: any) => setFilters({ ...filters, ano_inicio: v })}
                   placeholder="Início"
@@ -427,10 +533,7 @@ export default function Cenarios() {
                   options={[
                     2026, 2027, 2028, 2029, 2030, 2031, 2032, 2033, 2034, 2035, 2036, 2037, 2038,
                     2039, 2040, 2041, 2042, 2043, 2044, 2045, 2046, 2047, 2048, 2049, 2050,
-                  ].map((y) => ({
-                    value: y,
-                    label: y.toString(),
-                  }))}
+                  ].map((y) => ({ value: y, label: y.toString() }))}
                   value={filters.ano_fim || ''}
                   onChange={(v: any) => setFilters({ ...filters, ano_fim: v })}
                   placeholder="Fim"
@@ -500,8 +603,10 @@ export default function Cenarios() {
             </div>
           </div>
         </div>
+
         <div className="space-y-6"></div>
       </div>
+
       {ran && data.length === 0 && (
         <div className="text-center p-12 bg-white rounded-lg border border-dashed">
           <p className="text-muted-foreground">
@@ -509,7 +614,59 @@ export default function Cenarios() {
           </p>
         </div>
       )}
+
       {data.length > 0 && <CenariosDashboard data={data} fontesMap={fontesMap} />}
+
+      {/* Gráficos de Indicadores — um gráfico por unidade */}
+      {indicadoresCharts.length > 0 && (
+        <div className="space-y-6">
+          {indicadoresCharts.map(({ unidade, chartData, linhas }) => (
+            <div
+              key={unidade}
+              className="bg-white p-5 shadow-sm rounded-xl border border-slate-200"
+            >
+              <h3 className="font-semibold text-primary border-b pb-3 mb-4 text-sm uppercase tracking-wider">
+                Indicadores — {unidade}
+              </h3>
+              <ResponsiveContainer width="100%" height={320}>
+                <LineChart data={chartData} margin={{ top: 4, right: 24, left: 8, bottom: 4 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis dataKey="tempo" tick={{ fontSize: 11 }} interval="preserveStartEnd" />
+                  <YAxis
+                    tick={{ fontSize: 11 }}
+                    label={{
+                      value: unidade,
+                      angle: -90,
+                      position: 'insideLeft',
+                      offset: 10,
+                      style: { fontSize: 11 },
+                    }}
+                  />
+                  <Tooltip
+                    contentStyle={{ fontSize: 12 }}
+                    formatter={(value: any) =>
+                      typeof value === 'number'
+                        ? value.toLocaleString('pt-BR', { maximumFractionDigits: 2 })
+                        : value
+                    }
+                  />
+                  <Legend wrapperStyle={{ fontSize: 12 }} />
+                  {linhas.map((linha, idx) => (
+                    <Line
+                      key={linha}
+                      type="monotone"
+                      dataKey={linha}
+                      stroke={LINE_COLORS[idx % LINE_COLORS.length]}
+                      dot={false}
+                      strokeWidth={2}
+                    />
+                  ))}
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
