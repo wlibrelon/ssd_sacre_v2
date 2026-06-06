@@ -31,7 +31,7 @@ export function Importacao() {
   const normalizePath = (path: string): string => {
     return path
       .trim()
-      .replace(/\\/g, '/') // ✅ CORRIGIDO: troca backslash por slash
+      .replace(/\/g, '/') // ✅ CORRIGIDO: troca backslash por slash
       .replace(/\/+/g, '/') // remove barras duplicadas
       .replace(/^\//, '') // remove barra inicial se houver
   }
