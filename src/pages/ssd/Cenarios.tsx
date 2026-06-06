@@ -1104,10 +1104,8 @@ export default function Cenarios() {
         </div>
       )}
 
-      {/* ── BLOCO 3: Tabela matricial ano × mês de segurança hídrica ── */}
-      {/*
-      {segurancaHidrica &&
-        segurancaHidrica.indicesMes.length > 0 &&
+      {/* ── BLOCO 3: Tabela de déficit — matriz ano × mês ── */}
+      {groupedData.length > 0 &&
         (() => {
           const MONTH_LABELS = [
             'Jan',
@@ -1137,63 +1135,58 @@ export default function Cenarios() {
             'Novembro',
             'Dezembro',
           ]
+          const MESES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
 
-          // Monta estrutura: { ano: { mes: { indice, deficit, status } } }
-          type CellData = { indice: number; deficit: number; status: StatusSeg }
-          const matrix: Record<string, Record<number, CellData>> = {}
-
-          segurancaHidrica.indicesMes.forEach(({ tempo, indice, volTotal, demTotal }) => {
-            // tempo pode ser "2026/03" ou "2026-03"
-            const parts = tempo.split(/[-/]/)
+          // Agrega déficit de todas as fontes por período
+          const defMap: Record<string, Record<number, number>> = {}
+          groupedData.forEach((row: any) => {
+            const parts = (row.tempo as string).split(/[-/]/)
             const ano = parts[0]
-            const mes = parseInt(parts[1], 10) // 1–12
-            if (!matrix[ano]) matrix[ano] = {}
-            matrix[ano][mes] = {
-              indice,
-              deficit: Math.max(0, demTotal - volTotal),
-              status: getStatus(indice, limiarAlerta, limiarCrise, limiarColapso),
-            }
+            const mes = parseInt(parts[1], 10)
+            if (!defMap[ano]) defMap[ano] = {}
+            defMap[ano][mes] = (defMap[ano][mes] || 0) + (row.deficit || 0)
           })
 
-          const anos = Object.keys(matrix).sort()
-          const meses = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+          const anos = Object.keys(defMap).sort()
 
-          // Cores de fundo por status (mais suaves para célula)
-          const cellBg: Record<StatusSeg, string> = {
-            seguro: 'bg-emerald-50 text-emerald-800',
-            alerta: 'bg-amber-50 text-amber-800',
-            crise: 'bg-red-100 text-red-800',
-            colapso: 'bg-rose-200 text-rose-900',
+          // Valor máximo para gradação de intensidade
+          const allValues = Object.values(defMap)
+            .flatMap((m) => Object.values(m))
+            .filter((v) => v > 0)
+          const maxDef = allValues.length > 0 ? Math.max(...allValues) : 1
+
+          // Formata valor abreviado
+          const fmt = (v: number) =>
+            v >= 1_000_000
+              ? `${(v / 1_000_000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}M`
+              : v >= 1_000
+                ? `${(v / 1_000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}k`
+                : v.toLocaleString('pt-BR', { maximumFractionDigits: 0 })
+
+          // Cor de fundo proporcional ao déficit (branco → vermelho)
+          const cellStyle = (v: number): React.CSSProperties => {
+            if (v <= 0) return {}
+            const ratio = Math.min(v / maxDef, 1)
+            // interpola de #fff5f5 (ratio=0) até #b91c1c (ratio=1)
+            const r = Math.round(255)
+            const g = Math.round(245 - ratio * 220)
+            const b = Math.round(245 - ratio * 217)
+            return {
+              backgroundColor: `rgb(${r},${g},${b})`,
+              color: ratio > 0.55 ? '#fff' : '#7f1d1d',
+            }
           }
 
-          const downloadMatrixCsv = () => {
-            const header = [
-              'Ano',
-              ...MONTH_LABELS_FULL.map((m) => `${m} - Índice`),
-              ...MONTH_LABELS_FULL.map((m) => `${m} - Déficit (m³)`),
-            ].join(';')
-            // simplified: one row per year, index then deficit interleaved
-            const headerRow = [
-              'Ano',
-              ...meses.flatMap((m) => [
-                `${MONTH_LABELS_FULL[m - 1]} Índice`,
-                `${MONTH_LABELS_FULL[m - 1]} Déficit (m³)`,
-              ]),
-            ].join(';')
+          const downloadCsv = () => {
+            const headerRow = ['Ano', ...MONTH_LABELS_FULL.map((m) => `${m} (m³)`)].join(';')
             const rows = anos.map((ano) =>
               [
                 ano,
-                ...meses.flatMap((m) => {
-                  const cell = matrix[ano]?.[m]
-                  return [
-                    cell
-                      ? cell.indice.toLocaleString('pt-BR', {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        })
-                      : '',
-                    cell ? cell.deficit.toLocaleString('pt-BR', { maximumFractionDigits: 0 }) : '',
-                  ]
+                ...MESES.map((m) => {
+                  const v = defMap[ano]?.[m]
+                  return v != null && v > 0
+                    ? v.toLocaleString('pt-BR', { maximumFractionDigits: 0 })
+                    : ''
                 }),
               ].join(';'),
             )
@@ -1202,22 +1195,28 @@ export default function Cenarios() {
             const url = URL.createObjectURL(blob)
             const a = document.createElement('a')
             a.href = url
-            a.download = 'seguranca_hidrica_matriz.csv'
+            a.download = 'deficit_hidrico_matriz.csv'
             a.click()
             URL.revokeObjectURL(url)
           }
 
           return (
             <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200">
-              //Cabeçalho com título e botão download
+              {/* Cabeçalho */}
               <div className="flex items-center justify-between border-b pb-3 mb-4">
-                <h3 className="font-semibold text-primary text-sm uppercase tracking-wider">
-                  Segurança Hídrica — Índice por Período
-                </h3>
+                <div>
+                  <h3 className="font-semibold text-primary text-sm uppercase tracking-wider">
+                    Déficit Hídrico — Histórico Mensal (m³)
+                  </h3>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    Soma de todas as fontes · intensidade de cor proporcional ao déficit máximo do
+                    período
+                  </p>
+                </div>
                 <button
-                  onClick={downloadMatrixCsv}
+                  onClick={downloadCsv}
                   title="Download CSV"
-                  className="p-1.5 rounded hover:bg-slate-100 text-slate-500 hover:text-primary transition-colors"
+                  className="p-1.5 rounded hover:bg-slate-100 text-slate-500 hover:text-primary transition-colors shrink-0 ml-4"
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -1236,97 +1235,119 @@ export default function Cenarios() {
                 </button>
               </div>
 
-              //Legenda de status 
-              <div className="flex flex-wrap gap-4 text-xs mb-4">
-                {(['seguro', 'alerta', 'crise', 'colapso'] as StatusSeg[]).map((s) => (
-                  <div key={s} className="flex items-center gap-1.5">
-                    <span
-                      className={`w-3 h-3 rounded-sm inline-block ${cellBg[s].split(' ')[0]}`}
-                    />
-                    <span className="text-slate-600">{STATUS_LABEL[s]}</span>
-                  </div>
-                ))}
+              {/* Escala de referência */}
+              <div className="flex items-center gap-3 text-[11px] text-slate-500 mb-4">
+                <span>Sem déficit</span>
+                <div className="flex h-3 rounded overflow-hidden" style={{ width: 160 }}>
+                  {Array.from({ length: 10 }).map((_, i) => {
+                    const ratio = i / 9
+                    const g = Math.round(245 - ratio * 220)
+                    const b = Math.round(245 - ratio * 217)
+                    return (
+                      <div key={i} style={{ flex: 1, backgroundColor: `rgb(255,${g},${b})` }} />
+                    )
+                  })}
+                </div>
+                <span>Máximo ({fmt(maxDef)} m³)</span>
               </div>
 
-              // Tabela matricial 
+              {/* Tabela */}
               <div className="overflow-x-auto">
-                <table className="w-full border-collapse text-xs">
+                <table className="border-collapse text-xs w-full">
                   <thead>
                     <tr>
-                      <th className="sticky left-0 z-10 bg-slate-100 px-3 py-2 text-left text-slate-600 font-semibold border border-slate-200 whitespace-nowrap min-w-[60px]">
+                      <th className="sticky left-0 z-10 bg-slate-100 px-3 py-2.5 text-left font-semibold text-slate-600 border border-slate-200 whitespace-nowrap min-w-[64px]">
                         Ano
                       </th>
                       {MONTH_LABELS.map((m) => (
                         <th
                           key={m}
-                          className="bg-slate-100 px-2 py-2 text-center text-slate-600 font-semibold border border-slate-200 whitespace-nowrap min-w-[72px]"
+                          className="bg-slate-100 px-2 py-2.5 text-center font-semibold text-slate-600 border border-slate-200 whitespace-nowrap min-w-[68px]"
                         >
                           {m}
                         </th>
                       ))}
+                      <th className="bg-slate-100 px-3 py-2.5 text-right font-semibold text-slate-600 border border-slate-200 whitespace-nowrap">
+                        Total ano
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
-                    {anos.map((ano) => (
-                      <tr key={ano} className="group">
-                        <td className="sticky left-0 z-10 bg-slate-50 group-hover:bg-slate-100 px-3 py-0 font-semibold text-slate-700 border border-slate-200 whitespace-nowrap transition-colors">
-                          {ano}
-                        </td>
-                        {meses.map((m) => {
-                          const cell = matrix[ano]?.[m]
-                          if (!cell) {
+                    {anos.map((ano) => {
+                      const totalAno = MESES.reduce((s, m) => s + (defMap[ano]?.[m] || 0), 0)
+                      return (
+                        <tr key={ano} className="group">
+                          <td className="sticky left-0 z-10 bg-slate-50 group-hover:bg-slate-100 px-3 py-2 font-semibold text-slate-700 border border-slate-200 whitespace-nowrap transition-colors">
+                            {ano}
+                          </td>
+                          {MESES.map((m) => {
+                            const v = defMap[ano]?.[m] ?? 0
+                            const hasDeficit = v > 0
                             return (
                               <td
                                 key={m}
-                                className="border border-slate-100 bg-slate-50 px-2 py-2 text-center text-slate-300"
+                                className="border border-slate-200 px-2 py-2 text-center whitespace-nowrap transition-opacity hover:opacity-80"
+                                style={
+                                  hasDeficit
+                                    ? cellStyle(v)
+                                    : { backgroundColor: '#f8fafc', color: '#cbd5e1' }
+                                }
+                                title={
+                                  hasDeficit
+                                    ? `${ano} / ${MONTH_LABELS_FULL[m - 1]}: ${v.toLocaleString('pt-BR', { maximumFractionDigits: 0 })} m³`
+                                    : undefined
+                                }
                               >
-                                —
+                                {hasDeficit ? fmt(v) : '—'}
                               </td>
                             )
-                          }
-                          const { indice, deficit, status } = cell
-                          return (
-                            <td
-                              key={m}
-                              className={`border border-slate-200 px-2 py-1.5 text-center align-middle transition-opacity hover:opacity-80 ${cellBg[status]}`}
-                              title={`${STATUS_LABEL[status]} | Déficit: ${deficit.toLocaleString('pt-BR', { maximumFractionDigits: 0 })} m³`}
-                            >
-                              <div className="font-bold leading-tight">
-                                {indice.toLocaleString('pt-BR', {
-                                  minimumFractionDigits: 2,
-                                  maximumFractionDigits: 2,
-                                })}
-                              </div>
-                              {deficit > 0 && (
-                                <div className="text-[10px] opacity-75 leading-tight mt-0.5 font-medium">
-                                  {deficit >= 1_000_000
-                                    ? `${(deficit / 1_000_000).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}M`
-                                    : deficit >= 1_000
-                                      ? `${(deficit / 1_000).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}k`
-                                      : deficit.toLocaleString('pt-BR', {
-                                          maximumFractionDigits: 0,
-                                        })}
-                                  {' m³'}
-                                </div>
-                              )}
-                            </td>
-                          )
-                        })}
-                      </tr>
-                    ))}
+                          })}
+                          <td
+                            className="border border-slate-200 px-3 py-2 text-right font-semibold whitespace-nowrap"
+                            style={
+                              totalAno > 0
+                                ? cellStyle(totalAno * 0.6)
+                                : { backgroundColor: '#f8fafc', color: '#cbd5e1' }
+                            }
+                          >
+                            {totalAno > 0 ? fmt(totalAno) : '—'}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                    {/* Linha de totais por mês */}
+                    <tr className="font-semibold bg-slate-50 border-t-2 border-slate-300">
+                      <td className="sticky left-0 z-10 bg-slate-100 px-3 py-2 text-slate-700 border border-slate-200 whitespace-nowrap">
+                        Total mês
+                      </td>
+                      {MESES.map((m) => {
+                        const v = anos.reduce((s, ano) => s + (defMap[ano]?.[m] || 0), 0)
+                        return (
+                          <td
+                            key={m}
+                            className="border border-slate-200 px-2 py-2 text-center whitespace-nowrap text-slate-600"
+                          >
+                            {v > 0 ? fmt(v) : '—'}
+                          </td>
+                        )
+                      })}
+                      <td className="border border-slate-200 px-3 py-2 text-right text-slate-700 whitespace-nowrap">
+                        {fmt(
+                          anos.reduce(
+                            (s, ano) =>
+                              s + MESES.reduce((ss, m) => ss + (defMap[ano]?.[m] || 0), 0),
+                            0,
+                          ),
+                        )}
+                      </td>
+                    </tr>
                   </tbody>
                 </table>
               </div>
-
-              //Nota de rodapé 
-              <p className="text-[11px] text-slate-400 mt-3">
-                Cada célula exibe o índice de segurança hídrica (0–1) e o déficit em m³. Passe o
-                mouse sobre a célula para ver o status e déficit completo.
-              </p>
             </div>
           )
         })()}
-*/}
+
       {/* CenariosDashboard — sem alteração */}
       {data.length > 0 && <CenariosDashboard data={data} fontesMap={fontesMap} />}
 
