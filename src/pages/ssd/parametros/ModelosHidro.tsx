@@ -11,7 +11,7 @@ export function ModelosHidro() {
   const [modelos, setModelos] = useState<any[]>([])
   const [fontes, setFontes] = useState<any[]>([])
 
-  const [form, setForm] = useState({
+  const emptyForm = {
     id_mod: null as number | null,
     id_fonte: '',
     cenario: '',
@@ -22,7 +22,9 @@ export function ModelosHidro() {
     arq_capex_estrategias: '',
     arq_capex_perdas: '',
     arq_opex: '',
-  })
+  }
+
+  const [form, setForm] = useState(emptyForm)
   const [filesInBucket, setFilesInBucket] = useState<any[]>([])
   const [pickerState, setPickerState] = useState<{ open: boolean; field: string }>({
     open: false,
@@ -64,29 +66,25 @@ export function ModelosHidro() {
     }
 
     let error
-    if (form.id_mod) {
-      const res = await supabase.from('modelos').update(payload).eq('id_mod', form.id_mod)
+
+    if (form.id_mod !== null) {
+      const res = await supabase
+        .from('modelos')
+        .update(payload)
+        .eq('id_mod', form.id_mod)
+        .select()
+        .single()
       error = res.error
     } else {
-      const res = await supabase.from('modelos').insert(payload)
+      const res = await supabase.from('modelos').insert(payload).select().single()
       error = res.error
     }
 
-    if (error) toast.error('Erro ao salvar')
-    else {
-      toast.success(form.id_mod ? 'Modelo atualizado' : 'Modelo salvo')
-      setForm({
-        id_mod: null,
-        id_fonte: '',
-        cenario: '',
-        estrategia: '',
-        arq_mod: '',
-        arq_perdas: '',
-        arq_demanda: '',
-        arq_capex_estrategias: '',
-        arq_capex_perdas: '',
-        arq_opex: '',
-      })
+    if (error) {
+      toast.error('Erro ao salvar: ' + error.message)
+    } else {
+      toast.success(form.id_mod !== null ? 'Modelo atualizado' : 'Modelo salvo')
+      setForm(emptyForm)
       loadData()
     }
   }
@@ -180,25 +178,14 @@ export function ModelosHidro() {
         <div className="col-span-1 md:col-span-2 flex justify-between items-center mt-2">
           <Button
             variant="ghost"
-            onClick={() =>
-              setForm({
-                id_mod: null,
-                id_fonte: '',
-                cenario: '',
-                estrategia: '',
-                arq_mod: '',
-                arq_perdas: '',
-                arq_demanda: '',
-                arq_capex_estrategias: '',
-                arq_capex_perdas: '',
-                arq_opex: '',
-              })
-            }
-            disabled={!form.id_mod}
+            onClick={() => setForm(emptyForm)}
+            disabled={form.id_mod === null}
           >
             Cancelar Edição
           </Button>
-          <Button onClick={handleSave}>{form.id_mod ? 'Atualizar Modelo' : 'Gravar Modelo'}</Button>
+          <Button onClick={handleSave}>
+            {form.id_mod !== null ? 'Atualizar Modelo' : 'Gravar Modelo'}
+          </Button>
         </div>
       </div>
 
