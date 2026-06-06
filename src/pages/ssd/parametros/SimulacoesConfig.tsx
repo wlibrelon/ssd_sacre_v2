@@ -19,6 +19,9 @@ export function SimulacoesConfig() {
     pop_inicial: '',
     inicio_perdas: '',
     perc_inicial_perdas: '',
+    limiar_alerta: '',
+    limiar_crise: '',
+    limiar_colapso: '',
     demanda_auto: false,
     perdas_auto: false,
   })
@@ -61,6 +64,9 @@ export function SimulacoesConfig() {
       pop_inicial: Number(form.pop_inicial) || null,
       inicio_perdas: form.inicio_perdas || null,
       perc_inicial_perdas: Number(form.perc_inicial_perdas) || null,
+      limiar_alerta: Number(form.limiar_alerta) || null,
+      limiar_crise: Number(form.limiar_crise) || null,
+      limiar_colapso: Number(form.limiar_colapso) || null,
       demanda_auto: form.demanda_auto,
       perdas_auto: form.perdas_auto,
     }
@@ -78,6 +84,9 @@ export function SimulacoesConfig() {
       pop_inicial: '',
       inicio_perdas: '',
       perc_inicial_perdas: '',
+      limiar_alerta: '',
+      limiar_crise: '',
+      limiar_colapso: '',
       demanda_auto: false,
       perdas_auto: false,
     })
@@ -97,6 +106,9 @@ export function SimulacoesConfig() {
       pop_inicial: s.pop_inicial || '',
       inicio_perdas: s.inicio_perdas || '',
       perc_inicial_perdas: s.perc_inicial_perdas || '',
+      limiar_alerta: s.limiar_alerta || '',
+      limiar_crise: s.limiar_crise || '',
+      limiar_colapso: s.limiar_colapso || '',
       demanda_auto: s.demanda_auto || false,
       perdas_auto: s.perdas_auto || false,
     })
@@ -157,7 +169,37 @@ export function SimulacoesConfig() {
             onChange={(e) => setForm({ ...form, perc_inicial_perdas: e.target.value })}
           />
         </div>
-        <div className="flex items-center space-x-2 md:col-span-2 pt-6">
+        <div>
+          <label className="text-xs font-semibold">Limiar Alerta</label>
+          <Input
+            className="mt-1"
+            type="number"
+            step="0.01"
+            value={form.limiar_alerta}
+            onChange={(e) => setForm({ ...form, limiar_alerta: e.target.value })}
+          />
+        </div>
+        <div>
+          <label className="text-xs font-semibold">Limiar Crise</label>
+          <Input
+            className="mt-1"
+            type="number"
+            step="0.01"
+            value={form.limiar_crise}
+            onChange={(e) => setForm({ ...form, limiar_crise: e.target.value })}
+          />
+        </div>
+        <div>
+          <label className="text-xs font-semibold">Limiar Colapso</label>
+          <Input
+            className="mt-1"
+            type="number"
+            step="0.01"
+            value={form.limiar_colapso}
+            onChange={(e) => setForm({ ...form, limiar_colapso: e.target.value })}
+          />
+        </div>
+        <div className="flex items-center space-x-2 md:col-span-3 pt-6">
           <Checkbox
             id="d_auto"
             checked={form.demanda_auto}
@@ -177,7 +219,7 @@ export function SimulacoesConfig() {
             Cálculo auto Perdas
           </label>
         </div>
-        <div className="col-span-1 flex justify-end pt-5">
+        <div className="col-span-1 md:col-span-1 flex justify-end pt-5">
           <Button onClick={handleSaveSim}>{form.id_s ? 'Atualizar' : 'Salvar Novo'}</Button>
         </div>
       </div>
@@ -190,6 +232,9 @@ export function SimulacoesConfig() {
               <th className="p-2 text-left">População</th>
               <th className="p-2 text-left">Início Perdas</th>
               <th className="p-2 text-left">% Ini. Perdas</th>
+              <th className="p-2 text-left">Lim. Alerta</th>
+              <th className="p-2 text-left">Lim. Crise</th>
+              <th className="p-2 text-left">Lim. Colapso</th>
               <th className="p-2 text-left text-center">Auto Demanda</th>
               <th className="p-2 text-left text-center">Auto Perdas</th>
               <th className="p-2 w-24">Ações</th>
@@ -206,6 +251,9 @@ export function SimulacoesConfig() {
                 <td className="p-2">{s.pop_inicial}</td>
                 <td className="p-2">{s.inicio_perdas}</td>
                 <td className="p-2">{s.perc_inicial_perdas}</td>
+                <td className="p-2">{s.limiar_alerta}</td>
+                <td className="p-2">{s.limiar_crise}</td>
+                <td className="p-2">{s.limiar_colapso}</td>
                 <td className="p-2 text-center">{s.demanda_auto ? 'Sim' : 'Não'}</td>
                 <td className="p-2 text-center">{s.perdas_auto ? 'Sim' : 'Não'}</td>
                 <td className="p-2 flex space-x-1">

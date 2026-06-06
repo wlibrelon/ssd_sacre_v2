@@ -14,6 +14,8 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
+  ReferenceLine,
+  ReferenceArea,
 } from 'recharts'
 
 const MONTHS = [
@@ -32,6 +34,88 @@ const MONTHS = [
 ]
 
 const LINE_COLORS = ['#2563eb', '#16a34a', '#dc2626', '#d97706', '#7c3aed', '#0891b2', '#be185d']
+
+// ── helpers de segurança hídrica ─────────────────────────────────────────────
+
+type StatusSeg = 'seguro' | 'alerta' | 'crise'
+
+function getStatus(indice: number, limiarAlerta: number, limiarCrise: number): StatusSeg {
+  if (indice >= limiarAlerta) return 'seguro'
+  if (indice >= limiarCrise) return 'alerta'
+  return 'crise'
+}
+
+const STATUS_LABEL: Record<StatusSeg, string> = {
+  seguro: 'Seguro',
+  alerta: 'Alerta',
+  crise: 'Crise',
+}
+
+const STATUS_COLORS: Record<StatusSeg, { bg: string; text: string; border: string }> = {
+  seguro: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
+  alerta: { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' },
+  crise: { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200' },
+}
+
+const STATUS_BADGE: Record<StatusSeg, string> = {
+  seguro: 'bg-emerald-100 text-emerald-700',
+  alerta: 'bg-amber-100 text-amber-700',
+  crise: 'bg-red-100 text-red-700',
+}
+
+// Tooltip customizado para o gráfico de segurança hídrica
+const TooltipSeguranca = ({ active, payload, label, limiarAlerta, limiarCrise }: any) => {
+  if (!active || !payload || payload.length === 0) return null
+  return (
+    <div className="bg-white border border-slate-200 rounded-lg shadow-lg p-3 text-xs space-y-1 min-w-[200px]">
+      <p className="font-semibold text-slate-700 border-b pb-1 mb-1">{label}</p>
+      {payload.map((entry: any) => {
+        const indice = typeof entry.value === 'number' ? entry.value : null
+        if (indice == null) return null
+        const status = getStatus(indice, limiarAlerta, limiarCrise)
+        const vol = entry.payload[`__vol_${entry.dataKey}`]
+        const dem = entry.payload[`__dem_${entry.dataKey}`]
+        return (
+          <div key={entry.dataKey} className="space-y-0.5">
+            <div className="flex items-center gap-1.5">
+              <span
+                className="w-2.5 h-2.5 rounded-full inline-block shrink-0"
+                style={{ background: entry.color }}
+              />
+              <span className="font-medium text-slate-600">{entry.dataKey}</span>
+            </div>
+            <div className="pl-4 space-y-0.5 text-slate-500">
+              <div>
+                Índice:{' '}
+                <span className={`font-bold ${STATUS_COLORS[status].text}`}>
+                  {indice.toLocaleString('pt-BR', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                </span>{' '}
+                <span
+                  className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${STATUS_BADGE[status]}`}
+                >
+                  {STATUS_LABEL[status]}
+                </span>
+              </div>
+              {vol != null && (
+                <div>
+                  Vol. distribuído: {vol.toLocaleString('pt-BR', { maximumFractionDigits: 0 })} m³
+                </div>
+              )}
+              {dem != null && (
+                <div>Demanda: {dem.toLocaleString('pt-BR', { maximumFractionDigits: 0 })} m³</div>
+              )}
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 export default function Cenarios() {
   const {
@@ -52,11 +136,27 @@ export default function Cenarios() {
   const [loading, setLoading] = useState(false)
   const [ran, setRan] = useState(false)
 
+  // Segurança hídrica
+  const [segurancaHidrica, setSegurancaHidrica] = useState<{
+    porFonte: Record<
+      number,
+      { indicesMes: { tempo: string; indice: number; vol: number; dem: number }[] }
+    >
+    chartData: any[]
+    criticos: {
+      tempo: string
+      id_fonte: number
+      indice: number
+      status: StatusSeg
+      deficit: number
+    }[]
+    fontes: number[]
+  } | null>(null)
+
   // Indicadores
   const [indicadores, setIndicadores] = useState<any[]>([])
   const [selectedIndicadores, setSelectedIndicadores] = useState<number[]>([])
 
-  // Carregar indicadores vinculados à simulação selecionada
   useEffect(() => {
     if (!filters.id_s) {
       setIndicadores([])
@@ -69,7 +169,6 @@ export default function Cenarios() {
       .eq('id_s', filters.id_s)
       .then(({ data: rows }) => {
         if (!rows) return
-        // deduplica por id_indicador
         const unique = Object.values(
           rows.reduce((acc: any, r: any) => {
             if (r.indicadores && !acc[r.indicadores.id_indicador]) {
@@ -144,10 +243,8 @@ export default function Cenarios() {
   const applyFinancialMetrics = async (simId: number) => {
     let q = supabase.from('dados_simulacao').select('*')
     if (filters.id_s) q = q.eq('id_s', filters.id_s)
-
     if (filters.ano_inicio) q = q.gte('tempo', `${filters.ano_inicio}/01`)
     if (filters.ano_fim) q = q.lte('tempo', `${filters.ano_fim}/12`)
-
     if (filters.meses && filters.meses.length > 0) {
       const orString = filters.meses
         .map((m: string) => `tempo.ilike.%/${m.padStart(2, '0')}`)
@@ -211,13 +308,11 @@ export default function Cenarios() {
         const tempoNorm = row.tempo.replace(/\//g, '-')
         newCapexEst += capexAcaoMap[`${tempoNorm}_${row.id_fonte}`] || 0
       }
-
       let newCapexPer = 0
       if (row.tempo) {
         const tempoNorm = row.tempo.replace(/\//g, '-')
         newCapexPer += capexPerdasMap[tempoNorm] || 0
       }
-
       let newOpex = 0
       if (row.tempo) {
         const tempoNorm = row.tempo.replace(/\//g, '-')
@@ -314,6 +409,82 @@ export default function Cenarios() {
       }))
       .sort((a: any, b: any) => a.tempo.localeCompare(b.tempo))
 
+    // ── Calcula segurança hídrica a partir de processedData ──────────────────
+    const limiarAlerta = activeSimObj?.limiar_alerta ?? 0.8
+    const limiarCrise = activeSimObj?.limiar_crise ?? 0.6
+
+    // Agrupa por tempo+fonte (média quando há múltiplos id_mod)
+    const segMap: Record<
+      string,
+      { vol: number; dem: number; count: number; id_fonte: number; tempo: string }
+    > = {}
+    processedData.forEach((row: any) => {
+      const key = `${row.tempo}_${row.id_fonte}`
+      if (!segMap[key])
+        segMap[key] = { vol: 0, dem: 0, count: 0, id_fonte: row.id_fonte, tempo: row.tempo }
+      segMap[key].vol += row.volume_distribuido || 0
+      segMap[key].dem += row.demanda || 0
+      segMap[key].count += 1
+    })
+
+    // Por fonte: lista de índices mensais
+    const porFonte: Record<
+      number,
+      { indicesMes: { tempo: string; indice: number; vol: number; dem: number }[] }
+    > = {}
+    Object.values(segMap).forEach(({ id_fonte, tempo, vol, dem, count }) => {
+      const avgVol = vol / count
+      const avgDem = dem / count
+      const indice = avgDem > 0 ? Math.min(1, avgVol / avgDem) : 1
+      if (!porFonte[id_fonte]) porFonte[id_fonte] = { indicesMes: [] }
+      porFonte[id_fonte].indicesMes.push({ tempo, indice, vol: avgVol, dem: avgDem })
+    })
+
+    const fontesPresentes = Object.keys(porFonte).map(Number)
+
+    // chartData: uma entrada por tempo, chave = nome da fonte
+    // chaves auxiliares __vol_ e __dem_ para o tooltip (não renderizadas como Line)
+    const temposUnicos = Array.from(new Set(Object.values(segMap).map((r) => r.tempo))).sort()
+    const fontesMapLocal = fonte_agua.reduce(
+      (acc: any, f: any) => ({ ...acc, [f.id_fonte]: f.nome_fonte }),
+      {},
+    )
+    const chartDataSeg = temposUnicos.map((tempo) => {
+      const point: any = { tempo }
+      fontesPresentes.forEach((id_fonte) => {
+        const mesData = porFonte[id_fonte].indicesMes.find((m) => m.tempo === tempo)
+        if (mesData) {
+          const nomeFonte = fontesMapLocal[id_fonte] || String(id_fonte)
+          point[nomeFonte] = parseFloat(mesData.indice.toFixed(4))
+          point[`__vol_${nomeFonte}`] = mesData.vol
+          point[`__dem_${nomeFonte}`] = mesData.dem
+        }
+      })
+      return point
+    })
+
+    // Períodos críticos (alerta ou crise)
+    const criticos: {
+      tempo: string
+      id_fonte: number
+      indice: number
+      status: StatusSeg
+      deficit: number
+    }[] = []
+    Object.entries(porFonte).forEach(([idFonteStr, { indicesMes }]) => {
+      const id_fonte = Number(idFonteStr)
+      indicesMes.forEach(({ tempo, indice, vol, dem }) => {
+        const status = getStatus(indice, limiarAlerta, limiarCrise)
+        if (status !== 'seguro') {
+          criticos.push({ tempo, id_fonte, indice, status, deficit: Math.max(0, dem - vol) })
+        }
+      })
+    })
+    criticos.sort((a, b) => a.tempo.localeCompare(b.tempo) || a.id_fonte - b.id_fonte)
+
+    setSegurancaHidrica({ porFonte, chartData: chartDataSeg, criticos, fontes: fontesPresentes })
+    // ────────────────────────────────────────────────────────────────────────
+
     setData(processedData)
     setGroupedData(groupedArray)
     setRan(true)
@@ -326,16 +497,15 @@ export default function Cenarios() {
   )
 
   const activeSimObj = simulacao_ssd.find((s: any) => s.id_s === parseInt(filters.id_s))
+  const limiarAlerta = activeSimObj?.limiar_alerta ?? 0.8
+  const limiarCrise = activeSimObj?.limiar_crise ?? 0.6
 
   // Monta gráficos de indicadores selecionados
-  // Agrupa por unidade; dentro de cada unidade, uma linha por fonte de água
   const indicadoresCharts = (() => {
     if (!ran || data.length === 0 || selectedIndicadores.length === 0) return []
 
-    // Filtra apenas os indicadores selecionados
     const indsSelected = indicadores.filter((ind) => selectedIndicadores.includes(ind.id_indicador))
 
-    // Agrupa indicadores por unidade
     const porUnidade: Record<string, any[]> = {}
     indsSelected.forEach((ind) => {
       const unidade = ind.unidade || 'sem_unidade'
@@ -344,15 +514,12 @@ export default function Cenarios() {
     })
 
     return Object.entries(porUnidade).map(([unidade, inds]) => {
-      // Para cada unidade, monta série temporal por fonte
-      // data tem valores_extras (jsonb) com campo_extra de cada indicador
       const tempos = Array.from(new Set(data.map((d: any) => d.tempo))).sort()
       const fontes = Array.from(new Set(data.map((d: any) => d.id_fonte))) as number[]
 
       const chartData = tempos.map((tempo) => {
         const point: any = { tempo }
         fontes.forEach((id_fonte) => {
-          // Pode haver múltiplos registros para tempo+fonte (por id_mod); usa média
           const rows = data.filter((d: any) => d.tempo === tempo && d.id_fonte === id_fonte)
           inds.forEach((ind) => {
             const campo = ind.campo_extra
@@ -370,7 +537,6 @@ export default function Cenarios() {
         return point
       })
 
-      // Linhas a renderizar — apenas as que têm ao menos um valor não nulo no chartData
       const linhas: string[] = []
       fontes.forEach((id_fonte) => {
         inds.forEach((ind) => {
@@ -380,12 +546,31 @@ export default function Cenarios() {
         })
       })
 
-      // Título: concatena as descrições dos indicadores do grupo
       const titulo = inds.map((ind: any) => ind.descricao || ind.campo_extra).join(' - ')
 
       return { unidade, chartData, linhas, titulo }
     })
   })()
+
+  // Cards de segurança derivados do estado
+  const segCards = segurancaHidrica
+    ? segurancaHidrica.fontes.map((id_fonte) => {
+        const { indicesMes } = segurancaHidrica.porFonte[id_fonte]
+        const indicesMedio = indicesMes.reduce((s, m) => s + m.indice, 0) / (indicesMes.length || 1)
+        const mesesAlerta = indicesMes.filter(
+          (m) => getStatus(m.indice, limiarAlerta, limiarCrise) === 'alerta',
+        ).length
+        const mesesCrise = indicesMes.filter(
+          (m) => getStatus(m.indice, limiarAlerta, limiarCrise) === 'crise',
+        ).length
+        const statusGeral = getStatus(indicesMedio, limiarAlerta, limiarCrise)
+        return { id_fonte, indicesMedio, mesesAlerta, mesesCrise, statusGeral }
+      })
+    : []
+
+  const segChartLinhas = segurancaHidrica
+    ? segurancaHidrica.fontes.map((id_fonte) => fontesMap[id_fonte] || String(id_fonte))
+    : []
 
   return (
     <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
@@ -399,7 +584,7 @@ export default function Cenarios() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-fade-in">
         <div className="space-y-6 md:col-span-2">
-          {/* Simulação — sem tabela cenario_simulacao */}
+          {/* Simulação */}
           <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200 w-full">
             <h3 className="font-semibold text-primary border-b pb-3 mb-4 text-sm uppercase tracking-wider">
               Cenários para Simulação
@@ -618,9 +803,205 @@ export default function Cenarios() {
         </div>
       )}
 
+      {/* ── BLOCO 1: Cards de segurança hídrica por fonte ──────────────────── */}
+      {segurancaHidrica && segCards.length > 0 && (
+        <div>
+          <h2 className="text-lg font-semibold text-primary mb-3">Índice de Segurança Hídrica</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {segCards.map(({ id_fonte, indicesMedio, mesesAlerta, mesesCrise, statusGeral }) => {
+              const c = STATUS_COLORS[statusGeral]
+              return (
+                <div
+                  key={id_fonte}
+                  className={`rounded-xl border p-4 space-y-3 ${c.bg} ${c.border}`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="text-sm font-semibold text-slate-700 leading-tight">
+                      {fontesMap[id_fonte] || `Fonte ${id_fonte}`}
+                    </span>
+                    <span
+                      className={`shrink-0 text-[11px] font-bold px-2 py-0.5 rounded-full ${STATUS_BADGE[statusGeral]}`}
+                    >
+                      {STATUS_LABEL[statusGeral]}
+                    </span>
+                  </div>
+
+                  <div className={`text-3xl font-bold ${c.text}`}>
+                    {indicesMedio.toLocaleString('pt-BR', {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
+                  </div>
+                  <p className="text-[11px] text-slate-500 -mt-2">índice médio do período</p>
+
+                  <div className="flex gap-4 text-xs pt-1 border-t border-slate-200">
+                    <div>
+                      <span className="font-bold text-amber-600">{mesesAlerta}</span>
+                      <span className="text-slate-500 ml-1">
+                        {mesesAlerta === 1 ? 'mês em alerta' : 'meses em alerta'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="font-bold text-red-600">{mesesCrise}</span>
+                      <span className="text-slate-500 ml-1">
+                        {mesesCrise === 1 ? 'mês em crise' : 'meses em crise'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ── BLOCO 2: Gráfico do índice de segurança hídrica ───────────────── */}
+      {segurancaHidrica && segurancaHidrica.chartData.length > 0 && (
+        <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200">
+          <h3 className="font-semibold text-primary border-b pb-3 mb-4 text-sm uppercase tracking-wider">
+            Série Temporal — Índice de Segurança Hídrica
+          </h3>
+          <div className="flex flex-wrap gap-6 text-xs text-slate-500 mb-4">
+            <div className="flex items-center gap-1.5">
+              <span className="w-7 border-t-2 border-dashed border-amber-400 inline-block" />
+              <span>
+                Limiar de Alerta (
+                {limiarAlerta.toLocaleString('pt-BR', { minimumFractionDigits: 1 })})
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="w-7 border-t-2 border-dashed border-red-400 inline-block" />
+              <span>
+                Limiar de Crise ({limiarCrise.toLocaleString('pt-BR', { minimumFractionDigits: 1 })}
+                )
+              </span>
+            </div>
+          </div>
+          <ResponsiveContainer width="100%" height={340}>
+            <LineChart
+              data={segurancaHidrica.chartData}
+              margin={{ top: 4, right: 24, left: 8, bottom: 4 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+
+              {/* Zonas de risco coloridas */}
+              <ReferenceArea
+                y1={0}
+                y2={limiarCrise}
+                fill="#ef4444"
+                fillOpacity={0.07}
+                ifOverflow="hidden"
+              />
+              <ReferenceArea
+                y1={limiarCrise}
+                y2={limiarAlerta}
+                fill="#f59e0b"
+                fillOpacity={0.07}
+                ifOverflow="hidden"
+              />
+
+              <XAxis dataKey="tempo" tick={{ fontSize: 11 }} interval="preserveStartEnd" />
+              <YAxis
+                domain={[0, 1]}
+                tick={{ fontSize: 11 }}
+                tickFormatter={(v) => v.toFixed(1)}
+                label={{
+                  value: 'Índice (0–1)',
+                  angle: -90,
+                  position: 'insideLeft',
+                  offset: 10,
+                  style: { fontSize: 11 },
+                }}
+              />
+
+              <Tooltip
+                content={<TooltipSeguranca limiarAlerta={limiarAlerta} limiarCrise={limiarCrise} />}
+              />
+              <Legend wrapperStyle={{ fontSize: 12 }} />
+
+              {/* Linhas de limiar */}
+              <ReferenceLine
+                y={limiarAlerta}
+                stroke="#f59e0b"
+                strokeDasharray="6 3"
+                strokeWidth={1.5}
+              />
+              <ReferenceLine
+                y={limiarCrise}
+                stroke="#ef4444"
+                strokeDasharray="6 3"
+                strokeWidth={1.5}
+              />
+
+              {/* Uma linha por fonte */}
+              {segChartLinhas.map((nomeFonte, idx) => (
+                <Line
+                  key={nomeFonte}
+                  type="monotone"
+                  dataKey={nomeFonte}
+                  stroke={LINE_COLORS[idx % LINE_COLORS.length]}
+                  dot={false}
+                  strokeWidth={2}
+                  connectNulls
+                />
+              ))}
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+
+      {/* ── BLOCO 3: Tabela de períodos críticos ──────────────────────────── */}
+      {segurancaHidrica && segurancaHidrica.criticos.length > 0 && (
+        <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200">
+          <h3 className="font-semibold text-primary border-b pb-3 mb-4 text-sm uppercase tracking-wider">
+            Períodos Críticos
+          </h3>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-slate-50 text-xs text-slate-500 uppercase tracking-wider">
+                  <th className="px-3 py-2 text-left font-semibold">Período</th>
+                  <th className="px-3 py-2 text-left font-semibold">Fonte</th>
+                  <th className="px-3 py-2 text-right font-semibold">Índice</th>
+                  <th className="px-3 py-2 text-center font-semibold">Status</th>
+                  <th className="px-3 py-2 text-right font-semibold">Déficit (m³)</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {segurancaHidrica.criticos.map((row, i) => (
+                  <tr key={i} className="hover:bg-slate-50">
+                    <td className="px-3 py-2 font-mono text-slate-600">{row.tempo}</td>
+                    <td className="px-3 py-2 text-slate-700">
+                      {fontesMap[row.id_fonte] || `Fonte ${row.id_fonte}`}
+                    </td>
+                    <td className="px-3 py-2 text-right font-semibold text-slate-700">
+                      {row.indice.toLocaleString('pt-BR', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
+                    </td>
+                    <td className="px-3 py-2 text-center">
+                      <span
+                        className={`inline-block text-[11px] font-bold px-2 py-0.5 rounded-full ${STATUS_BADGE[row.status]}`}
+                      >
+                        {STATUS_LABEL[row.status]}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2 text-right text-slate-600">
+                      {row.deficit.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* CenariosDashboard — sem alteração */}
       {data.length > 0 && <CenariosDashboard data={data} fontesMap={fontesMap} />}
 
-      {/* Gráficos de Indicadores — um gráfico por unidade */}
+      {/* Gráficos de Indicadores — sem alteração */}
       {indicadoresCharts.length > 0 && (
         <div className="space-y-6">
           {indicadoresCharts.map(({ unidade, chartData, linhas, titulo }) => (
