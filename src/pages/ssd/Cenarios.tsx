@@ -1105,6 +1105,7 @@ export default function Cenarios() {
       )}
 
       {/* ── BLOCO 3: Tabela matricial ano × mês de segurança hídrica ── */}
+      {/*
       {segurancaHidrica &&
         segurancaHidrica.indicesMes.length > 0 &&
         (() => {
@@ -1208,7 +1209,7 @@ export default function Cenarios() {
 
           return (
             <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200">
-              {/* Cabeçalho com título e botão download */}
+              //Cabeçalho com título e botão download
               <div className="flex items-center justify-between border-b pb-3 mb-4">
                 <h3 className="font-semibold text-primary text-sm uppercase tracking-wider">
                   Segurança Hídrica — Índice por Período
@@ -1235,7 +1236,7 @@ export default function Cenarios() {
                 </button>
               </div>
 
-              {/* Legenda de status */}
+              //Legenda de status 
               <div className="flex flex-wrap gap-4 text-xs mb-4">
                 {(['seguro', 'alerta', 'crise', 'colapso'] as StatusSeg[]).map((s) => (
                   <div key={s} className="flex items-center gap-1.5">
@@ -1247,7 +1248,7 @@ export default function Cenarios() {
                 ))}
               </div>
 
-              {/* Tabela matricial */}
+              // Tabela matricial 
               <div className="overflow-x-auto">
                 <table className="w-full border-collapse text-xs">
                   <thead>
@@ -1317,7 +1318,7 @@ export default function Cenarios() {
                 </table>
               </div>
 
-              {/* Nota de rodapé */}
+              //Nota de rodapé 
               <p className="text-[11px] text-slate-400 mt-3">
                 Cada célula exibe o índice de segurança hídrica (0–1) e o déficit em m³. Passe o
                 mouse sobre a célula para ver o status e déficit completo.
@@ -1325,7 +1326,7 @@ export default function Cenarios() {
             </div>
           )
         })()}
-
+*/}
       {/* CenariosDashboard — sem alteração */}
       {data.length > 0 && <CenariosDashboard data={data} fontesMap={fontesMap} />}
 
