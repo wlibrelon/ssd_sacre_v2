@@ -362,7 +362,7 @@ export default function Cenarios() {
               .map(Number)
             if (values.length > 0) {
               const avg = values.reduce((a: number, b: number) => a + b, 0) / values.length
-              const key = `${fontesMap[id_fonte] || id_fonte} — ${ind.nome_indicador || campo}`
+              const key = `${fontesMap[id_fonte] || id_fonte} — ${ind.descricao || campo}`
               point[key] = avg
             }
           })
@@ -370,17 +370,20 @@ export default function Cenarios() {
         return point
       })
 
-      // Linhas a renderizar
+      // Linhas a renderizar — apenas as que têm ao menos um valor não nulo no chartData
       const linhas: string[] = []
       fontes.forEach((id_fonte) => {
         inds.forEach((ind) => {
-          const campo = ind.campo_extra
-          const key = `${fontesMap[id_fonte] || id_fonte} — ${ind.nome_indicador || campo}`
-          linhas.push(key)
+          const key = `${fontesMap[id_fonte] || id_fonte} — ${ind.descricao || ind.campo_extra}`
+          const temData = chartData.some((pt: any) => pt[key] != null)
+          if (temData) linhas.push(key)
         })
       })
 
-      return { unidade, chartData, linhas }
+      // Título: concatena as descrições dos indicadores do grupo
+      const titulo = inds.map((ind: any) => ind.descricao || ind.campo_extra).join(' - ')
+
+      return { unidade, chartData, linhas, titulo }
     })
   })()
 
@@ -493,7 +496,7 @@ export default function Cenarios() {
                         onCheckedChange={() => toggleIndicador(ind.id_indicador)}
                       />
                       <span className="text-sm font-medium flex-1">
-                        {ind.nome_indicador || ind.campo_extra}
+                        {ind.descricao || ind.campo_extra}
                       </span>
                       {ind.unidade && (
                         <span className="text-xs text-muted-foreground bg-slate-100 px-2 py-0.5 rounded">
@@ -620,13 +623,13 @@ export default function Cenarios() {
       {/* Gráficos de Indicadores — um gráfico por unidade */}
       {indicadoresCharts.length > 0 && (
         <div className="space-y-6">
-          {indicadoresCharts.map(({ unidade, chartData, linhas }) => (
+          {indicadoresCharts.map(({ unidade, chartData, linhas, titulo }) => (
             <div
               key={unidade}
               className="bg-white p-5 shadow-sm rounded-xl border border-slate-200"
             >
               <h3 className="font-semibold text-primary border-b pb-3 mb-4 text-sm uppercase tracking-wider">
-                Indicadores — {unidade}
+                Indicadores: {titulo}
               </h3>
               <ResponsiveContainer width="100%" height={320}>
                 <LineChart data={chartData} margin={{ top: 4, right: 24, left: 8, bottom: 4 }}>
