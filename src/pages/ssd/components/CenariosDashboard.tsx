@@ -130,7 +130,11 @@ const DeficitHeatmap = ({
     anosSet.add(ano)
     mesesSet.add(parseInt(mes))
   })
-  const anos = Array.from(anosSet).sort()
+  // Apenas anos que tenham ao menos um mês com déficit
+  const anosComDeficit = new Set(deficitMonths.map((t) => t.split('/')[0]))
+  const anos = Array.from(anosSet)
+    .sort()
+    .filter((ano) => anosComDeficit.has(ano))
   const meses = Array.from(mesesSet).sort((a, b) => a - b)
 
   const deficitSet = new Set(deficitMonths)
