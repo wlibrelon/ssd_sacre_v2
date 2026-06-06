@@ -55,23 +55,30 @@ export default function Cenarios() {
     const perc_inicial_perdas = sim?.perc_inicial_perdas || 0
     const inicio_perdas = sim?.inicio_perdas || ''
     const perc_final_perdas = cp?.percentual || 0
-    const startPerdasIdx = tempos.findIndex((t: any) => t >= inicio_perdas)
+
+    const temposNorm = tempos.map((t: any) => (t ? t.replace(/\//g, '-') : ''))
+    const inicio_perdas_norm = inicio_perdas ? inicio_perdas.replace(/\//g, '-') : ''
+
+    const startPerdasIdx = temposNorm.findIndex((t: any) => t >= inicio_perdas_norm)
     const totalStepsPerdas = startPerdasIdx >= 0 ? tempos.length - 1 - startPerdasIdx : 0
     const perdasStep =
       totalStepsPerdas > 0 ? (perc_inicial_perdas - perc_final_perdas) / totalStepsPerdas : 0
+
     const calculatedData = data.map((row) => {
       let rowDemanda = row.demanda || 0
       let rowPerdas = row.perdas || 0
       let populacao_calculada = 0
       const tIdx = tempos.indexOf(row.tempo)
+
       if (sim?.demanda_auto && cd && cc) {
-        const ano_inicial = parseInt((tempos[0] || '0').split('-')[0])
-        const row_ano = parseInt((row.tempo || '0').split('-')[0])
+        const ano_inicial = parseInt((tempos[0] || '0').split(/[-/]/)[0])
+        const row_ano = parseInt((row.tempo || '0').split(/[-/]/)[0])
         const tempo_anos = row_ano - ano_inicial
         const popAtual = pop_inicial * Math.pow(1 + perc_demanda / 100, tempo_anos)
         populacao_calculada = popAtual
         rowDemanda = popAtual * vol_hab
       }
+
       if (sim?.perdas_auto && cp) {
         if (startPerdasIdx === -1 || tIdx <= startPerdasIdx) {
           rowPerdas = perc_inicial_perdas
@@ -85,102 +92,51 @@ export default function Cenarios() {
           }
         }
       }
+
       return { ...row, demanda: rowDemanda, perdas: rowPerdas, populacao_calculada }
     })
+
     return calculatedData
   }
 
   const applyFinancialMetrics = async (simId: number) => {
-    if (typeof simId !== 'number' || isNaN(simId)) {
-      console.error('[DEBUG] ID de simulação inválido:', simId)
-      return []
-    }
+    let q = supabase.from('dados_simulacao').select('*')
+    if (filters.id_s) q = q.eq('id_s', filters.id_s)
 
-    console.log('[DEBUG] ========== INICIANDO QUERY ==========')
-    console.log('[DEBUG] Filtros aplicados:', {
-      id_s: filters.id_s,
-      ano_inicio: filters.ano_inicio,
-      ano_fim: filters.ano_fim,
-      meses: filters.meses,
-    })
-
-    // ✅ PASSO 1: Query APENAS com id_s (baseline)
-    let q = supabase.from('dados_simulacao').select('*').eq('id_s', simId)
-    const { data: baselineData, error: baselineError } = await q
-    console.log('[DEBUG] Baseline (apenas id_s):', baselineData?.length || 0, 'registros')
-    if (baselineError) console.error('[DEBUG] Erro baseline:', baselineError)
-
-    if (!baselineData || baselineData.length === 0) {
-      console.error('[DEBUG] FALHA CRÍTICA: Nenhum dado para id_s =', simId)
-      return []
-    }
-
-    // ✅ PASSO 2: Aplicar filtro de período (ano_inicio e ano_fim)
-    let q2 = supabase.from('dados_simulacao').select('*').eq('id_s', simId)
-
-    if (filters.ano_inicio && !isNaN(parseInt(filters.ano_inicio))) {
-      const tempoInicio = `${filters.ano_inicio}-01`
-      q2 = q2.gte('tempo', tempoInicio)
-      console.log('[DEBUG] Filtro ano_inicio aplicado:', tempoInicio)
-    }
-
-    if (filters.ano_fim && !isNaN(parseInt(filters.ano_fim))) {
-      const tempoFim = `${filters.ano_fim}-12`
-      q2 = q2.lte('tempo', tempoFim)
-      console.log('[DEBUG] Filtro ano_fim aplicado:', tempoFim)
-    }
-
-    const { data: periodData, error: periodError } = await q2
-    console.log('[DEBUG] Após filtro de período:', periodData?.length || 0, 'registros')
-    if (periodError) console.error('[DEBUG] Erro período:', periodError)
-
-    // ✅ PASSO 3: Aplicar filtro de meses (CORRIGIDO)
-    let finalData = periodData || []
+    if (filters.ano_inicio) q = q.gte('tempo', `${filters.ano_inicio}/01`)
+    if (filters.ano_fim) q = q.lte('tempo', `${filters.ano_fim}/12`)
 
     if (filters.meses && filters.meses.length > 0) {
-      console.log('[DEBUG] Filtrando por meses:', filters.meses)
-
-      // ✅ CORRIGIDO: Filtrar meses NO JAVASCRIPT (não no Supabase)
-      // Porque Supabase não suporta bem .or() com ilike em arrays
-      finalData = finalData.filter((row: any) => {
-        if (!row.tempo) return false
-        const mesRow = row.tempo.split('-')[1] // Extrai mês de YYYY-MM
-        return filters.meses.includes(mesRow)
-      })
-      console.log('[DEBUG] Após filtro de meses:', finalData.length, 'registros')
+      const orString = filters.meses
+        .map((m: string) => `tempo.ilike.%/${m.padStart(2, '0')}`)
+        .join(',')
+      q = q.or(orString)
     }
 
-    console.log('[DEBUG] ========== FIM QUERY ==========')
-
-    if (finalData.length === 0) {
-      console.warn('[DEBUG] RESULTADO FINAL: Nenhum dado encontrado')
-      return []
-    }
-
-    // ✅ Resto do processamento (capex, opex, etc.)
     const [
-      { data: capexAcao, error: capexAcaoError },
-      { data: acoesFonte, error: acoesFonteError },
-      { data: capexPerdas, error: capexPerdasError },
-      { data: opexData, error: opexError },
+      { data: capexAcao },
+      { data: acoesFonte },
+      { data: capexPerdas },
+      { data: opexData },
+      { data: dsData, error },
     ] = await Promise.all([
       supabase.from('capex_acao').select('*'),
       supabase.from('acoes_fonte').select('*'),
       supabase.from('capex_perdas').select('*'),
       supabase.from('opex').select('*'),
+      q,
     ])
 
-    if (capexAcaoError) console.error('[DEBUG] Erro capexAcao:', capexAcaoError)
-    if (acoesFonteError) console.error('[DEBUG] Erro acoesFonte:', acoesFonteError)
-    if (capexPerdasError) console.error('[DEBUG] Erro capexPerdas:', capexPerdasError)
-    if (opexError) console.error('[DEBUG] Erro opex:', opexError)
+    if (error) console.error(error)
+    if (!dsData) return []
 
     const capexAcaoMap: Record<string, number> = {}
     if (capexAcao && acoesFonte) {
       capexAcao.forEach((ca) => {
         const af = acoesFonte.filter((a) => a.id_acao === ca.id_acao)
         af.forEach((a) => {
-          const key = `${ca.tempo}_${a.id_fonte}`
+          const tempoNorm = ca.tempo ? ca.tempo.replace(/\//g, '-') : ''
+          const key = `${tempoNorm}_${a.id_fonte}`
           capexAcaoMap[key] = (capexAcaoMap[key] || 0) + (ca.capex || 0)
         })
       })
@@ -189,34 +145,54 @@ export default function Cenarios() {
     const capexPerdasMap: Record<string, number> = {}
     if (capexPerdas) {
       capexPerdas.forEach((cp) => {
-        if (cp.tempo) capexPerdasMap[cp.tempo] = (capexPerdasMap[cp.tempo] || 0) + (cp.capex || 0)
+        if (cp.tempo) {
+          const tempoNorm = cp.tempo.replace(/\//g, '-')
+          capexPerdasMap[tempoNorm] = (capexPerdasMap[tempoNorm] || 0) + (cp.capex || 0)
+        }
       })
     }
 
     const opexMap: Record<string, number> = {}
     if (opexData) {
       opexData.forEach((op) => {
-        if (op.tempo) opexMap[op.tempo] = (opexMap[op.tempo] || 0) + (op.opex || 0)
+        if (op.tempo) {
+          const tempoNorm = op.tempo.replace(/\//g, '-')
+          opexMap[tempoNorm] = (opexMap[tempoNorm] || 0) + (op.opex || 0)
+        }
       })
     }
 
     const updates: any[] = []
-    const dsUpdated = finalData.map((row) => {
-      let newCapex = 0
+    const dsUpdated = dsData.map((row) => {
+      let newCapexEst = 0
       if (row.tempo && row.id_fonte) {
-        newCapex += capexAcaoMap[`${row.tempo}_${row.id_fonte}`] || 0
+        const tempoNorm = row.tempo.replace(/\//g, '-')
+        newCapexEst += capexAcaoMap[`${tempoNorm}_${row.id_fonte}`] || 0
       }
+
+      let newCapexPer = 0
       if (row.tempo) {
-        newCapex += capexPerdasMap[row.tempo] || 0
+        const tempoNorm = row.tempo.replace(/\//g, '-')
+        newCapexPer += capexPerdasMap[tempoNorm] || 0
       }
 
       let newOpex = 0
       if (row.tempo) {
-        newOpex = opexMap[row.tempo] || 0
+        const tempoNorm = row.tempo.replace(/\//g, '-')
+        newOpex = opexMap[tempoNorm] || 0
       }
 
-      if (row.capex_estrategia !== newCapex || row.opex !== newOpex) {
-        const updatedRow = { ...row, capex_estrategia: newCapex, opex: newOpex }
+      if (
+        row.capex_estrategia !== newCapexEst ||
+        row.capex_perdas !== newCapexPer ||
+        row.opex !== newOpex
+      ) {
+        const updatedRow = {
+          ...row,
+          capex_estrategia: newCapexEst,
+          capex_perdas: newCapexPer,
+          opex: newOpex,
+        }
         updates.push(updatedRow)
         return updatedRow
       }
@@ -226,25 +202,18 @@ export default function Cenarios() {
     if (updates.length > 0) {
       const batchSize = 1000
       for (let i = 0; i < updates.length; i += batchSize) {
-        const batch = updates.slice(i, i + batchSize)
-        const { error: upsertError } = await supabase
-          .from('dados_simulacao')
-          .upsert(batch, { onConflict: 'id_s,id_mod,id_fonte,tempo' })
-
-        if (upsertError) {
-          console.error(`[DEBUG] Erro upsert lote ${i / batchSize}:`, upsertError)
-        }
+        await supabase.from('dados_simulacao').upsert(updates.slice(i, i + batchSize))
       }
     }
 
-    console.log('[DEBUG] Retornando', dsUpdated.length, 'registros processados')
     return dsUpdated
   }
+
   const handleSimulate = async () => {
     setLoading(true)
     let resData = await applyFinancialMetrics(parseInt(filters.id_s))
-
     const activeSimObj = simulacao_ssd.find((s: any) => s.id_s === parseInt(filters.id_s))
+
     if (activeSimObj?.demanda_auto || activeSimObj?.perdas_auto) {
       const cd = cenario_demanda.find((c: any) => c.id_cd === parseInt(filters.id_cd_auto))
       const cc = cenario_consumo.find((c: any) => c.id_cc === parseInt(filters.id_cc_auto))
@@ -257,8 +226,12 @@ export default function Cenarios() {
       const perdas_percentual = row.perdas || 0
       const volume_distribuido = volume_captado * (1 - perdas_percentual / 100)
       const demanda = row.demanda || 0
+
+      const capex = (row.capex_estrategia || 0) + (row.capex_perdas || 0)
+
       return {
         ...row,
+        capex,
         volume_distribuido,
         distribuicao_total: volume_distribuido,
         deficit: demanda - volume_distribuido,
@@ -331,7 +304,6 @@ export default function Cenarios() {
           hídricos.
         </p>
       </div>
-
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-fade-in">
         <div className="space-y-6 md:col-span-2">
           <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200 w-full">
@@ -353,7 +325,6 @@ export default function Cenarios() {
                 />
               </div>
             </div>
-
             {activeSimObj && (
               <div className="mt-4 border rounded-md overflow-hidden animate-fade-in-up">
                 <Table>
@@ -379,7 +350,6 @@ export default function Cenarios() {
               </div>
             )}
           </div>
-
           {activeSimObj && (activeSimObj.demanda_auto || activeSimObj.perdas_auto) && (
             <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200 w-full mt-6">
               <h3 className="font-semibold text-primary border-b pb-3 mb-4 text-sm uppercase tracking-wider">
@@ -429,7 +399,6 @@ export default function Cenarios() {
               </div>
             </div>
           )}
-
           <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200 flex flex-col w-full mt-6">
             <h3 className="font-semibold text-primary border-b pb-3 mb-4 text-sm uppercase tracking-wider">
               Período
@@ -468,7 +437,6 @@ export default function Cenarios() {
                 />
               </div>
             </div>
-
             <div className="space-y-2 mt-4">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-semibold text-muted-foreground">
@@ -516,7 +484,6 @@ export default function Cenarios() {
                 ))}
               </div>
             </div>
-
             <div className="pt-6 flex flex-col gap-2">
               <Button
                 onClick={handleSimulate}
@@ -535,7 +502,6 @@ export default function Cenarios() {
         </div>
         <div className="space-y-6"></div>
       </div>
-
       {ran && data.length === 0 && (
         <div className="text-center p-12 bg-white rounded-lg border border-dashed">
           <p className="text-muted-foreground">
@@ -543,7 +509,6 @@ export default function Cenarios() {
           </p>
         </div>
       )}
-
       {data.length > 0 && <CenariosDashboard data={data} fontesMap={fontesMap} />}
     </div>
   )
