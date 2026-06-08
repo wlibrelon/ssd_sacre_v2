@@ -68,7 +68,7 @@ export const AppSidebar = ({ onOpenSobre }: { onOpenSobre: () => void }) => {
         { title: 'Contexto', url: '/area-estudo/contexto' },
         { title: 'Objetivos', url: '/area-estudo/objetivos' },
         { title: 'Documentos', url: '/area-estudo/documentos' },
-        { title: 'Camadas', url: '/area-estudo/camadas' },
+        { title: 'Mapas', url: '/area-estudo/camadas' },
       ],
     },
     {
