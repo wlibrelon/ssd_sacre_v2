@@ -127,7 +127,9 @@ function buildEstrategiaJsonb(estrategiasList: { chave: string }[]) {
 export function Importacao() {
   const [modelos, setModelos] = useState<any[]>([])
   const [selectedModels, setSelectedModels] = useState<Record<number, boolean>>({})
-  const [importStatus, setImportStatus] = useState<Record<number, string>>({})
+  const [importStatus, setImportStatus] = useState<
+    Record<number, { label: string; detail?: string }>
+  >({})
 
   const [refData, setRefData] = useState<any>({
     fontes: [],
@@ -237,7 +239,8 @@ export function Importacao() {
     if (!path) return []
     const cleanPath = path.trim().replace(/\\/g, '/').replace(/\/+/g, '/').replace(/^\//, '')
     const { data, error } = await supabase.storage.from('dados_brutos').download(cleanPath)
-    if (error || !data) return []
+    if (error) throw new Error(`Erro ao baixar "${cleanPath}" (${label}): ${error.message}`)
+    if (!data) return []
     const lines = (await data.text())
       .split('\n')
       .map((l) => l.trim())
@@ -272,11 +275,13 @@ export function Importacao() {
       .map(Number)
     if (selectedIds.length === 0) return toast.error('Selecione ao menos um modelo')
 
+    let hasError = false
     for (const id_mod of selectedIds) {
-      setImportStatus((prev) => ({ ...prev, [id_mod]: 'Importando...' }))
+      setImportStatus((prev) => ({ ...prev, [id_mod]: { label: 'Importando...' } }))
       try {
         const mod = modelos.find((m) => m.id_mod === id_mod)
-        if (!mod) continue
+        if (!mod) throw new Error('Modelo não encontrado')
+
         const [mD, pD, dD, ceD, cpD, oD] = await Promise.all([
           fetchCSV(mod.arq_mod, 'volume_captado'),
           fetchCSV(mod.arq_perdas, 'perdas'),
@@ -286,7 +291,8 @@ export function Importacao() {
           fetchCSV(mod.arq_opex, 'opex'),
         ])
         const allTempos = new Set([...mD, ...pD, ...dD, ...ceD, ...cpD, ...oD].map((d) => d.tempo))
-        if (allTempos.size === 0) throw new Error('Sem dados')
+        if (allTempos.size === 0)
+          throw new Error('Nenhuma linha de dados encontrada nos arquivos CSV')
 
         const rows = Array.from(allTempos).map((t) => ({
           id_mod: mod.id_mod,
@@ -298,7 +304,6 @@ export function Importacao() {
           capex_estrategia: ceD.find((d) => d.tempo === t)?.valor ?? 0,
           capex_perdas: cpD.find((d) => d.tempo === t)?.valor ?? 0,
           opex: oD.find((d) => d.tempo === t)?.valor ?? 0,
-          // Grava JSONB como já está no modelo (objeto e array prontos)
           cenario: mod.cenario,
           estrategia: mod.estrategia,
         }))
@@ -307,14 +312,23 @@ export function Importacao() {
           const { error } = await supabase
             .from('dados_simulacao')
             .upsert(rows.slice(i, i + 500) as any, { onConflict: 'id_mod,id_fonte,tempo' })
-          if (error) throw error
+          if (error)
+            throw new Error(
+              `Erro no banco (lote ${i / 500 + 1}): ${error.message}${error.details ? ` — ${error.details}` : ''}${error.hint ? ` | Dica: ${error.hint}` : ''}`,
+            )
         }
-        setImportStatus((prev) => ({ ...prev, [id_mod]: 'Concluído' }))
+        setImportStatus((prev) => ({
+          ...prev,
+          [id_mod]: { label: `Concluído (${rows.length} linhas)` },
+        }))
       } catch (err: any) {
-        setImportStatus((prev) => ({ ...prev, [id_mod]: 'Erro' }))
+        hasError = true
+        const msg: string = err?.message ?? String(err)
+        setImportStatus((prev) => ({ ...prev, [id_mod]: { label: 'Erro', detail: msg } }))
+        toast.error(`Modelo ${id_mod}: ${msg}`, { duration: 10000 })
       }
     }
-    toast.success('Processo finalizado')
+    if (!hasError) toast.success('Importação concluída com sucesso')
   }
 
   return (
@@ -546,7 +560,30 @@ export function Importacao() {
                   {/* Exibe o array JSONB de estratégia */}
                   {Array.isArray(m.estrategia) ? m.estrategia.join(', ') : '-'}
                 </td>
-                <td className="p-2 font-semibold">{importStatus[m.id_mod] || '-'}</td>
+                <td className="p-2">
+                  {importStatus[m.id_mod] ? (
+                    <div>
+                      <span
+                        className={`font-semibold ${
+                          importStatus[m.id_mod].label === 'Erro'
+                            ? 'text-destructive'
+                            : importStatus[m.id_mod].label.startsWith('Concluído')
+                              ? 'text-green-600'
+                              : 'text-muted-foreground'
+                        }`}
+                      >
+                        {importStatus[m.id_mod].label}
+                      </span>
+                      {importStatus[m.id_mod].detail && (
+                        <p className="text-xs text-destructive mt-0.5 whitespace-pre-wrap break-all">
+                          {importStatus[m.id_mod].detail}
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-muted-foreground">-</span>
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>
