@@ -132,6 +132,7 @@ export function Importacao() {
   >({})
 
   const [refData, setRefData] = useState<any>({
+    simulacoes: [],
     fontes: [],
     tiposCenario: [],
     cenarios: [],
@@ -141,6 +142,7 @@ export function Importacao() {
     acoesFonte: [],
   })
 
+  const [idSimulacao, setIdSimulacao] = useState('')
   const [idFonte, setIdFonte] = useState('')
   const [idTc, setIdTc] = useState('')
   const [idC, setIdC] = useState('')
@@ -168,6 +170,7 @@ export function Importacao() {
       .select('*, fonte_agua(nome_fonte)')
       .then((res) => setModelos(res.data || []))
     Promise.all([
+      supabase.from('simulacao_ssd').select('*'),
       supabase.from('fonte_agua').select('*'),
       supabase.from('tipos_cenarios').select('*'),
       supabase.from('cenarios').select('*'),
@@ -177,13 +180,14 @@ export function Importacao() {
       supabase.from('acoes_fonte').select('*'),
     ]).then((res) =>
       setRefData({
-        fontes: res[0].data || [],
-        tiposCenario: res[1].data || [],
-        cenarios: res[2].data || [],
-        acoes: res[3].data || [],
-        cenariosFonte: res[4].data || [],
-        tcCenario: res[5].data || [],
-        acoesFonte: res[6].data || [],
+        simulacoes: res[0].data || [],
+        fontes: res[1].data || [],
+        tiposCenario: res[2].data || [],
+        cenarios: res[3].data || [],
+        acoes: res[4].data || [],
+        cenariosFonte: res[5].data || [],
+        tcCenario: res[6].data || [],
+        acoesFonte: res[7].data || [],
       }),
     )
   }, [])
@@ -270,6 +274,8 @@ export function Importacao() {
   }
 
   const handleImport = async () => {
+    if (!idSimulacao) return toast.error('Selecione uma simulação antes de importar dados')
+
     const selectedIds = Object.keys(selectedModels)
       .filter((k) => selectedModels[Number(k)])
       .map(Number)
@@ -313,6 +319,7 @@ export function Importacao() {
           }
 
           return {
+            id_s: Number(idSimulacao),
             id_mod: mod.id_mod,
             id_fonte: mod.id_fonte,
             tempo: t,
@@ -330,7 +337,7 @@ export function Importacao() {
         for (let i = 0; i < rows.length; i += 500) {
           const { error } = await supabase
             .from('dados_simulacao')
-            .upsert(rows.slice(i, i + 500) as any, { onConflict: 'id_mod,id_fonte,tempo' })
+            .upsert(rows.slice(i, i + 500) as any, { onConflict: 'id_s,id_mod,id_fonte,tempo' })
           if (error)
             throw new Error(
               `Erro no banco (lote ${i / 500 + 1}): ${error.message}${error.details ? ` — ${error.details}` : ''}${error.hint ? ` | Dica: ${error.hint}` : ''}`,
@@ -359,20 +366,37 @@ export function Importacao() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="max-w-md">
-            <label className="text-xs font-semibold">Fonte de Água</label>
-            <Select value={idFonte} onValueChange={setIdFonte}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione..." />
-              </SelectTrigger>
-              <SelectContent>
-                {refData.fontes.map((f: any) => (
-                  <SelectItem key={f.id_fonte} value={f.id_fonte.toString()}>
-                    {f.nome_fonte}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl">
+            <div className="space-y-1">
+              <label className="text-xs font-semibold">Simulação (Para Importação)</label>
+              <Select value={idSimulacao} onValueChange={setIdSimulacao}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a simulação..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {refData.simulacoes.map((s: any) => (
+                    <SelectItem key={s.id_s} value={s.id_s.toString()}>
+                      {s.descricao || `Simulação ${s.id_s}`}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-semibold">Fonte de Água</label>
+              <Select value={idFonte} onValueChange={setIdFonte}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a fonte..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {refData.fontes.map((f: any) => (
+                    <SelectItem key={f.id_fonte} value={f.id_fonte.toString()}>
+                      {f.nome_fonte}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="border p-4 rounded-lg bg-slate-50 space-y-4">
