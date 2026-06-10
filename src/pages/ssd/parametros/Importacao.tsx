@@ -294,19 +294,38 @@ export function Importacao() {
         if (allTempos.size === 0)
           throw new Error('Nenhuma linha de dados encontrada nos arquivos CSV')
 
-        const rows = Array.from(allTempos).map((t) => ({
-          id_mod: mod.id_mod,
-          id_fonte: mod.id_fonte,
-          tempo: t,
-          volume_captado: mD.find((d) => d.tempo === t)?.valor ?? 0,
-          perdas: pD.find((d) => d.tempo === t)?.valor ?? 0,
-          demanda: dD.find((d) => d.tempo === t)?.valor ?? 0,
-          capex_estrategia: ceD.find((d) => d.tempo === t)?.valor ?? 0,
-          capex_perdas: cpD.find((d) => d.tempo === t)?.valor ?? 0,
-          opex: oD.find((d) => d.tempo === t)?.valor ?? 0,
-          cenario: mod.cenario,
-          estrategia: mod.estrategia,
-        }))
+        const rows = Array.from(allTempos).map((t) => {
+          let cenariosObj = mod.cenario
+          if (typeof cenariosObj === 'string') {
+            try {
+              cenariosObj = JSON.parse(cenariosObj || '{}')
+            } catch {
+              cenariosObj = {}
+            }
+          }
+          let estrategiasArr = mod.estrategia
+          if (typeof estrategiasArr === 'string') {
+            try {
+              estrategiasArr = JSON.parse(estrategiasArr || '[]')
+            } catch {
+              estrategiasArr = []
+            }
+          }
+
+          return {
+            id_mod: mod.id_mod,
+            id_fonte: mod.id_fonte,
+            tempo: t,
+            volume_captado: mD.find((d) => d.tempo === t)?.valor ?? 0,
+            perdas: pD.find((d) => d.tempo === t)?.valor ?? 0,
+            demanda: dD.find((d) => d.tempo === t)?.valor ?? 0,
+            capex_estrategia: ceD.find((d) => d.tempo === t)?.valor ?? 0,
+            capex_perdas: cpD.find((d) => d.tempo === t)?.valor ?? 0,
+            opex: oD.find((d) => d.tempo === t)?.valor ?? 0,
+            cenarios: cenariosObj,
+            estrategias: estrategiasArr,
+          }
+        })
 
         for (let i = 0; i < rows.length; i += 500) {
           const { error } = await supabase
