@@ -110,8 +110,8 @@ function FileSelectDialog({
 }
 
 // Constrói o objeto JSONB de cenário: { "tipo_cenario_chave": "cenario_chave", ... }
-// Usa id_tc e id_cenarios como chaves caso não haja campo `chave` na tabela.
-// Ajuste os campos abaixo conforme seu schema real.
+// As chaves usadas aqui devem ser as mesmas usadas nas queries de seleção:
+//   WHERE cenario = '{"clima":"tendencial","uso_terra":"pessimista"}'::jsonb
 function buildCenarioJsonb(cenariosList: { tcChave: string; cChave: string }[]) {
   return cenariosList.reduce<Record<string, string>>((acc, item) => {
     acc[item.tcChave] = item.cChave
@@ -120,6 +120,8 @@ function buildCenarioJsonb(cenariosList: { tcChave: string; cChave: string }[]) 
 }
 
 // Constrói o array JSONB de estratégia: ["acao_chave", ...]
+// Usado nas queries de seleção:
+//   WHERE estrategia = '["instalar_barraginhas","instalar_represa"]'::jsonb
 function buildEstrategiaJsonb(estrategiasList: { chave: string }[]) {
   return estrategiasList.map((e) => e.chave)
 }
@@ -132,7 +134,6 @@ export function Importacao() {
   >({})
 
   const [refData, setRefData] = useState<any>({
-    simulacoes: [],
     fontes: [],
     tiposCenario: [],
     cenarios: [],
@@ -142,7 +143,6 @@ export function Importacao() {
     acoesFonte: [],
   })
 
-  const [idSimulacao, setIdSimulacao] = useState('')
   const [idFonte, setIdFonte] = useState('')
   const [idTc, setIdTc] = useState('')
   const [idC, setIdC] = useState('')
@@ -169,8 +169,8 @@ export function Importacao() {
       .from('modelos')
       .select('*, fonte_agua(nome_fonte)')
       .then((res) => setModelos(res.data || []))
+
     Promise.all([
-      supabase.from('simulacao_ssd').select('*'),
       supabase.from('fonte_agua').select('*'),
       supabase.from('tipos_cenarios').select('*'),
       supabase.from('cenarios').select('*'),
@@ -180,14 +180,13 @@ export function Importacao() {
       supabase.from('acoes_fonte').select('*'),
     ]).then((res) =>
       setRefData({
-        simulacoes: res[0].data || [],
-        fontes: res[1].data || [],
-        tiposCenario: res[2].data || [],
-        cenarios: res[3].data || [],
-        acoes: res[4].data || [],
-        cenariosFonte: res[5].data || [],
-        tcCenario: res[6].data || [],
-        acoesFonte: res[7].data || [],
+        fontes: res[0].data || [],
+        tiposCenario: res[1].data || [],
+        cenarios: res[2].data || [],
+        acoes: res[3].data || [],
+        cenariosFonte: res[4].data || [],
+        tcCenario: res[5].data || [],
+        acoesFonte: res[6].data || [],
       }),
     )
   }, [])
@@ -206,10 +205,44 @@ export function Importacao() {
     ),
   )
 
+  // Resolve a descrição legível de um objeto JSONB de cenários para exibição na tabela.
+  // Exemplo: { "clima": "tendencial" } → "Clima: Tendencial, Uso do Solo: Pessimista"
+  // Usa refData para cruzar tcChave → descricao do tipo e cChave → descrição do cenário.
+  function resolveCenarioLabel(cenarioObj: Record<string, string>): string {
+    return Object.entries(cenarioObj)
+      .map(([tcChave, cChave]) => {
+        const tc = refData.tiposCenario.find(
+          (t: any) => (t.chave ?? t.id_tc.toString()) === tcChave,
+        )
+        const c = refData.cenarios.find(
+          (x: any) => (x.chave ?? x.cenarios.toLowerCase().replace(/\s+/g, '_')) === cChave,
+        )
+        const tcLabel = tc?.descricao ?? tcChave
+        const cLabel = c?.cenarios ?? cChave
+        return `${tcLabel}: ${cLabel}`
+      })
+      .join(', ')
+  }
+
+  // Resolve as descrições legíveis de um array JSONB de estratégias para exibição na tabela.
+  // Exemplo: ["instalar_barraginhas"] → "Instalar Barraginhas"
+  function resolveEstrategiaLabel(estrategiaArr: string[]): string {
+    return estrategiaArr
+      .map((chave) => {
+        const a = refData.acoes.find(
+          (x: any) => (x.chave ?? x.descricao.toLowerCase().replace(/\s+/g, '_')) === chave,
+        )
+        return a?.descricao ?? chave
+      })
+      .join(', ')
+  }
+
   const handleSaveModel = async () => {
     if (!idFonte) return toast.error('Selecione uma fonte de água')
 
     // Monta os objetos JSONB corretos para gravação
+    // cenarioJsonb  → { "clima": "tendencial", "uso_terra": "pessimista" }
+    // estrategiaJsonb → ["instalar_barraginhas", "instalar_represa"]
     const cenarioJsonb = buildCenarioJsonb(cenariosList)
     const estrategiaJsonb = buildEstrategiaJsonb(estrategiasList)
 
@@ -217,12 +250,13 @@ export function Importacao() {
       .from('modelos')
       .insert({
         id_fonte: Number(idFonte),
-        cenario: cenarioJsonb, // objeto JSONB: { "clima": "tendencial", ... }
-        estrategia: estrategiaJsonb, // array JSONB:  ["instalar_barraginhas", ...]
+        cenario: cenarioJsonb,
+        estrategia: estrategiaJsonb,
         ...files,
       })
       .select('*, fonte_agua(nome_fonte)')
       .single()
+
     if (error) return toast.error(error.message)
     setModelos([...modelos, data])
     toast.success('Modelo salvo com sucesso')
@@ -274,8 +308,6 @@ export function Importacao() {
   }
 
   const handleImport = async () => {
-    if (!idSimulacao) return toast.error('Selecione uma simulação antes de importar dados')
-
     const selectedIds = Object.keys(selectedModels)
       .filter((k) => selectedModels[Number(k)])
       .map(Number)
@@ -296,53 +328,63 @@ export function Importacao() {
           fetchCSV(mod.arq_capex_perdas, 'capex_perdas'),
           fetchCSV(mod.arq_opex, 'opex'),
         ])
+
         const allTempos = new Set([...mD, ...pD, ...dD, ...ceD, ...cpD, ...oD].map((d) => d.tempo))
         if (allTempos.size === 0)
           throw new Error('Nenhuma linha de dados encontrada nos arquivos CSV')
 
-        const rows = Array.from(allTempos).map((t) => {
-          let cenariosObj = mod.cenario
-          if (typeof cenariosObj === 'string') {
-            try {
-              cenariosObj = JSON.parse(cenariosObj || '{}')
-            } catch {
-              cenariosObj = {}
-            }
+        // Garante que cenario e estrategia sejam objetos/arrays nativos para gravação JSONB correta.
+        // Se vier como string (legado), faz parse; se já for objeto/array, usa direto.
+        let cenariosObj: Record<string, string> = {}
+        if (typeof mod.cenario === 'string') {
+          try {
+            cenariosObj = JSON.parse(mod.cenario || '{}')
+          } catch {
+            cenariosObj = {}
           }
-          let estrategiasArr = mod.estrategia
-          if (typeof estrategiasArr === 'string') {
-            try {
-              estrategiasArr = JSON.parse(estrategiasArr || '[]')
-            } catch {
-              estrategiasArr = []
-            }
-          }
+        } else if (mod.cenario && typeof mod.cenario === 'object' && !Array.isArray(mod.cenario)) {
+          cenariosObj = mod.cenario
+        }
 
-          return {
-            id_s: Number(idSimulacao),
-            id_mod: mod.id_mod,
-            id_fonte: mod.id_fonte,
-            tempo: t,
-            volume_captado: mD.find((d) => d.tempo === t)?.valor ?? 0,
-            perdas: pD.find((d) => d.tempo === t)?.valor ?? 0,
-            demanda: dD.find((d) => d.tempo === t)?.valor ?? 0,
-            capex_estrategia: ceD.find((d) => d.tempo === t)?.valor ?? 0,
-            capex_perdas: cpD.find((d) => d.tempo === t)?.valor ?? 0,
-            opex: oD.find((d) => d.tempo === t)?.valor ?? 0,
-            cenarios: cenariosObj,
-            estrategias: estrategiasArr,
+        let estrategiasArr: string[] = []
+        if (typeof mod.estrategia === 'string') {
+          try {
+            estrategiasArr = JSON.parse(mod.estrategia || '[]')
+          } catch {
+            estrategiasArr = []
           }
-        })
+        } else if (Array.isArray(mod.estrategia)) {
+          estrategiasArr = mod.estrategia
+        }
+
+        const rows = Array.from(allTempos).map((t) => ({
+          id_mod: mod.id_mod,
+          id_fonte: mod.id_fonte,
+          tempo: t,
+          volume_captado: mD.find((d) => d.tempo === t)?.valor ?? 0,
+          perdas: pD.find((d) => d.tempo === t)?.valor ?? 0,
+          demanda: dD.find((d) => d.tempo === t)?.valor ?? 0,
+          capex_estrategia: ceD.find((d) => d.tempo === t)?.valor ?? 0,
+          capex_perdas: cpD.find((d) => d.tempo === t)?.valor ?? 0,
+          opex: oD.find((d) => d.tempo === t)?.valor ?? 0,
+          // Gravação JSONB: passa objetos nativos — o driver Supabase serializa corretamente,
+          // garantindo compatibilidade com queries do tipo:
+          //   WHERE cenario = '{"clima":"tendencial"}'::jsonb
+          //   WHERE estrategia = '["instalar_barraginhas"]'::jsonb
+          cenarios: cenariosObj,
+          estrategias: estrategiasArr,
+        }))
 
         for (let i = 0; i < rows.length; i += 500) {
           const { error } = await supabase
             .from('dados_simulacao')
-            .upsert(rows.slice(i, i + 500) as any, { onConflict: 'id_s,id_mod,id_fonte,tempo' })
+            .upsert(rows.slice(i, i + 500) as any, { onConflict: 'id_mod,id_fonte,tempo' })
           if (error)
             throw new Error(
               `Erro no banco (lote ${i / 500 + 1}): ${error.message}${error.details ? ` — ${error.details}` : ''}${error.hint ? ` | Dica: ${error.hint}` : ''}`,
             )
         }
+
         setImportStatus((prev) => ({
           ...prev,
           [id_mod]: { label: `Concluído (${rows.length} linhas)` },
@@ -368,21 +410,6 @@ export function Importacao() {
         <CardContent className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl">
             <div className="space-y-1">
-              <label className="text-xs font-semibold">Simulação (Para Importação)</label>
-              <Select value={idSimulacao} onValueChange={setIdSimulacao}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione a simulação..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {refData.simulacoes.map((s: any) => (
-                    <SelectItem key={s.id_s} value={s.id_s.toString()}>
-                      {s.descricao || `Simulação ${s.id_s}`}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1">
               <label className="text-xs font-semibold">Fonte de Água</label>
               <Select value={idFonte} onValueChange={setIdFonte}>
                 <SelectTrigger>
@@ -398,6 +425,7 @@ export function Importacao() {
               </Select>
             </div>
           </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="border p-4 rounded-lg bg-slate-50 space-y-4">
               <h3 className="font-semibold text-sm">Montagem de cenários</h3>
@@ -437,9 +465,7 @@ export function Importacao() {
                         ...p,
                         {
                           label: `${t.descricao}: ${c.cenarios}`,
-                          // Usa t.chave se existir, senão usa id_tc como chave
                           tcChave: t.chave ?? t.id_tc.toString(),
-                          // Usa c.chave se existir, senão usa o valor do cenário normalizado
                           cChave: c.chave ?? c.cenarios.toLowerCase().replace(/\s+/g, '_'),
                         },
                       ])
@@ -470,6 +496,7 @@ export function Importacao() {
                 ))}
               </ul>
             </div>
+
             <div className="border p-4 rounded-lg bg-slate-50 space-y-4">
               <h3 className="font-semibold text-sm">Montagem de Estratégia</h3>
               <div className="space-y-2">
@@ -495,7 +522,6 @@ export function Importacao() {
                         ...p,
                         {
                           label: a.descricao,
-                          // Usa a.chave se existir, senão normaliza a descrição
                           chave: a.chave ?? a.descricao.toLowerCase().replace(/\s+/g, '_'),
                         },
                       ])
@@ -582,56 +608,78 @@ export function Importacao() {
             </tr>
           </thead>
           <tbody className="divide-y">
-            {modelos.map((m) => (
-              <tr key={m.id_mod} className="hover:bg-slate-50">
-                <td className="p-2 text-center">
-                  <Checkbox
-                    checked={!!selectedModels[m.id_mod]}
-                    onCheckedChange={(c) => setSelectedModels((p) => ({ ...p, [m.id_mod]: !!c }))}
-                  />
-                </td>
-                <td className="p-2 font-medium">{m.fonte_agua?.nome_fonte}</td>
-                <td className="p-2">
-                  {/* Exibe o objeto JSONB de cenário como pares chave: valor */}
-                  {m.cenario && typeof m.cenario === 'object' && !Array.isArray(m.cenario)
-                    ? Object.entries(m.cenario)
-                        .map(([k, v]) => `${k}: ${v}`)
-                        .join(', ')
-                    : '-'}
-                </td>
-                <td className="p-2">
-                  {/* Exibe o array JSONB de estratégia */}
-                  {Array.isArray(m.estrategia) ? m.estrategia.join(', ') : '-'}
-                </td>
-                <td className="p-2">
-                  {importStatus[m.id_mod] ? (
-                    <div>
-                      <span
-                        className={`font-semibold ${
-                          importStatus[m.id_mod].label === 'Erro'
-                            ? 'text-destructive'
-                            : importStatus[m.id_mod].label.startsWith('Concluído')
-                              ? 'text-green-600'
-                              : 'text-muted-foreground'
-                        }`}
-                      >
-                        {importStatus[m.id_mod].label}
-                      </span>
-                      {importStatus[m.id_mod].detail && (
-                        <p className="text-xs text-destructive mt-0.5 whitespace-pre-wrap break-all">
-                          {importStatus[m.id_mod].detail}
-                        </p>
-                      )}
-                    </div>
-                  ) : (
-                    <span className="text-muted-foreground">-</span>
-                  )}
-                </td>
-              </tr>
-            ))}
+            {modelos.map((m) => {
+              // Normaliza os valores JSONB que podem vir como string ou objeto nativo
+              let cenarioObj: Record<string, string> = {}
+              if (typeof m.cenario === 'string') {
+                try {
+                  cenarioObj = JSON.parse(m.cenario || '{}')
+                } catch {
+                  cenarioObj = {}
+                }
+              } else if (m.cenario && typeof m.cenario === 'object' && !Array.isArray(m.cenario)) {
+                cenarioObj = m.cenario
+              }
+
+              let estrategiaArr: string[] = []
+              if (typeof m.estrategia === 'string') {
+                try {
+                  estrategiaArr = JSON.parse(m.estrategia || '[]')
+                } catch {
+                  estrategiaArr = []
+                }
+              } else if (Array.isArray(m.estrategia)) {
+                estrategiaArr = m.estrategia
+              }
+
+              return (
+                <tr key={m.id_mod} className="hover:bg-slate-50">
+                  <td className="p-2 text-center">
+                    <Checkbox
+                      checked={!!selectedModels[m.id_mod]}
+                      onCheckedChange={(c) => setSelectedModels((p) => ({ ...p, [m.id_mod]: !!c }))}
+                    />
+                  </td>
+                  <td className="p-2 font-medium">{m.fonte_agua?.nome_fonte}</td>
+                  <td className="p-2">
+                    {/* Exibe descrições legíveis cruzando chaves com refData */}
+                    {Object.keys(cenarioObj).length > 0 ? resolveCenarioLabel(cenarioObj) : '-'}
+                  </td>
+                  <td className="p-2">
+                    {/* Exibe descrições legíveis cruzando chaves com refData */}
+                    {estrategiaArr.length > 0 ? resolveEstrategiaLabel(estrategiaArr) : '-'}
+                  </td>
+                  <td className="p-2">
+                    {importStatus[m.id_mod] ? (
+                      <div>
+                        <span
+                          className={`font-semibold ${
+                            importStatus[m.id_mod].label === 'Erro'
+                              ? 'text-destructive'
+                              : importStatus[m.id_mod].label.startsWith('Concluído')
+                                ? 'text-green-600'
+                                : 'text-muted-foreground'
+                          }`}
+                        >
+                          {importStatus[m.id_mod].label}
+                        </span>
+                        {importStatus[m.id_mod].detail && (
+                          <p className="text-xs text-destructive mt-0.5 whitespace-pre-wrap break-all">
+                            {importStatus[m.id_mod].detail}
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
+                    )}
+                  </td>
+                </tr>
+              )
+            })}
           </tbody>
         </table>
       </div>
+
       <div className="flex justify-end">
         <Button onClick={handleImport} className="w-48">
           Importar dados
