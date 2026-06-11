@@ -7,7 +7,7 @@ import { supabase } from '@/lib/supabase/client'
 import { CenariosDashboard } from './components/CenariosDashboard'
 import { Checkbox } from '@/components/ui/checkbox'
 import { toast } from 'sonner'
-import { Trash2 } from 'lucide-react'
+import { Trash2, Plus } from 'lucide-react'
 import {
   Select,
   SelectContent,
@@ -45,9 +45,24 @@ const MONTHS = [
 
 const LINE_COLORS = ['#2563eb', '#16a34a', '#dc2626', '#d97706', '#7c3aed', '#0891b2', '#be185d']
 
-// ── helpers de segurança hídrica ───────────────────────────────────────────────
+// ── Tipos ─────────────────────────────────────────────────────────────────────
 
 type StatusSeg = 'seguro' | 'alerta' | 'crise' | 'colapso'
+
+// Configuração por fonte: uma fonte com seu conjunto de cenários e estratégias
+// que será usada para filtrar dados_simulacao.
+// A comparação JSONB exige que o objeto seja serializado como string JSON estável,
+// com chaves na mesma ordem em que foram gravadas na importação.
+type FonteConfig = {
+  idFonte: string
+  nomefonteLabel: string
+  // Cenários acumulados para esta fonte (montam o objeto JSONB)
+  cenariosList: { label: string; tcChave: string; cChave: string }[]
+  // Estratégias acumuladas para esta fonte (montam o array JSONB)
+  estrategiasList: { label: string; chave: string }[]
+}
+
+// ── helpers de segurança hídrica ───────────────────────────────────────────────
 
 function getStatus(
   indice: number,
@@ -124,6 +139,23 @@ function ChartWrapper({ title, chartData, children, height = 340 }: ChartWrapper
     </ResponsiveContainer>
   )
 
+  const DownloadIcon = () => (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      className="w-4 h-4"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <polyline points="7 10 12 15 17 10" />
+      <line x1="12" y1="15" x2="12" y2="3" />
+    </svg>
+  )
+
   return (
     <>
       <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200">
@@ -135,20 +167,7 @@ function ChartWrapper({ title, chartData, children, height = 340 }: ChartWrapper
               title="Download CSV"
               className="p-1.5 rounded hover:bg-slate-100 text-slate-500 hover:text-primary transition-colors"
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="w-4 h-4"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                <polyline points="7 10 12 15 17 10" />
-                <line x1="12" y1="15" x2="12" y2="3" />
-              </svg>
+              <DownloadIcon />
             </button>
             <button
               onClick={() => setExpanded(true)}
@@ -175,7 +194,6 @@ function ChartWrapper({ title, chartData, children, height = 340 }: ChartWrapper
         </div>
         {chartContent}
       </div>
-
       {expanded && (
         <div
           className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4"
@@ -196,20 +214,7 @@ function ChartWrapper({ title, chartData, children, height = 340 }: ChartWrapper
                   title="Download CSV"
                   className="p-1.5 rounded hover:bg-slate-100 text-slate-500 hover:text-primary transition-colors"
                 >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="w-4 h-4"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                    <polyline points="7 10 12 15 17 10" />
-                    <line x1="12" y1="15" x2="12" y2="3" />
-                  </svg>
+                  <DownloadIcon />
                 </button>
                 <button
                   onClick={() => setExpanded(false)}
@@ -240,7 +245,7 @@ function ChartWrapper({ title, chartData, children, height = 340 }: ChartWrapper
   )
 }
 
-// ── Tooltip customizado para o gráfico de segurança hídrica ───────────────────
+// ── Tooltip customizado ───────────────────────────────────────────────────────
 
 const TooltipSeguranca = ({
   active,
@@ -303,44 +308,60 @@ const TooltipSeguranca = ({
   )
 }
 
-// ── Helpers JSONB (mesma lógica da Importacao) ────────────────────────────────
+// ── Helpers JSONB ─────────────────────────────────────────────────────────────
+// IMPORTANTE: JSON.stringify com chaves ordenadas garante que a string produzida
+// seja igual à gravada pelo Supabase (que também serializa objetos JS nativos).
+// A query usa cs/eq textual — ordem de chaves importa para matching.
 
-function buildCenarioJsonb(cenariosList: { tcChave: string; cChave: string }[]) {
+function buildCenarioJsonb(
+  cenariosList: { tcChave: string; cChave: string }[],
+): Record<string, string> {
   return cenariosList.reduce<Record<string, string>>((acc, item) => {
     acc[item.tcChave] = item.cChave
     return acc
   }, {})
 }
 
-function buildEstrategiaJsonb(estrategiasList: { chave: string }[]) {
+function buildEstrategiaJsonb(estrategiasList: { chave: string }[]): string[] {
   return estrategiasList.map((e) => e.chave)
+}
+
+// Serializa JSONB de forma estável (chaves ordenadas) para comparação textual no PostgREST.
+// O Supabase PostgREST usa comparação de texto para .eq() em colunas jsonb,
+// portanto a string JSON deve ser idêntica à gravada.
+function stableJsonString(obj: Record<string, string>): string {
+  const sorted = Object.keys(obj)
+    .sort()
+    .reduce<Record<string, string>>((acc, k) => {
+      acc[k] = obj[k]
+      return acc
+    }, {})
+  return JSON.stringify(sorted)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function Cenarios() {
-  const {
-    fonte_agua,
-    tipos_cenarios,
-    cenarios,
-    acoes,
-    cenario_demanda,
-    cenario_consumo,
-    cenario_perdas,
-    cenario_simulacao,
-  } = useSsdData()
+  const { cenario_demanda, cenario_consumo, cenario_perdas } = useSsdData()
 
-  // ── Estado do filtro de seleção de dados (cenário + estratégia + fonte) ──────
+  // ── Estado: lista de configurações por fonte ──────────────────────────────
+  // Cada FonteConfig representa uma fonte com seus cenários e estratégias,
+  // e será usada para gerar uma cláusula OR na query de dados_simulacao.
+  const [fonteConfigs, setFonteConfigs] = useState<FonteConfig[]>([])
+
+  // Controles do formulário de adição (fonte ativa no momento)
   const [idFonte, setIdFonte] = useState('')
   const [idTc, setIdTc] = useState('')
   const [idC, setIdC] = useState('')
   const [idAcao, setIdAcao] = useState('')
-  const [cenariosList, setCenariosList] = useState<
+
+  // cenários e estratégias do formulário atual (para a fonte selecionada)
+  const [draftCenarios, setDraftCenarios] = useState<
     { label: string; tcChave: string; cChave: string }[]
   >([])
-  const [estrategiasList, setEstrategiasList] = useState<{ label: string; chave: string }[]>([])
+  const [draftEstrategias, setDraftEstrategias] = useState<{ label: string; chave: string }[]>([])
 
-  // Dados de referência para filtros de cenário/estratégia
+  // Dados de referência
   const [refData, setRefData] = useState<any>({
     fontes: [],
     tiposCenario: [],
@@ -353,7 +374,7 @@ export default function Cenarios() {
 
   // ── Estado do registro único de simulacao_ssd ─────────────────────────────
   const [simObj, setSimObj] = useState<any>(null)
-  const [simEdit, setSimEdit] = useState<any>(null) // cópia editável
+  const [simEdit, setSimEdit] = useState<any>(null)
   const [simSaving, setSimSaving] = useState(false)
 
   // ── Estado da simulação ───────────────────────────────────────────────────
@@ -374,7 +395,6 @@ export default function Cenarios() {
 
   // ── Carregamento inicial ──────────────────────────────────────────────────
   useEffect(() => {
-    // Busca o único registro de simulacao_ssd
     supabase
       .from('simulacao_ssd')
       .select('*')
@@ -386,8 +406,6 @@ export default function Cenarios() {
           setSimEdit({ ...row })
         }
       })
-
-    // Dados de referência para os selects de cenário/estratégia
     Promise.all([
       supabase.from('fonte_agua').select('*'),
       supabase.from('tipos_cenarios').select('*'),
@@ -409,7 +427,6 @@ export default function Cenarios() {
     )
   }, [])
 
-  // Indicadores: sem id_s agora, carrega sempre que simObj existir
   useEffect(() => {
     if (!simObj) {
       setIndicadores([])
@@ -423,9 +440,8 @@ export default function Cenarios() {
         if (!rows) return
         const unique = Object.values(
           rows.reduce((acc: any, r: any) => {
-            if (r.indicadores && !acc[r.indicadores.id_indicador]) {
+            if (r.indicadores && !acc[r.indicadores.id_indicador])
               acc[r.indicadores.id_indicador] = r.indicadores
-            }
             return acc
           }, {}),
         )
@@ -434,7 +450,7 @@ export default function Cenarios() {
       })
   }, [simObj])
 
-  // ── Selects filtrados (mesma lógica da Importacao) ────────────────────────
+  // ── Selects filtrados pelo idFonte ativo no formulário ────────────────────
   const filteredTipos = refData.tiposCenario.filter((tc: any) =>
     refData.cenariosFonte.some(
       (cf: any) => cf.id_fonte === Number(idFonte) && cf.id_tc === tc.id_tc,
@@ -449,36 +465,61 @@ export default function Cenarios() {
     ),
   )
 
-  // ── Resolve labels para exibição ─────────────────────────────────────────
-  function resolveCenarioLabel(cenarioObj: Record<string, string>): string {
-    return Object.entries(cenarioObj)
-      .map(([tcChave, cChave]) => {
-        const tc = refData.tiposCenario.find(
-          (t: any) => (t.chave ?? t.id_tc.toString()) === tcChave,
-        )
-        const c = refData.cenariosBd.find(
-          (x: any) => (x.chave ?? x.cenarios.toLowerCase().replace(/\s+/g, '_')) === cChave,
-        )
-        return `${tc?.descricao ?? tcChave}: ${c?.cenarios ?? cChave}`
-      })
-      .join(', ')
+  // ── Muda a fonte ativa: se já existe config para ela, carrega o draft; senão limpa ──
+  const handleFonteChange = (novaFonte: string) => {
+    setIdFonte(novaFonte)
+    setIdTc('')
+    setIdC('')
+    setIdAcao('')
+    const existing = fonteConfigs.find((fc) => fc.idFonte === novaFonte)
+    if (existing) {
+      setDraftCenarios([...existing.cenariosList])
+      setDraftEstrategias([...existing.estrategiasList])
+    } else {
+      setDraftCenarios([])
+      setDraftEstrategias([])
+    }
+  }
+
+  // ── Confirma a configuração da fonte ativa na lista fonteConfigs ──────────
+  const handleConfirmarFonte = () => {
+    if (!idFonte) return toast.error('Selecione uma fonte de água')
+    if (draftCenarios.length === 0) return toast.error('Adicione ao menos um cenário')
+    if (draftEstrategias.length === 0) return toast.error('Adicione ao menos uma estratégia')
+
+    const fonte = refData.fontes.find((f: any) => f.id_fonte.toString() === idFonte)
+    const nomefonteLabel = fonte?.nome_fonte ?? `Fonte ${idFonte}`
+
+    setFonteConfigs((prev) => {
+      const sem = prev.filter((fc) => fc.idFonte !== idFonte)
+      return [
+        ...sem,
+        { idFonte, nomefonteLabel, cenariosList: draftCenarios, estrategiasList: draftEstrategias },
+      ]
+    })
+    // Limpa o formulário para adicionar a próxima fonte
+    setIdFonte('')
+    setDraftCenarios([])
+    setDraftEstrategias([])
+    setIdTc('')
+    setIdC('')
+    setIdAcao('')
+    toast.success(`Fonte "${nomefonteLabel}" adicionada à seleção`)
   }
 
   // ── Gravação da simulação única ───────────────────────────────────────────
   const handleSaveSim = async () => {
     if (!simEdit || !simObj) return
     setSimSaving(true)
-    // Campos editáveis: todos exceto descricao e id_s
     const { id_s, descricao, ...editableFields } = simEdit
     const { error } = await supabase
       .from('simulacao_ssd')
       .update(editableFields)
       .eq('id_s', simObj.id_s)
-    if (error) {
-      toast.error(`Erro ao salvar: ${error.message}`)
-    } else {
+    if (error) toast.error(`Erro ao salvar: ${error.message}`)
+    else {
       setSimObj({ ...simObj, ...editableFields })
-      toast.success('Configuração da simulação salva com sucesso')
+      toast.success('Configuração salva com sucesso')
     }
     setSimSaving(false)
   }
@@ -510,8 +551,7 @@ export default function Cenarios() {
       if (sim?.demanda_auto && cd && cc) {
         const ano_inicial = parseInt((tempos[0] || '0').split(/[-/]/)[0])
         const row_ano = parseInt((row.tempo || '0').split(/[-/]/)[0])
-        const tempo_anos = row_ano - ano_inicial
-        const popAtual = pop_inicial * Math.pow(1 + perc_demanda / 100, tempo_anos)
+        const popAtual = pop_inicial * Math.pow(1 + perc_demanda / 100, row_ano - ano_inicial)
         populacao_calculada = popAtual
         rowDemanda = popAtual * vol_hab
       }
@@ -528,135 +568,151 @@ export default function Cenarios() {
             rowPerdas = perc_final_perdas
         }
       }
-
       return { ...row, demanda: rowDemanda, perdas: rowPerdas, populacao_calculada }
     })
   }
 
+  // ── Query principal: busca dados_simulacao para todas as fontes configuradas ──
+  // CORREÇÃO JSONB: O PostgREST compara colunas jsonb usando .eq() com string JSON.
+  // Para que o matching funcione, a string JSON deve ter chaves na mesma ordem
+  // em que foram inseridas. Usamos stableJsonString() (chaves ordenadas A-Z)
+  // para garantir consistência — a importação deve usar a mesma ordenação.
+  // Para múltiplas fontes, combinamos com OR via .or() do PostgREST.
   const applyFinancialMetrics = async () => {
-    // Monta JSONB de seleção a partir das escolhas do usuário
-    const cenarioJsonb = buildCenarioJsonb(cenariosList)
-    const estrategiaJsonb = buildEstrategiaJsonb(estrategiasList)
+    if (fonteConfigs.length === 0) return []
 
-    // Busca dados_simulacao filtrando por cenarios + estrategias + fonte (se selecionada)
-    // e pelos filtros de período
-    let q = supabase.from('dados_simulacao').select('*')
+    // Monta um array de condições OR: cada fonte com seu par cenarios+estrategias
+    // PostgREST suporta OR aninhado com a sintaxe:
+    //   .or('and(id_fonte.eq.1,cenarios.eq.{...},estrategias.eq.[...]),and(...)')
+    // Para jsonb, usamos cs (contains) + cd (contained by) para garantir match exato
+    // na prática usamos eq com a string JSON serializada de forma estável.
 
-    // Filtra por fonte se selecionada
-    if (idFonte) q = q.eq('id_fonte', Number(idFonte))
+    let allRows: any[] = []
 
-    // Filtra por JSONB de cenários e estratégias (somente se montados)
-    if (cenariosList.length > 0) q = q.eq('cenarios', cenarioJsonb)
-    if (estrategiasList.length > 0) q = q.eq('estrategias', estrategiaJsonb)
+    // Busca separada por fonte para evitar complexidade de OR com JSONB no PostgREST
+    // (o OR com .eq() em colunas jsonb é instável via query string; busca separada é mais confiável)
+    for (const fc of fonteConfigs) {
+      const cenarioObj = buildCenarioJsonb(fc.cenariosList)
+      const estrategiaArr = buildEstrategiaJsonb(fc.estrategiasList)
 
-    // Filtros de período
-    if (filters.ano_inicio) q = q.gte('tempo', `${filters.ano_inicio}/01`)
-    if (filters.ano_fim) q = q.lte('tempo', `${filters.ano_fim}/12`)
-    if (filters.meses && filters.meses.length > 0) {
-      const orString = filters.meses
-        .map((m: string) => `tempo.ilike.%/${m.padStart(2, '0')}`)
-        .join(',')
-      q = q.or(orString)
+      // stableJsonString garante que {"a":"x","b":"y"} não vire {"b":"y","a":"x"}
+      const cenarioStr = stableJsonString(cenarioObj)
+      // Array JSON: ordem dos elementos importa — mantém a ordem de inserção do usuário
+      const estrategiaStr = JSON.stringify(estrategiaArr)
+
+      let q = supabase
+        .from('dados_simulacao')
+        .select('*')
+        .eq('id_fonte', Number(fc.idFonte))
+        // Filtra pelo objeto JSONB de cenários como string estável
+        .eq('cenarios', cenarioStr)
+        // Filtra pelo array JSONB de estratégias como string
+        .eq('estrategias', estrategiaStr)
+
+      if (filters.ano_inicio) q = q.gte('tempo', `${filters.ano_inicio}/01`)
+      if (filters.ano_fim) q = q.lte('tempo', `${filters.ano_fim}/12`)
+      if (filters.meses && filters.meses.length > 0) {
+        const orString = filters.meses
+          .map((m: string) => `tempo.ilike.%/${m.padStart(2, '0')}`)
+          .join(',')
+        q = q.or(orString)
+      }
+
+      const { data: rows, error } = await q
+      if (error) {
+        console.error(`Erro fonte ${fc.idFonte}:`, error)
+        continue
+      }
+      if (rows && rows.length > 0) allRows = [...allRows, ...rows]
     }
 
-    const [
-      { data: capexAcao },
-      { data: acoesFonte },
-      { data: capexPerdas },
-      { data: opexData },
-      { data: dsData, error },
-    ] = await Promise.all([
-      supabase.from('capex_acao').select('*'),
-      supabase.from('acoes_fonte').select('*'),
-      supabase.from('capex_perdas').select('*'),
-      supabase.from('opex').select('*'),
-      q,
-    ])
+    if (allRows.length === 0) return []
 
-    if (error) console.error(error)
-    if (!dsData) return []
+    // Aplica métricas financeiras (capex/opex) sobre os dados consolidados
+    const [{ data: capexAcao }, { data: acoesFonte }, { data: capexPerdas }, { data: opexData }] =
+      await Promise.all([
+        supabase.from('capex_acao').select('*'),
+        supabase.from('acoes_fonte').select('*'),
+        supabase.from('capex_perdas').select('*'),
+        supabase.from('opex').select('*'),
+      ])
 
     const capexAcaoMap: Record<string, number> = {}
     if (capexAcao && acoesFonte) {
       capexAcao.forEach((ca) => {
-        const af = acoesFonte.filter((a) => a.id_acao === ca.id_acao)
-        af.forEach((a) => {
-          const tempoNorm = ca.tempo ? ca.tempo.replace(/\//g, '-') : ''
-          const key = `${tempoNorm}_${a.id_fonte}`
-          capexAcaoMap[key] = (capexAcaoMap[key] || 0) + (ca.capex || 0)
-        })
+        acoesFonte
+          .filter((a) => a.id_acao === ca.id_acao)
+          .forEach((a) => {
+            const key = `${(ca.tempo || '').replace(/\//g, '-')}_${a.id_fonte}`
+            capexAcaoMap[key] = (capexAcaoMap[key] || 0) + (ca.capex || 0)
+          })
       })
     }
 
     const capexPerdasMap: Record<string, number> = {}
-    if (capexPerdas) {
-      capexPerdas.forEach((cp) => {
-        if (cp.tempo) {
-          const tempoNorm = cp.tempo.replace(/\//g, '-')
-          capexPerdasMap[tempoNorm] = (capexPerdasMap[tempoNorm] || 0) + (cp.capex || 0)
-        }
-      })
-    }
+    capexPerdas?.forEach((cp) => {
+      if (cp.tempo) {
+        const k = cp.tempo.replace(/\//g, '-')
+        capexPerdasMap[k] = (capexPerdasMap[k] || 0) + (cp.capex || 0)
+      }
+    })
 
     const opexMap: Record<string, number> = {}
-    if (opexData) {
-      opexData.forEach((op) => {
-        if (op.tempo) {
-          const tempoNorm = op.tempo.replace(/\//g, '-')
-          opexMap[tempoNorm] = (opexMap[tempoNorm] || 0) + (op.opex || 0)
-        }
-      })
-    }
+    opexData?.forEach((op) => {
+      if (op.tempo) {
+        const k = op.tempo.replace(/\//g, '-')
+        opexMap[k] = (opexMap[k] || 0) + (op.opex || 0)
+      }
+    })
 
     const updates: any[] = []
-    const dsUpdated = dsData.map((row) => {
-      let newCapexEst = 0
-      if (row.tempo && row.id_fonte) {
-        const tempoNorm = row.tempo.replace(/\//g, '-')
-        newCapexEst += capexAcaoMap[`${tempoNorm}_${row.id_fonte}`] || 0
-      }
-      let newCapexPer = 0
-      if (row.tempo) {
-        const tempoNorm = row.tempo.replace(/\//g, '-')
-        newCapexPer += capexPerdasMap[tempoNorm] || 0
-      }
-      let newOpex = 0
-      if (row.tempo) {
-        const tempoNorm = row.tempo.replace(/\//g, '-')
-        newOpex = opexMap[tempoNorm] || 0
-      }
-
+    const dsUpdated = allRows.map((row) => {
+      const tNorm = row.tempo ? row.tempo.replace(/\//g, '-') : ''
+      const newCapexEst = capexAcaoMap[`${tNorm}_${row.id_fonte}`] || 0
+      const newCapexPer = capexPerdasMap[tNorm] || 0
+      const newOpex = opexMap[tNorm] || 0
       if (
         row.capex_estrategia !== newCapexEst ||
         row.capex_perdas !== newCapexPer ||
         row.opex !== newOpex
       ) {
-        const updatedRow = {
+        const updated = {
           ...row,
           capex_estrategia: newCapexEst,
           capex_perdas: newCapexPer,
           opex: newOpex,
         }
-        updates.push(updatedRow)
-        return updatedRow
+        updates.push(updated)
+        return updated
       }
       return row
     })
 
     if (updates.length > 0) {
-      for (let i = 0; i < updates.length; i += 1000) {
+      for (let i = 0; i < updates.length; i += 1000)
         await supabase.from('dados_simulacao').upsert(updates.slice(i, i + 1000))
-      }
     }
 
     return dsUpdated
   }
 
+  // ── Executa simulação ─────────────────────────────────────────────────────
   const handleSimulate = async () => {
     if (!simObj) return toast.error('Configuração de simulação não carregada')
-    setLoading(true)
+    if (fonteConfigs.length === 0) return toast.error('Configure ao menos uma fonte para simular')
 
+    setLoading(true)
     let resData = await applyFinancialMetrics()
+
+    if (resData.length === 0) {
+      toast.error(
+        'Nenhum dado encontrado para a combinação de fonte/cenário/estratégia selecionada. Verifique se a importação foi realizada com as mesmas chaves.',
+      )
+      setRan(true)
+      setData([])
+      setLoading(false)
+      return
+    }
 
     if (simObj?.demanda_auto || simObj?.perdas_auto) {
       const cd = cenario_demanda.find((c: any) => c.id_cd === parseInt(filters.id_cd_auto))
@@ -682,7 +738,7 @@ export default function Cenarios() {
 
     const groupedMap = processedData.reduce((acc: any, row: any) => {
       const key = `${row.tempo}_${row.id_fonte}`
-      if (!acc[key]) {
+      if (!acc[key])
         acc[key] = {
           tempo: row.tempo,
           id_fonte: row.id_fonte,
@@ -693,7 +749,6 @@ export default function Cenarios() {
           opex: 0,
           count: 0,
         }
-      }
       acc[key].volume_distribuido += row.volume_distribuido || 0
       acc[key].demanda += row.demanda || 0
       acc[key].deficit += row.deficit || 0
@@ -715,7 +770,7 @@ export default function Cenarios() {
       }))
       .sort((a: any, b: any) => a.tempo.localeCompare(b.tempo))
 
-    // ── Segurança hídrica ─────────────────────────────────────────────────
+    // Segurança hídrica
     const limiarAlerta = simObj?.limiar_alerta ?? 0.8
     const limiarCrise = simObj?.limiar_crise ?? 0.6
     const limiarColapso = simObj?.limiar_colapso ?? 0.4
@@ -745,10 +800,12 @@ export default function Cenarios() {
     }))
 
     const criticos = indicesMes
-      .map(({ tempo, indice, volTotal, demTotal }) => {
-        const status = getStatus(indice, limiarAlerta, limiarCrise, limiarColapso)
-        return { tempo, indice, status, deficit: Math.max(0, demTotal - volTotal) }
-      })
+      .map(({ tempo, indice, volTotal, demTotal }) => ({
+        tempo,
+        indice,
+        status: getStatus(indice, limiarAlerta, limiarCrise, limiarColapso),
+        deficit: Math.max(0, demTotal - volTotal),
+      }))
       .filter((r) => r.status !== 'seguro')
 
     setSegurancaHidrica({ indicesMes, chartData: chartDataSeg, criticos })
@@ -762,26 +819,23 @@ export default function Cenarios() {
     (acc: any, f: any) => ({ ...acc, [f.id_fonte]: f.nome_fonte }),
     {},
   )
-
   const limiarAlerta = simObj?.limiar_alerta ?? 0.8
   const limiarCrise = simObj?.limiar_crise ?? 0.6
   const limiarColapso = simObj?.limiar_colapso ?? 0.4
 
-  const toggleIndicador = (id: number) => {
+  const toggleIndicador = (id: number) =>
     setSelectedIndicadores((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     )
-  }
 
-  // Gráficos de indicadores
   const indicadoresCharts = (() => {
     if (!ran || data.length === 0 || selectedIndicadores.length === 0) return []
     const indsSelected = indicadores.filter((ind) => selectedIndicadores.includes(ind.id_indicador))
     const porUnidade: Record<string, any[]> = {}
     indsSelected.forEach((ind) => {
-      const unidade = ind.unidade || 'sem_unidade'
-      if (!porUnidade[unidade]) porUnidade[unidade] = []
-      porUnidade[unidade].push(ind)
+      const u = ind.unidade || 'sem_unidade'
+      if (!porUnidade[u]) porUnidade[u] = []
+      porUnidade[u].push(ind)
     })
     return Object.entries(porUnidade).map(([unidade, inds]) => {
       const tempos = Array.from(new Set(data.map((d: any) => d.tempo))).sort()
@@ -791,15 +845,14 @@ export default function Cenarios() {
         fontes.forEach((id_fonte) => {
           const rows = data.filter((d: any) => d.tempo === tempo && d.id_fonte === id_fonte)
           inds.forEach((ind) => {
-            const campo = ind.campo_extra
             const values = rows
-              .map((r: any) => r.valores_extras?.[campo])
+              .map((r: any) => r.valores_extras?.[ind.campo_extra])
               .filter((v: any) => v != null && !isNaN(Number(v)))
               .map(Number)
             if (values.length > 0) {
               const avg = values.reduce((a: number, b: number) => a + b, 0) / values.length
-              const key = `${fontesMap[id_fonte] || id_fonte} – ${ind.descricao || campo}`
-              point[key] = avg
+              point[`${fontesMap[id_fonte] || id_fonte} – ${ind.descricao || ind.campo_extra}`] =
+                avg
             }
           })
         })
@@ -812,12 +865,15 @@ export default function Cenarios() {
           if (chartData.some((pt: any) => pt[key] != null)) linhas.push(key)
         })
       })
-      const titulo = inds.map((ind: any) => ind.descricao || ind.campo_extra).join(' - ')
-      return { unidade, chartData, linhas, titulo }
+      return {
+        unidade,
+        chartData,
+        linhas,
+        titulo: inds.map((i: any) => i.descricao || i.campo_extra).join(' - '),
+      }
     })
   })()
 
-  // Card de segurança hídrica
   const segCard = segurancaHidrica
     ? (() => {
         const { indicesMes } = segurancaHidrica
@@ -897,7 +953,6 @@ export default function Cenarios() {
     </LineChart>
   )
 
-  // ── Helper: campo de edição genérico da simulação ─────────────────────────
   const SimField = ({
     label,
     field,
@@ -912,6 +967,7 @@ export default function Cenarios() {
       <Input
         type={type}
         value={simEdit?.[field] ?? ''}
+        className="h-8 text-sm"
         onChange={(e) =>
           setSimEdit((prev: any) => ({
             ...prev,
@@ -923,7 +979,6 @@ export default function Cenarios() {
                 : e.target.value,
           }))
         }
-        className="h-8 text-sm"
       />
     </div>
   )
@@ -944,21 +999,29 @@ export default function Cenarios() {
       <div>
         <h1 className="text-3xl font-bold text-primary mb-2">Simulação de Cenários</h1>
         <p className="text-muted-foreground">
-          Filtre os parâmetros desejados para visualizar o comportamento do sistema de recursos
-          hídricos.
+          Configure as fontes, cenários e estratégias para simular o comportamento do sistema
+          hídrico.
         </p>
       </div>
 
       <div className="space-y-6">
-        {/* ── QUADRO 1: Seleção de cenário e estratégia (lógica da Importacao) ── */}
+        {/* ── QUADRO 1: Cenários para Simulação ── */}
         <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200 w-full">
           <h3 className="font-semibold text-primary border-b pb-3 mb-4 text-sm uppercase tracking-wider">
             Cenários para Simulação
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl mb-6">
-            <div className="space-y-1">
+
+          {/* Formulário de adição de uma fonte */}
+          <div className="space-y-4 border border-slate-200 rounded-lg p-4 bg-slate-50">
+            <p className="text-xs text-muted-foreground font-medium">
+              Selecione uma fonte, monte os cenários e estratégias e clique em{' '}
+              <strong>Adicionar Fonte</strong>. Repita para cada fonte desejada.
+            </p>
+
+            {/* Fonte */}
+            <div className="max-w-xs space-y-1">
               <label className="text-xs font-semibold text-muted-foreground">Fonte de Água</label>
-              <Select value={idFonte} onValueChange={setIdFonte}>
+              <Select value={idFonte} onValueChange={handleFonteChange}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione a fonte..." />
                 </SelectTrigger>
@@ -971,139 +1034,200 @@ export default function Cenarios() {
                 </SelectContent>
               </Select>
             </div>
+
+            {idFonte && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Montagem de cenários */}
+                <div className="border p-4 rounded-lg bg-white space-y-3">
+                  <h4 className="font-semibold text-sm">Montagem de cenários</h4>
+                  <Select value={idTc} onValueChange={setIdTc}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Tipo de cenário..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {filteredTipos.map((t: any) => (
+                        <SelectItem key={t.id_tc} value={t.id_tc.toString()}>
+                          {t.descricao}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select value={idC} onValueChange={setIdC}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Cenário..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {filteredCenarios.map((c: any) => (
+                        <SelectItem key={c.id_cenarios} value={c.id_cenarios.toString()}>
+                          {c.cenarios}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    className="w-full"
+                    size="sm"
+                    disabled={!idTc || !idC}
+                    onClick={() => {
+                      const t = refData.tiposCenario.find((x: any) => x.id_tc.toString() === idTc)
+                      const c = refData.cenariosBd.find(
+                        (x: any) => x.id_cenarios.toString() === idC,
+                      )
+                      if (t && c) {
+                        setDraftCenarios((p) => [
+                          ...p,
+                          {
+                            label: `${t.descricao}: ${c.cenarios}`,
+                            tcChave: t.chave ?? t.id_tc.toString(),
+                            cChave: c.chave ?? c.cenarios.toLowerCase().replace(/\s+/g, '_'),
+                          },
+                        ])
+                        setIdTc('')
+                        setIdC('')
+                      }
+                    }}
+                  >
+                    Adicionar Cenário
+                  </Button>
+                  <ul className="space-y-1.5">
+                    {draftCenarios.map((c, i) => (
+                      <li
+                        key={i}
+                        className="flex justify-between items-center bg-slate-50 px-3 py-1.5 rounded border text-xs"
+                      >
+                        <span>{c.label}</span>
+                        <button
+                          onClick={() => setDraftCenarios((p) => p.filter((_, idx) => idx !== i))}
+                          className="text-destructive hover:text-red-700 ml-2"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                {/* Montagem de estratégias */}
+                <div className="border p-4 rounded-lg bg-white space-y-3">
+                  <h4 className="font-semibold text-sm">Montagem de Estratégia</h4>
+                  <Select value={idAcao} onValueChange={setIdAcao}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Escolha a ação..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {filteredAcoes.map((a: any) => (
+                        <SelectItem key={a.id_acao} value={a.id_acao.toString()}>
+                          {a.descricao}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    className="w-full"
+                    size="sm"
+                    disabled={!idAcao}
+                    onClick={() => {
+                      const a = refData.acoesBd.find((x: any) => x.id_acao.toString() === idAcao)
+                      if (a) {
+                        setDraftEstrategias((p) => [
+                          ...p,
+                          {
+                            label: a.descricao,
+                            chave: a.chave ?? a.descricao.toLowerCase().replace(/\s+/g, '_'),
+                          },
+                        ])
+                        setIdAcao('')
+                      }
+                    }}
+                  >
+                    Adicionar Ação
+                  </Button>
+                  <ul className="space-y-1.5">
+                    {draftEstrategias.map((e, i) => (
+                      <li
+                        key={i}
+                        className="flex justify-between items-center bg-slate-50 px-3 py-1.5 rounded border text-xs"
+                      >
+                        <span>{e.label}</span>
+                        <button
+                          onClick={() =>
+                            setDraftEstrategias((p) => p.filter((_, idx) => idx !== i))
+                          }
+                          className="text-destructive hover:text-red-700 ml-2"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-end pt-2">
+              <Button
+                onClick={handleConfirmarFonte}
+                disabled={!idFonte || draftCenarios.length === 0 || draftEstrategias.length === 0}
+                className="gap-2"
+              >
+                <Plus className="w-4 h-4" /> Adicionar Fonte à Simulação
+              </Button>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Cenários */}
-            <div className="border p-4 rounded-lg bg-slate-50 space-y-4">
-              <h3 className="font-semibold text-sm">Montagem de cenários</h3>
-              <div className="space-y-2">
-                <Select value={idTc} onValueChange={setIdTc}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Tipo de cenário..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {filteredTipos.map((t: any) => (
-                      <SelectItem key={t.id_tc} value={t.id_tc.toString()}>
-                        {t.descricao}
-                      </SelectItem>
+          {/* Tabela de fontes confirmadas — com coluna de fonte visível */}
+          {fonteConfigs.length > 0 && (
+            <div className="mt-5">
+              <h4 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">
+                Fontes configuradas para simulação
+              </h4>
+              <div className="border rounded-lg overflow-hidden">
+                <table className="w-full text-xs">
+                  <thead className="bg-slate-100">
+                    <tr>
+                      <th className="px-3 py-2 text-left font-semibold text-slate-600 w-40">
+                        Fonte
+                      </th>
+                      <th className="px-3 py-2 text-left font-semibold text-slate-600">Cenários</th>
+                      <th className="px-3 py-2 text-left font-semibold text-slate-600">
+                        Estratégias
+                      </th>
+                      <th className="px-3 py-2 w-10" />
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {fonteConfigs.map((fc) => (
+                      <tr key={fc.idFonte} className="hover:bg-slate-50">
+                        <td className="px-3 py-2 font-medium text-slate-700">
+                          {fc.nomefonteLabel}
+                        </td>
+                        <td className="px-3 py-2 text-slate-600">
+                          {fc.cenariosList.map((c) => c.label).join(' · ')}
+                        </td>
+                        <td className="px-3 py-2 text-slate-600">
+                          {fc.estrategiasList.map((e) => e.label).join(' · ')}
+                        </td>
+                        <td className="px-3 py-2 text-center">
+                          <button
+                            onClick={() =>
+                              setFonteConfigs((p) => p.filter((x) => x.idFonte !== fc.idFonte))
+                            }
+                            className="text-destructive hover:text-red-700"
+                            title="Remover fonte"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </td>
+                      </tr>
                     ))}
-                  </SelectContent>
-                </Select>
-                <Select value={idC} onValueChange={setIdC}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Cenário..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {filteredCenarios.map((c: any) => (
-                      <SelectItem key={c.id_cenarios} value={c.id_cenarios.toString()}>
-                        {c.cenarios}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button
-                  className="w-full"
-                  disabled={!idTc || !idC}
-                  onClick={() => {
-                    const t = refData.tiposCenario.find((x: any) => x.id_tc.toString() === idTc)
-                    const c = refData.cenariosBd.find((x: any) => x.id_cenarios.toString() === idC)
-                    if (t && c) {
-                      setCenariosList((p) => [
-                        ...p,
-                        {
-                          label: `${t.descricao}: ${c.cenarios}`,
-                          tcChave: t.chave ?? t.id_tc.toString(),
-                          cChave: c.chave ?? c.cenarios.toLowerCase().replace(/\s+/g, '_'),
-                        },
-                      ])
-                      setIdTc('')
-                      setIdC('')
-                    }
-                  }}
-                >
-                  Adicionar Cenário
-                </Button>
+                  </tbody>
+                </table>
               </div>
-              <ul className="space-y-2">
-                {cenariosList.map((c, i) => (
-                  <li
-                    key={i}
-                    className="flex justify-between items-center bg-white p-2 rounded border text-sm"
-                  >
-                    {c.label}
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6 text-destructive"
-                      onClick={() => setCenariosList((p) => p.filter((_, idx) => idx !== i))}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </li>
-                ))}
-              </ul>
             </div>
-
-            {/* Estratégias */}
-            <div className="border p-4 rounded-lg bg-slate-50 space-y-4">
-              <h3 className="font-semibold text-sm">Montagem de Estratégia</h3>
-              <div className="space-y-2">
-                <Select value={idAcao} onValueChange={setIdAcao}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Escolha a ação..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {filteredAcoes.map((a: any) => (
-                      <SelectItem key={a.id_acao} value={a.id_acao.toString()}>
-                        {a.descricao}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button
-                  className="w-full"
-                  disabled={!idAcao}
-                  onClick={() => {
-                    const a = refData.acoesBd.find((x: any) => x.id_acao.toString() === idAcao)
-                    if (a) {
-                      setEstrategiasList((p) => [
-                        ...p,
-                        {
-                          label: a.descricao,
-                          chave: a.chave ?? a.descricao.toLowerCase().replace(/\s+/g, '_'),
-                        },
-                      ])
-                      setIdAcao('')
-                    }
-                  }}
-                >
-                  Adicionar Ação
-                </Button>
-              </div>
-              <ul className="space-y-2">
-                {estrategiasList.map((e, i) => (
-                  <li
-                    key={i}
-                    className="flex justify-between items-center bg-white p-2 rounded border text-sm"
-                  >
-                    {e.label}
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6 text-destructive"
-                      onClick={() => setEstrategiasList((p) => p.filter((_, idx) => idx !== i))}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
+          )}
         </div>
 
-        {/* ── QUADRO 2: Configuração da simulação (único registro, editável) ── */}
+        {/* ── QUADRO 2: Configuração da Simulação ── */}
         {simEdit && (
           <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200 w-full">
             <h3 className="font-semibold text-primary border-b pb-3 mb-4 text-sm uppercase tracking-wider">
@@ -1133,7 +1257,7 @@ export default function Cenarios() {
           </div>
         )}
 
-        {/* ── QUADRO 3: Demanda e Perdas Automático — condicional ── */}
+        {/* ── QUADRO 3: Demanda e Perdas Automático ── */}
         {simObj && (simObj.demanda_auto || simObj.perdas_auto) && (
           <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200 w-full">
             <h3 className="font-semibold text-primary border-b pb-3 mb-4 text-sm uppercase tracking-wider">
@@ -1223,7 +1347,7 @@ export default function Cenarios() {
           </div>
         )}
 
-        {/* ── QUADRO 5: Período + Botão Executar ── */}
+        {/* ── QUADRO 5: Período + Executar ── */}
         <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200 w-full">
           <h3 className="font-semibold text-primary border-b pb-3 mb-4 text-sm uppercase tracking-wider">
             Período
@@ -1248,7 +1372,7 @@ export default function Cenarios() {
                 className="w-full"
                 options={[
                   2026, 2027, 2028, 2029, 2030, 2031, 2032, 2033, 2034, 2035, 2036, 2037, 2038,
-                  2039, 2040, 2041, 2042, 2043, 2044, 2045, 2046, 2047, 2048, 2049, 2050,
+                  2049, 2040, 2041, 2042, 2043, 2044, 2045, 2046, 2047, 2048, 2049, 2050,
                 ].map((y) => ({ value: y, label: y.toString() }))}
                 value={filters.ano_fim || ''}
                 onChange={(v: any) => setFilters({ ...filters, ano_fim: v })}
@@ -1306,14 +1430,14 @@ export default function Cenarios() {
           <div className="pt-6 flex flex-col gap-2">
             <Button
               onClick={handleSimulate}
-              disabled={loading || !simObj}
+              disabled={loading || !simObj || fonteConfigs.length === 0}
               className="w-full h-11 shadow-sm text-base disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? 'Processando...' : 'Executar Simulação'}
             </Button>
-            {!simObj && (
+            {fonteConfigs.length === 0 && (
               <p className="text-xs text-red-500 text-center font-medium">
-                Configuração de simulação não encontrada.
+                Configure ao menos uma fonte para executar a simulação.
               </p>
             )}
           </div>
@@ -1322,13 +1446,16 @@ export default function Cenarios() {
 
       {ran && data.length === 0 && (
         <div className="text-center p-12 bg-white rounded-lg border border-dashed">
-          <p className="text-muted-foreground">
-            Nenhum dado de simulação encontrado para estes filtros.
+          <p className="text-muted-foreground font-medium">
+            Nenhum dado encontrado para os filtros selecionados.
+          </p>
+          <p className="text-xs text-muted-foreground mt-2">
+            Verifique se a importação foi realizada com as mesmas chaves de cenário e estratégia.
           </p>
         </div>
       )}
 
-      {/* ── BLOCO 1: Card de segurança hídrica ── */}
+      {/* ── BLOCO 1: Card segurança hídrica ── */}
       {segurancaHidrica && segCard && (
         <div>
           <h2 className="text-lg font-semibold text-primary mb-3">Índice de Segurança Hídrica</h2>
@@ -1382,7 +1509,7 @@ export default function Cenarios() {
         </div>
       )}
 
-      {/* ── BLOCO 2: Gráfico de segurança hídrica ── */}
+      {/* ── BLOCO 2: Gráfico segurança hídrica ── */}
       {segurancaHidrica && segurancaHidrica.chartData.length > 0 && (
         <div>
           <div className="flex flex-wrap gap-6 text-xs text-slate-500 mb-2 px-1">
@@ -1451,7 +1578,6 @@ export default function Cenarios() {
             'Dezembro',
           ]
           const MESES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
-
           type Cell = { status: StatusSeg; deficit: number }
           const criMap: Record<string, Record<number, Cell>> = {}
           segurancaHidrica.criticos.forEach(({ tempo, status, deficit }) => {
@@ -1461,23 +1587,19 @@ export default function Cenarios() {
             if (!criMap[ano]) criMap[ano] = {}
             criMap[ano][mes] = { status, deficit }
           })
-
           const anos = Object.keys(criMap).sort()
-
           const fmt = (v: number) =>
             v >= 1_000_000
               ? `${(v / 1_000_000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}M m³`
               : v >= 1_000
                 ? `${(v / 1_000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}k m³`
                 : `${v.toLocaleString('pt-BR', { maximumFractionDigits: 0 })} m³`
-
-          const cellCss: Record<StatusSeg, { bg: string; text: string; dot: string }> = {
-            seguro: { bg: '#ecfdf5', text: '#065f46', dot: '#10b981' },
-            alerta: { bg: '#fffbeb', text: '#92400e', dot: '#f59e0b' },
-            crise: { bg: '#fee2e2', text: '#991b1b', dot: '#ef4444' },
-            colapso: { bg: '#ffe4e6', text: '#881337', dot: '#9f1239' },
+          const cellCss: Record<StatusSeg, { bg: string; dot: string }> = {
+            seguro: { bg: '#ecfdf5', dot: '#10b981' },
+            alerta: { bg: '#fffbeb', dot: '#f59e0b' },
+            crise: { bg: '#fee2e2', dot: '#ef4444' },
+            colapso: { bg: '#ffe4e6', dot: '#9f1239' },
           }
-
           const downloadCsv = () => {
             const headerRow = [
               'Ano',
@@ -1504,7 +1626,6 @@ export default function Cenarios() {
             a.click()
             URL.revokeObjectURL(url)
           }
-
           return (
             <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200">
               <div className="flex items-center justify-between border-b pb-3 mb-4">
