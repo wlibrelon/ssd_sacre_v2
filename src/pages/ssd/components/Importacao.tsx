@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useSsdData } from '@/hooks/use-ssd-data'
-import { NativeSelect } from './components/NativeSelect'
+import { NativeSelect } from './NativeSelect'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { supabase } from '@/lib/supabase/client'
-import { CenariosDashboard } from './components/CenariosDashboard'
+import { CenariosDashboard } from './CenariosDashboard'
 import { Checkbox } from '@/components/ui/checkbox'
 import { toast } from 'sonner'
 import { Trash2, Plus } from 'lucide-react'
@@ -335,7 +335,7 @@ function stableJsonString(obj: Record<string, string>): string {
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-export default function Cenarios() {
+export function Importacao() {
   const { cenario_demanda, cenario_consumo, cenario_perdas } = useSsdData()
 
   // ── Estado: lista de seleções salvas no banco ─────────────────────────────

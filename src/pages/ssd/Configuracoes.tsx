@@ -2,7 +2,7 @@ import { Grupo1 } from './components/Grupo1'
 import { Grupo2 } from './components/Grupo2'
 import { Grupo4 } from './components/Grupo4'
 import { GrupoUpload } from './components/GrupoUpload'
-import { Importacao } from './parametros/Importacao'
+import { Importacao } from './components/Importacao'
 import {
   Accordion,
   AccordionItem,

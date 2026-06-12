@@ -518,6 +518,7 @@ export type Database = {
           arq_capex_estrategias: string | null
           arq_capex_perdas: string | null
           arq_demanda: string | null
+          arq_indicador: string | null
           arq_mod: string | null
           arq_opex: string | null
           arq_perdas: string | null
@@ -530,6 +531,7 @@ export type Database = {
           arq_capex_estrategias?: string | null
           arq_capex_perdas?: string | null
           arq_demanda?: string | null
+          arq_indicador?: string | null
           arq_mod?: string | null
           arq_opex?: string | null
           arq_perdas?: string | null
@@ -542,6 +544,7 @@ export type Database = {
           arq_capex_estrategias?: string | null
           arq_capex_perdas?: string | null
           arq_demanda?: string | null
+          arq_indicador?: string | null
           arq_mod?: string | null
           arq_opex?: string | null
           arq_perdas?: string | null
@@ -650,7 +653,9 @@ export type Database = {
       }
       selecao_cenarios: {
         Row: {
+          cenarios: Json | null
           criado_at: string | null
+          estrategias: Json | null
           id: string
           id_acao: number | null
           id_c: number | null
@@ -660,7 +665,9 @@ export type Database = {
           selecionado: boolean | null
         }
         Insert: {
+          cenarios?: Json | null
           criado_at?: string | null
+          estrategias?: Json | null
           id?: string
           id_acao?: number | null
           id_c?: number | null
@@ -670,7 +677,9 @@ export type Database = {
           selecionado?: boolean | null
         }
         Update: {
+          cenarios?: Json | null
           criado_at?: string | null
+          estrategias?: Json | null
           id?: string
           id_acao?: number | null
           id_c?: number | null
@@ -1056,6 +1065,7 @@ export const Constants = {
 //   arq_capex_estrategias: text (nullable)
 //   arq_capex_perdas: text (nullable)
 //   arq_opex: text (nullable)
+//   arq_indicador: character varying (nullable)
 // Table: opex
 //   id_oa: integer (not null, default: nextval('opex_id_oa_seq'::regclass))
 //   tempo: character varying (nullable)
@@ -1083,6 +1093,8 @@ export const Constants = {
 //   selecionado: boolean (nullable, default: true)
 //   id_usuario: uuid (not null)
 //   criado_at: timestamp with time zone (nullable, default: now())
+//   cenarios: jsonb (nullable, default: '{}'::jsonb)
+//   estrategias: jsonb (nullable, default: '[]'::jsonb)
 // Table: simulacao_ssd
 //   id_s: integer (not null)
 //   descricao: character varying (nullable)
