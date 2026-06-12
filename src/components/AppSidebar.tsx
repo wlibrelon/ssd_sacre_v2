@@ -85,7 +85,6 @@ export const AppSidebar = ({ onOpenSobre }: { onOpenSobre: () => void }) => {
       items: [
         { title: 'Simulação', url: '/ssd/cenarios' },
         { title: 'Configurações', url: '/ssd/configuracoes' },
-        { title: 'Parâmetros', url: '/ssd/parametros' },
       ],
     },
     {

@@ -1072,6 +1072,7 @@ export const Constants = {
 //   FOREIGN KEY dados_simulacao_id_fonte_fkey: FOREIGN KEY (id_fonte) REFERENCES fonte_agua(id_fonte) ON DELETE CASCADE
 //   FOREIGN KEY dados_simulacao_id_mod_fkey: FOREIGN KEY (id_mod) REFERENCES modelos(id_mod) ON DELETE CASCADE
 //   FOREIGN KEY dados_simulacao_id_s_fkey: FOREIGN KEY (id_s) REFERENCES simulacao_ssd(id_s) ON DELETE CASCADE
+//   UNIQUE dados_simulacao_mod_fonte_tempo_key: UNIQUE (id_mod, id_fonte, tempo)
 //   PRIMARY KEY dados_simulacao_pkey: PRIMARY KEY (id_ds)
 //   UNIQUE dados_simulacao_ukey: UNIQUE (id_s, id_mod, id_fonte, tempo)
 // Table: documentos_publicos
@@ -1306,4 +1307,5 @@ export const Constants = {
 
 // --- INDEXES ---
 // Table: dados_simulacao
+//   CREATE UNIQUE INDEX dados_simulacao_mod_fonte_tempo_key ON public.dados_simulacao USING btree (id_mod, id_fonte, tempo)
 //   CREATE UNIQUE INDEX dados_simulacao_ukey ON public.dados_simulacao USING btree (id_s, id_mod, id_fonte, tempo)

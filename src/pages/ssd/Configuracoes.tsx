@@ -1,9 +1,8 @@
 import { Grupo1 } from './components/Grupo1'
 import { Grupo2 } from './components/Grupo2'
-import { Grupo3 } from './components/Grupo3'
 import { Grupo4 } from './components/Grupo4'
-import { Grupo5 } from './components/Grupo5'
-import { GrupoCapexOpex } from './components/GrupoCapexOpex'
+import { GrupoUpload } from './components/GrupoUpload'
+import { Importacao } from './parametros/Importacao'
 import {
   Accordion,
   AccordionItem,
@@ -23,7 +22,7 @@ export default function Configuracoes() {
         </p>
       </div>
 
-      <Accordion type="multiple" className="w-full space-y-4">
+      <Accordion type="multiple" defaultValue={[]} className="w-full space-y-4">
         <AccordionItem value="g1" className="border rounded-lg px-4 bg-white shadow-sm">
           <AccordionTrigger className="text-xl font-bold hover:no-underline text-left">
             Configuração de fontes de água, cenários e ações
@@ -42,15 +41,6 @@ export default function Configuracoes() {
           </AccordionContent>
         </AccordionItem>
 
-        <AccordionItem value="g3" className="border rounded-lg px-4 bg-white shadow-sm">
-          <AccordionTrigger className="text-xl font-bold hover:no-underline text-left">
-            Simulações para SSD
-          </AccordionTrigger>
-          <AccordionContent className="pt-2 pb-6">
-            <Grupo3 />
-          </AccordionContent>
-        </AccordionItem>
-
         <AccordionItem value="g4" className="border rounded-lg px-4 bg-white shadow-sm">
           <AccordionTrigger className="text-xl font-bold hover:no-underline text-left">
             Configuração de Demandas e Perdas
@@ -60,21 +50,21 @@ export default function Configuracoes() {
           </AccordionContent>
         </AccordionItem>
 
-        <AccordionItem value="gcapex" className="border rounded-lg px-4 bg-white shadow-sm">
+        <AccordionItem value="upload" className="border rounded-lg px-4 bg-white shadow-sm">
           <AccordionTrigger className="text-xl font-bold hover:no-underline text-left">
-            Dados para CAPEX e OPEX
+            Upload de arquivos de dados
           </AccordionTrigger>
           <AccordionContent className="pt-2 pb-6">
-            <GrupoCapexOpex />
+            <GrupoUpload />
           </AccordionContent>
         </AccordionItem>
 
-        <AccordionItem value="g5" className="border rounded-lg px-4 bg-white shadow-sm">
+        <AccordionItem value="importacao" className="border rounded-lg px-4 bg-white shadow-sm">
           <AccordionTrigger className="text-xl font-bold hover:no-underline text-left">
-            Importação de dados para simulação
+            Importação de dados
           </AccordionTrigger>
           <AccordionContent className="pt-2 pb-6">
-            <Grupo5 />
+            <Importacao />
           </AccordionContent>
         </AccordionItem>
       </Accordion>
