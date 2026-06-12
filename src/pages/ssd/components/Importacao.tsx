@@ -348,7 +348,7 @@ function formatEstrategiaArr(arr: string[] | null | undefined): string {
   return arr.join(', ')
 }
 // ─────────────────────────────────────────────────────────────────────────────
-export default function Cenarios() {
+export function Importacao() {
   const { cenario_demanda, cenario_consumo, cenario_perdas } = useSsdData()
   // ── Estado: lista de seleções salvas no banco ─────────────────────────────
   const [selecoes, setSelecoes] = useState<SelecaoCenario[]>([])
