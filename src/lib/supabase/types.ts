@@ -648,6 +648,68 @@ export type Database = {
           },
         ]
       }
+      selecao_cenarios: {
+        Row: {
+          criado_at: string | null
+          id: string
+          id_acao: number | null
+          id_c: number | null
+          id_fonte: number | null
+          id_tc: number | null
+          id_usuario: string
+          selecionado: boolean | null
+        }
+        Insert: {
+          criado_at?: string | null
+          id?: string
+          id_acao?: number | null
+          id_c?: number | null
+          id_fonte?: number | null
+          id_tc?: number | null
+          id_usuario: string
+          selecionado?: boolean | null
+        }
+        Update: {
+          criado_at?: string | null
+          id?: string
+          id_acao?: number | null
+          id_c?: number | null
+          id_fonte?: number | null
+          id_tc?: number | null
+          id_usuario?: string
+          selecionado?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'selecao_cenarios_id_acao_fkey'
+            columns: ['id_acao']
+            isOneToOne: false
+            referencedRelation: 'acoes'
+            referencedColumns: ['id_acao']
+          },
+          {
+            foreignKeyName: 'selecao_cenarios_id_c_fkey'
+            columns: ['id_c']
+            isOneToOne: false
+            referencedRelation: 'cenarios'
+            referencedColumns: ['id_cenarios']
+          },
+          {
+            foreignKeyName: 'selecao_cenarios_id_fonte_fkey'
+            columns: ['id_fonte']
+            isOneToOne: false
+            referencedRelation: 'fonte_agua'
+            referencedColumns: ['id_fonte']
+          },
+          {
+            foreignKeyName: 'selecao_cenarios_id_tc_fkey'
+            columns: ['id_tc']
+            isOneToOne: false
+            referencedRelation: 'tipos_cenarios'
+            referencedColumns: ['id_tc']
+          },
+        ]
+      }
       simulacao_ssd: {
         Row: {
           demanda_auto: boolean | null
@@ -1012,6 +1074,15 @@ export const Constants = {
 //   id_rapp: integer (not null, default: nextval('recursos_app_id_rapp_seq'::regclass))
 //   nome_recurso: character varying (not null)
 //   id_ga: integer (nullable)
+// Table: selecao_cenarios
+//   id: uuid (not null, default: gen_random_uuid())
+//   id_fonte: integer (nullable)
+//   id_tc: integer (nullable)
+//   id_c: integer (nullable)
+//   id_acao: integer (nullable)
+//   selecionado: boolean (nullable, default: true)
+//   id_usuario: uuid (not null)
+//   criado_at: timestamp with time zone (nullable, default: now())
 // Table: simulacao_ssd
 //   id_s: integer (not null)
 //   descricao: character varying (nullable)
@@ -1100,6 +1171,13 @@ export const Constants = {
 // Table: recursos_app
 //   FOREIGN KEY recursos_app_id_ga_fkey: FOREIGN KEY (id_ga) REFERENCES grupo_acesso(id_ga) ON DELETE CASCADE
 //   PRIMARY KEY recursos_app_pkey: PRIMARY KEY (id_rapp)
+// Table: selecao_cenarios
+//   FOREIGN KEY selecao_cenarios_id_acao_fkey: FOREIGN KEY (id_acao) REFERENCES acoes(id_acao) ON DELETE CASCADE
+//   FOREIGN KEY selecao_cenarios_id_c_fkey: FOREIGN KEY (id_c) REFERENCES cenarios(id_cenarios) ON DELETE CASCADE
+//   FOREIGN KEY selecao_cenarios_id_fonte_fkey: FOREIGN KEY (id_fonte) REFERENCES fonte_agua(id_fonte) ON DELETE CASCADE
+//   FOREIGN KEY selecao_cenarios_id_tc_fkey: FOREIGN KEY (id_tc) REFERENCES tipos_cenarios(id_tc) ON DELETE CASCADE
+//   FOREIGN KEY selecao_cenarios_id_usuario_fkey: FOREIGN KEY (id_usuario) REFERENCES auth.users(id) ON DELETE CASCADE
+//   PRIMARY KEY selecao_cenarios_pkey: PRIMARY KEY (id)
 // Table: simulacao_ssd
 //   PRIMARY KEY simulacao_ssd_pkey: PRIMARY KEY (id_s)
 // Table: tipo_cenario_cenario
@@ -1247,6 +1325,16 @@ export const Constants = {
 //     USING: is_admin()
 //   Policy "rapp_select" (SELECT, PERMISSIVE) roles={public}
 //     USING: true
+// Table: selecao_cenarios
+//   Policy "selecao_cenarios_delete" (DELETE, PERMISSIVE) roles={authenticated}
+//     USING: (auth.uid() = id_usuario)
+//   Policy "selecao_cenarios_insert" (INSERT, PERMISSIVE) roles={authenticated}
+//     WITH CHECK: (auth.uid() = id_usuario)
+//   Policy "selecao_cenarios_select" (SELECT, PERMISSIVE) roles={authenticated}
+//     USING: (auth.uid() = id_usuario)
+//   Policy "selecao_cenarios_update" (UPDATE, PERMISSIVE) roles={authenticated}
+//     USING: (auth.uid() = id_usuario)
+//     WITH CHECK: (auth.uid() = id_usuario)
 // Table: simulacao_ssd
 //   Policy "anon_read" (SELECT, PERMISSIVE) roles={anon}
 //     USING: true
@@ -1309,3 +1397,5 @@ export const Constants = {
 // Table: dados_simulacao
 //   CREATE UNIQUE INDEX dados_simulacao_mod_fonte_tempo_key ON public.dados_simulacao USING btree (id_mod, id_fonte, tempo)
 //   CREATE UNIQUE INDEX dados_simulacao_ukey ON public.dados_simulacao USING btree (id_s, id_mod, id_fonte, tempo)
+// Table: selecao_cenarios
+//   CREATE INDEX idx_selecao_cenarios_usuario ON public.selecao_cenarios USING btree (id_usuario)
