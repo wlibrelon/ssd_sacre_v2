@@ -49,31 +49,17 @@ const LINE_COLORS = ['#2563eb', '#16a34a', '#dc2626', '#d97706', '#7c3aed', '#08
 
 type StatusSeg = 'seguro' | 'alerta' | 'crise' | 'colapso'
 
-/**
- * Registro gravado em selecao_cenarios.
- *
- * cenarios  → JSONB objeto:  { "tipo_chave": "cenario_chave", ... }
- *             ex: { "clima": "tendencial", "uso_terra": "pessimista" }
- *
- * estrategias → JSONB array: ["acao_chave1", "acao_chave2"]
- *             ex: ["instalar_barraginhas", "instalar_represa"]
- *
- * Dessa forma a query de verificação funciona:
- *   WHERE id_fonte = 1
- *     AND cenarios  = '{"clima":"tendencial","uso_terra":"pessimista"}'::jsonb
- *     AND estrategias = '["instalar_barraginhas","instalar_represa"]'::jsonb
- */
 type SelecaoCenario = {
   id: string
   id_fonte: number
   selecionado: boolean
   criado_at: string
   id_usuario: string
-  cenarios: Record<string, string> // objeto JSONB
-  estrategias: string[] // array JSONB
+  cenarios: Record<string, string>
+  estrategias: string[]
   fonte_agua?: { nome_fonte: string }
-  // perfil do usuário (join opcional via auth.users ou tabela profiles)
-  profiles?: { email?: string; nome?: string }
+  // O join com profiles é feito separadamente para evitar erro de FK cache
+  _userLabel?: string
 }
 
 // ── helpers de segurança hídrica ───────────────────────────────────────────────
@@ -324,10 +310,6 @@ const TooltipSeguranca = ({
 
 // ── Helpers JSONB ─────────────────────────────────────────────────────────────
 
-/**
- * Monta o objeto JSONB de cenários a partir do draft.
- * Resultado: { "clima": "tendencial", "uso_terra": "pessimista" }
- */
 function buildCenarioJsonb(
   cenariosList: { tcChave: string; cChave: string }[],
 ): Record<string, string> {
@@ -337,18 +319,10 @@ function buildCenarioJsonb(
   }, {})
 }
 
-/**
- * Monta o array JSONB de estratégias a partir do draft.
- * Resultado: ["instalar_barraginhas", "instalar_represa"]
- */
 function buildEstrategiaJsonb(estrategiasList: { chave: string }[]): string[] {
   return estrategiasList.map((e) => e.chave)
 }
 
-/**
- * Serializa objeto JSONB com chaves ordenadas para garantir matching textual
- * idêntico ao gravado pelo PostgreSQL/Supabase.
- */
 function stableJsonString(obj: Record<string, string>): string {
   const sorted = Object.keys(obj)
     .sort()
@@ -359,20 +333,6 @@ function stableJsonString(obj: Record<string, string>): string {
   return JSON.stringify(sorted)
 }
 
-/** Formata objeto de cenários para exibição: "clima: tendencial, uso_terra: pessimista" */
-function formatCenarioObj(obj: Record<string, string> | null | undefined): string {
-  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return '-'
-  return Object.entries(obj)
-    .map(([k, v]) => `${k}: ${v}`)
-    .join(' | ')
-}
-
-/** Formata array de estratégias para exibição */
-function formatEstrategiaArr(arr: string[] | null | undefined): string {
-  if (!Array.isArray(arr) || arr.length === 0) return '-'
-  return arr.join(', ')
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function Cenarios() {
@@ -380,6 +340,7 @@ export default function Cenarios() {
 
   // ── Estado: lista de seleções salvas no banco ─────────────────────────────
   const [selecoes, setSelecoes] = useState<SelecaoCenario[]>([])
+  const [selecaoLoading, setSelecaoLoading] = useState(true)
 
   // Controles do formulário de adição
   const [idFonte, setIdFonte] = useState('')
@@ -387,18 +348,10 @@ export default function Cenarios() {
   const [idC, setIdC] = useState('')
   const [idAcao, setIdAcao] = useState('')
 
-  /**
-   * Draft de cenários: cada item leva label (exibição) + chaves para JSONB.
-   * O objeto final será { tcChave: cChave, tcChave2: cChave2, ... }
-   */
   const [draftCenarios, setDraftCenarios] = useState<
     { label: string; tcChave: string; cChave: string; id_tc: number; id_c: number }[]
   >([])
 
-  /**
-   * Draft de estratégias: cada item leva label (exibição) + chave para JSONB.
-   * O array final será ["chave1", "chave2", ...]
-   */
   const [draftEstrategias, setDraftEstrategias] = useState<
     { label: string; chave: string; id_acao: number }[]
   >([])
@@ -435,14 +388,24 @@ export default function Cenarios() {
   const [indicadores, setIndicadores] = useState<any[]>([])
   const [selectedIndicadores, setSelectedIndicadores] = useState<number[]>([])
 
-  // ── Busca seleções do usuário atual ───────────────────────────────────────
+  // ── CORREÇÃO: Busca seleções SEM join em profiles ─────────────────────────
+  // O join profiles causava erro "Could not find a relationship between
+  // 'selecao_cenarios' and 'profiles' in the schema cache" porque o PostgREST
+  // não infere automaticamente a FK id_usuario → profiles.id.
+  // Solução: buscar as seleções sem esse join e, se necessário, buscar o
+  // e-mail do usuário atual separadamente via auth.getUser().
   const fetchSelecoes = useCallback(async () => {
+    setSelecaoLoading(true)
     const {
       data: { user },
     } = await supabase.auth.getUser()
-    if (!user) return
+    if (!user) {
+      setSelecaoLoading(false)
+      return
+    }
 
-    const { data, error } = await supabase
+    // 1. Busca as seleções sem o join problemático em profiles
+    const { data: rows, error } = await supabase
       .from('selecao_cenarios')
       .select(`
         id,
@@ -452,17 +415,26 @@ export default function Cenarios() {
         id_usuario,
         cenarios,
         estrategias,
-        fonte_agua ( nome_fonte ),
-        profiles ( email, nome )
+        fonte_agua ( nome_fonte )
       `)
       .eq('id_usuario', user.id)
       .order('criado_at', { ascending: false })
 
     if (error) {
       toast.error(`Erro ao carregar seleções: ${error.message}`)
+      setSelecaoLoading(false)
       return
     }
-    if (data) setSelecoes(data as any)
+
+    // 2. Adiciona o label do usuário atual (evita uma query extra para outros usuários)
+    const userLabel = user.email ?? user.id.slice(0, 8) + '…'
+    const enriched: SelecaoCenario[] = (rows ?? []).map((r: any) => ({
+      ...r,
+      _userLabel: userLabel,
+    }))
+
+    setSelecoes(enriched)
+    setSelecaoLoading(false)
   }, [])
 
   // ── Carregamento inicial ──────────────────────────────────────────────────
@@ -547,7 +519,7 @@ export default function Cenarios() {
     setDraftEstrategias([])
   }
 
-  // ── Confirma a configuração da fonte ativa: grava UM registro com JSONB ───
+  // ── Confirma a configuração da fonte ativa ────────────────────────────────
   const handleConfirmarFonte = async () => {
     if (!idFonte) return toast.error('Selecione uma fonte de água')
     if (draftCenarios.length === 0) return toast.error('Adicione ao menos um cenário')
@@ -558,20 +530,9 @@ export default function Cenarios() {
     } = await supabase.auth.getUser()
     if (!user) return toast.error('Usuário não autenticado')
 
-    // Monta os campos JSONB corretamente
     const cenarioJsonb = buildCenarioJsonb(draftCenarios)
     const estrategiaJsonb = buildEstrategiaJsonb(draftEstrategias)
 
-    /**
-     * Grava UM registro por fonte+configuração.
-     * cenarios  → objeto JSONB: { "clima": "tendencial", "uso_terra": "pessimista" }
-     * estrategias → array JSONB: ["instalar_barraginhas", "instalar_represa"]
-     *
-     * Isso permite a query exata:
-     *   WHERE id_fonte = 1
-     *     AND cenarios = '{"clima":"tendencial","uso_terra":"pessimista"}'::jsonb
-     *     AND estrategias = '["instalar_barraginhas"]'::jsonb
-     */
     const { error } = await supabase.from('selecao_cenarios').insert({
       id_fonte: Number(idFonte),
       cenarios: cenarioJsonb,
@@ -595,7 +556,6 @@ export default function Cenarios() {
   }
 
   const handleToggleSelecao = async (id: string, selecionado: boolean) => {
-    // Atualiza otimisticamente
     setSelecoes((prev) => prev.map((s) => (s.id === id ? { ...s, selecionado } : s)))
     const { error } = await supabase.from('selecao_cenarios').update({ selecionado }).eq('id', id)
     if (error) {
@@ -672,7 +632,7 @@ export default function Cenarios() {
     })
   }
 
-  // ── Query principal: usa os JSONB gravados diretamente ────────────────────
+  // ── Query principal ───────────────────────────────────────────────────────
   const applyFinancialMetrics = async () => {
     const activeSelecoes = selecoes.filter((s) => s.selecionado)
     if (activeSelecoes.length === 0) return []
@@ -680,13 +640,6 @@ export default function Cenarios() {
     let allRows: any[] = []
 
     for (const sel of activeSelecoes) {
-      /**
-       * Os campos cenarios e estrategias já estão no formato JSONB correto
-       * pois foram gravados com buildCenarioJsonb / buildEstrategiaJsonb.
-       *
-       * Para o .eq() do PostgREST funcionar com JSONB, passamos a string JSON
-       * estável (chaves ordenadas para objeto, ordem de inserção para array).
-       */
       const cenarioStr = stableJsonString(sel.cenarios as Record<string, string>)
       const estrategiaStr = JSON.stringify(sel.estrategias)
 
@@ -717,7 +670,6 @@ export default function Cenarios() {
 
     if (allRows.length === 0) return []
 
-    // Aplica métricas financeiras (capex/opex)
     const [{ data: capexAcao }, { data: acoesFonte }, { data: capexPerdas }, { data: opexData }] =
       await Promise.all([
         supabase.from('capex_acao').select('*'),
@@ -1095,19 +1047,182 @@ export default function Cenarios() {
       </div>
 
       <div className="space-y-6">
-        {/* ── QUADRO 1: Cenários para Simulação ── */}
+        {/* ── QUADRO 1: Configurações salvas — exibido SEMPRE ao abrir ── */}
         <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200 w-full">
-          <h3 className="font-semibold text-primary border-b pb-3 mb-4 text-sm uppercase tracking-wider">
-            Cenários para Simulação
-          </h3>
+          <div className="flex items-center justify-between border-b pb-3 mb-4">
+            <h3 className="font-semibold text-primary text-sm uppercase tracking-wider">
+              Configurações para Simulação
+            </h3>
+            {!selecaoLoading && (
+              <span className="text-xs text-muted-foreground">
+                {selecoes.filter((s) => s.selecionado).length} de {selecoes.length} selecionadas
+              </span>
+            )}
+          </div>
 
-          {/* Formulário de adição de uma fonte */}
-          <div className="space-y-4 border border-slate-200 rounded-lg p-4 bg-slate-50">
-            <p className="text-xs text-muted-foreground font-medium">
-              Selecione uma fonte, monte os cenários e estratégias e clique em{' '}
-              <strong>Adicionar Fonte</strong>. Cada fonte gera um registro com os cenários e
-              estratégias escolhidos agrupados em campos JSONB.
-            </p>
+          {/* Estado de carregamento */}
+          {selecaoLoading && (
+            <div className="flex items-center gap-2 py-4 text-sm text-muted-foreground">
+              <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+              </svg>
+              Carregando configurações…
+            </div>
+          )}
+
+          {/* Tabela sempre visível após carregamento */}
+          {!selecaoLoading && selecoes.length === 0 && (
+            <div className="text-center py-8 border border-dashed rounded-lg">
+              <p className="text-sm text-muted-foreground font-medium">
+                Nenhuma configuração salva ainda.
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Use o formulário abaixo para adicionar fontes à simulação.
+              </p>
+            </div>
+          )}
+
+          {!selecaoLoading && selecoes.length > 0 && (
+            <div className="border rounded-lg overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead className="bg-slate-100 sticky top-0 z-10">
+                    <tr>
+                      {/* Marcar todos */}
+                      <th className="px-3 py-2.5 text-center font-semibold text-slate-600 w-10">
+                        <Checkbox
+                          checked={selecoes.length > 0 && selecoes.every((s) => s.selecionado)}
+                          onCheckedChange={(v) =>
+                            selecoes.forEach((s) => handleToggleSelecao(s.id, !!v))
+                          }
+                          title="Marcar / desmarcar todos"
+                        />
+                      </th>
+                      <th className="px-3 py-2.5 text-left font-semibold text-slate-600 whitespace-nowrap">
+                        Data
+                      </th>
+                      <th className="px-3 py-2.5 text-left font-semibold text-slate-600 whitespace-nowrap">
+                        Usuário
+                      </th>
+                      <th className="px-3 py-2.5 text-left font-semibold text-slate-600 whitespace-nowrap">
+                        Fonte
+                      </th>
+                      <th className="px-3 py-2.5 text-left font-semibold text-slate-600">
+                        Cenários
+                      </th>
+                      <th className="px-3 py-2.5 text-left font-semibold text-slate-600">
+                        Estratégias
+                      </th>
+                      <th className="px-3 py-2.5 w-10" />
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {selecoes.map((sel) => (
+                      <tr
+                        key={sel.id}
+                        className={`hover:bg-slate-50 transition-colors ${sel.selecionado ? 'bg-blue-50/40' : ''}`}
+                      >
+                        {/* Checkbox */}
+                        <td className="px-3 py-2.5 text-center">
+                          <Checkbox
+                            checked={!!sel.selecionado}
+                            onCheckedChange={(v) => handleToggleSelecao(sel.id, !!v)}
+                          />
+                        </td>
+
+                        {/* Data */}
+                        <td className="px-3 py-2.5 text-slate-500 whitespace-nowrap">
+                          {sel.criado_at
+                            ? new Date(sel.criado_at).toLocaleString('pt-BR', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: '2-digit',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })
+                            : '-'}
+                        </td>
+
+                        {/* Usuário — vem de _userLabel (sem join problemático) */}
+                        <td className="px-3 py-2.5 text-slate-600 whitespace-nowrap">
+                          {sel._userLabel ?? sel.id_usuario?.slice(0, 8) + '…'}
+                        </td>
+
+                        {/* Fonte */}
+                        <td className="px-3 py-2.5 font-medium text-slate-700 whitespace-nowrap">
+                          {sel.fonte_agua?.nome_fonte ?? `Fonte ${sel.id_fonte}`}
+                        </td>
+
+                        {/* Cenários como badges chave: valor */}
+                        <td className="px-3 py-2.5 text-slate-600 max-w-[260px]">
+                          {sel.cenarios &&
+                          typeof sel.cenarios === 'object' &&
+                          !Array.isArray(sel.cenarios) ? (
+                            <div className="flex flex-wrap gap-1">
+                              {Object.entries(sel.cenarios).map(([k, v]) => (
+                                <span
+                                  key={k}
+                                  className="inline-flex items-center gap-1 bg-blue-50 border border-blue-200 text-blue-700 rounded px-1.5 py-0.5 text-[11px] font-mono"
+                                >
+                                  <span className="font-semibold">{k}:</span>
+                                  <span>{v}</span>
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-slate-400">-</span>
+                          )}
+                        </td>
+
+                        {/* Estratégias como badges */}
+                        <td className="px-3 py-2.5 text-slate-600 max-w-[260px]">
+                          {Array.isArray(sel.estrategias) && sel.estrategias.length > 0 ? (
+                            <div className="flex flex-wrap gap-1">
+                              {sel.estrategias.map((e) => (
+                                <span
+                                  key={e}
+                                  className="inline-block bg-emerald-50 border border-emerald-200 text-emerald-700 rounded px-1.5 py-0.5 text-[11px] font-mono"
+                                >
+                                  {e}
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-slate-400">-</span>
+                          )}
+                        </td>
+
+                        {/* Remover */}
+                        <td className="px-3 py-2.5 text-center">
+                          <button
+                            onClick={() => handleDeleteSelecao(sel.id)}
+                            className="text-destructive hover:text-red-700 transition-colors"
+                            title="Remover configuração"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* ── Formulário de adição de nova fonte ── */}
+          <div className="mt-6 space-y-4 border border-slate-200 rounded-lg p-4 bg-slate-50">
+            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Adicionar nova fonte à simulação
+            </h4>
 
             {/* Fonte */}
             <div className="max-w-xs space-y-1">
@@ -1130,11 +1245,7 @@ export default function Cenarios() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Montagem de cenários */}
                 <div className="border p-4 rounded-lg bg-white space-y-3">
-                  <h4 className="font-semibold text-sm">Montagem de cenários</h4>
-                  <p className="text-[11px] text-muted-foreground">
-                    Cada tipo+cenário adicionado vira uma chave no objeto JSONB:{' '}
-                    <code className="bg-slate-100 px-1 rounded">{`{"tipo": "cenário"}`}</code>
-                  </p>
+                  <h4 className="font-semibold text-sm">Cenários</h4>
                   <Select value={idTc} onValueChange={setIdTc}>
                     <SelectTrigger>
                       <SelectValue placeholder="Tipo de cenário..." />
@@ -1169,7 +1280,6 @@ export default function Cenarios() {
                         (x: any) => x.id_cenarios.toString() === idC,
                       )
                       if (t && c) {
-                        // Verifica se esse tipo já foi adicionado (um tipo = uma chave no objeto)
                         if (draftCenarios.some((d) => d.id_tc === t.id_tc)) {
                           return toast.error(
                             'Este tipo de cenário já foi adicionado. Remova-o antes de substituir.',
@@ -1190,14 +1300,8 @@ export default function Cenarios() {
                       }
                     }}
                   >
-                    Adicionar Cenário
+                    <Plus className="w-3.5 h-3.5 mr-1" /> Adicionar Cenário
                   </Button>
-                  {/* Preview do objeto JSONB que será gravado */}
-                  {draftCenarios.length > 0 && (
-                    <div className="bg-slate-50 border rounded p-2 text-[11px] font-mono text-slate-500 break-all">
-                      {JSON.stringify(buildCenarioJsonb(draftCenarios), null, 0)}
-                    </div>
-                  )}
                   <ul className="space-y-1.5">
                     {draftCenarios.map((c, i) => (
                       <li
@@ -1218,11 +1322,7 @@ export default function Cenarios() {
 
                 {/* Montagem de estratégias */}
                 <div className="border p-4 rounded-lg bg-white space-y-3">
-                  <h4 className="font-semibold text-sm">Montagem de Estratégia</h4>
-                  <p className="text-[11px] text-muted-foreground">
-                    Cada ação adicionada vira um item no array JSONB:{' '}
-                    <code className="bg-slate-100 px-1 rounded">{`["acao1", "acao2"]`}</code>
-                  </p>
+                  <h4 className="font-semibold text-sm">Estratégias</h4>
                   <Select value={idAcao} onValueChange={setIdAcao}>
                     <SelectTrigger>
                       <SelectValue placeholder="Escolha a ação..." />
@@ -1254,14 +1354,8 @@ export default function Cenarios() {
                       }
                     }}
                   >
-                    Adicionar Ação
+                    <Plus className="w-3.5 h-3.5 mr-1" /> Adicionar Ação
                   </Button>
-                  {/* Preview do array JSONB que será gravado */}
-                  {draftEstrategias.length > 0 && (
-                    <div className="bg-slate-50 border rounded p-2 text-[11px] font-mono text-slate-500 break-all">
-                      {JSON.stringify(buildEstrategiaJsonb(draftEstrategias))}
-                    </div>
-                  )}
                   <ul className="space-y-1.5">
                     {draftEstrategias.map((e, i) => (
                       <li
@@ -1294,153 +1388,6 @@ export default function Cenarios() {
               </Button>
             </div>
           </div>
-
-          {/* ── Tabela de seleções salvas ── */}
-          {selecoes.length > 0 && (
-            <div className="mt-6">
-              <div className="flex items-center justify-between mb-2">
-                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  Configurações salvas — marque as que farão parte da simulação
-                </h4>
-                <span className="text-xs text-muted-foreground">
-                  {selecoes.filter((s) => s.selecionado).length} de {selecoes.length} selecionadas
-                </span>
-              </div>
-              <div className="border rounded-lg overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-xs">
-                    <thead className="bg-slate-100 sticky top-0 z-10">
-                      <tr>
-                        <th className="px-3 py-2.5 text-center font-semibold text-slate-600 w-10">
-                          {/* Marcar todos */}
-                          <Checkbox
-                            checked={selecoes.length > 0 && selecoes.every((s) => s.selecionado)}
-                            onCheckedChange={(v) =>
-                              selecoes.forEach((s) => handleToggleSelecao(s.id, !!v))
-                            }
-                            title="Marcar / desmarcar todos"
-                          />
-                        </th>
-                        <th className="px-3 py-2.5 text-left font-semibold text-slate-600 whitespace-nowrap">
-                          Data
-                        </th>
-                        <th className="px-3 py-2.5 text-left font-semibold text-slate-600 whitespace-nowrap">
-                          Usuário
-                        </th>
-                        <th className="px-3 py-2.5 text-left font-semibold text-slate-600 whitespace-nowrap">
-                          Fonte
-                        </th>
-                        <th className="px-3 py-2.5 text-left font-semibold text-slate-600">
-                          Cenários{' '}
-                          <span className="font-normal text-slate-400 normal-case">
-                            (objeto JSONB)
-                          </span>
-                        </th>
-                        <th className="px-3 py-2.5 text-left font-semibold text-slate-600">
-                          Estratégias{' '}
-                          <span className="font-normal text-slate-400 normal-case">
-                            (array JSONB)
-                          </span>
-                        </th>
-                        <th className="px-3 py-2.5 w-10" />
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y">
-                      {selecoes.map((sel) => (
-                        <tr
-                          key={sel.id}
-                          className={`hover:bg-slate-50 transition-colors ${sel.selecionado ? 'bg-blue-50/40' : ''}`}
-                        >
-                          {/* Checkbox de seleção */}
-                          <td className="px-3 py-2.5 text-center">
-                            <Checkbox
-                              checked={!!sel.selecionado}
-                              onCheckedChange={(v) => handleToggleSelecao(sel.id, !!v)}
-                            />
-                          </td>
-
-                          {/* Data */}
-                          <td className="px-3 py-2.5 text-slate-500 whitespace-nowrap">
-                            {sel.criado_at
-                              ? new Date(sel.criado_at).toLocaleString('pt-BR', {
-                                  day: '2-digit',
-                                  month: '2-digit',
-                                  year: '2-digit',
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                })
-                              : '-'}
-                          </td>
-
-                          {/* Usuário */}
-                          <td className="px-3 py-2.5 text-slate-600 whitespace-nowrap">
-                            {sel.profiles?.nome ||
-                              sel.profiles?.email ||
-                              sel.id_usuario?.slice(0, 8) + '…'}
-                          </td>
-
-                          {/* Fonte */}
-                          <td className="px-3 py-2.5 font-medium text-slate-700 whitespace-nowrap">
-                            {sel.fonte_agua?.nome_fonte ?? `Fonte ${sel.id_fonte}`}
-                          </td>
-
-                          {/* Cenários: renderiza o objeto JSONB como pares chave: valor */}
-                          <td className="px-3 py-2.5 text-slate-600 max-w-[260px]">
-                            {sel.cenarios &&
-                            typeof sel.cenarios === 'object' &&
-                            !Array.isArray(sel.cenarios) ? (
-                              <div className="flex flex-wrap gap-1">
-                                {Object.entries(sel.cenarios).map(([k, v]) => (
-                                  <span
-                                    key={k}
-                                    className="inline-flex items-center gap-1 bg-blue-50 border border-blue-200 text-blue-700 rounded px-1.5 py-0.5 text-[11px] font-mono"
-                                  >
-                                    <span className="font-semibold">{k}:</span>
-                                    <span>{v}</span>
-                                  </span>
-                                ))}
-                              </div>
-                            ) : (
-                              <span className="text-slate-400">-</span>
-                            )}
-                          </td>
-
-                          {/* Estratégias: renderiza o array JSONB como badges */}
-                          <td className="px-3 py-2.5 text-slate-600 max-w-[260px]">
-                            {Array.isArray(sel.estrategias) && sel.estrategias.length > 0 ? (
-                              <div className="flex flex-wrap gap-1">
-                                {sel.estrategias.map((e) => (
-                                  <span
-                                    key={e}
-                                    className="inline-block bg-emerald-50 border border-emerald-200 text-emerald-700 rounded px-1.5 py-0.5 text-[11px] font-mono"
-                                  >
-                                    {e}
-                                  </span>
-                                ))}
-                              </div>
-                            ) : (
-                              <span className="text-slate-400">-</span>
-                            )}
-                          </td>
-
-                          {/* Remover */}
-                          <td className="px-3 py-2.5 text-center">
-                            <button
-                              onClick={() => handleDeleteSelecao(sel.id)}
-                              className="text-destructive hover:text-red-700 transition-colors"
-                              title="Remover configuração"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
 
         {/* ── QUADRO 2: Configuração da Simulação ── */}
@@ -1651,14 +1598,14 @@ export default function Cenarios() {
             >
               {loading ? 'Processando...' : 'Executar Simulação'}
             </Button>
-            {selecoes.length === 0 && (
+            {!selecaoLoading && selecoes.length === 0 && (
               <p className="text-xs text-red-500 text-center font-medium">
                 Configure ao menos uma fonte para executar a simulação.
               </p>
             )}
-            {selecoes.length > 0 && !selecoes.some((s) => s.selecionado) && (
+            {!selecaoLoading && selecoes.length > 0 && !selecoes.some((s) => s.selecionado) && (
               <p className="text-xs text-amber-500 text-center font-medium mt-1">
-                Selecione pelo menos uma configuração ativa.
+                Selecione pelo menos uma configuração ativa para executar.
               </p>
             )}
           </div>
