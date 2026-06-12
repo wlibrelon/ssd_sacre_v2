@@ -53,17 +53,13 @@ type StatusSeg = 'seguro' | 'alerta' | 'crise' | 'colapso'
 // que será usada para filtrar dados_simulacao.
 // A comparação JSONB exige que o objeto seja serializado como string JSON estável,
 // com chaves na mesma ordem em que foram gravadas na importação.
-type SelecaoCenario = {
-  id: string
-  id_fonte: number
-  id_tc: number
-  id_c: number
-  id_acao: number
-  selecionado: boolean
-  fonte_agua?: { nome_fonte: string }
-  tipos_cenarios?: { descricao: string; chave: string }
-  cenarios?: { cenarios: string; chave: string }
-  acoes?: { descricao: string; chave: string }
+type FonteConfig = {
+  idFonte: string
+  nomefonteLabel: string
+  // Cenários acumulados para esta fonte (montam o objeto JSONB)
+  cenariosList: { label: string; tcChave: string; cChave: string }[]
+  // Estratégias acumuladas para esta fonte (montam o array JSONB)
+  estrategiasList: { label: string; chave: string }[]
 }
 
 // ── helpers de segurança hídrica ───────────────────────────────────────────────
@@ -348,8 +344,10 @@ function stableJsonString(obj: Record<string, string>): string {
 export default function Cenarios() {
   const { cenario_demanda, cenario_consumo, cenario_perdas } = useSsdData()
 
-  // ── Estado: lista de configurações por fonte (via DB) ──────────────────────────────
-  const [selecoes, setSelecoes] = useState<SelecaoCenario[]>([])
+  // ── Estado: lista de configurações por fonte ──────────────────────────────
+  // Cada FonteConfig representa uma fonte com seus cenários e estratégias,
+  // e será usada para gerar uma cláusula OR na query de dados_simulacao.
+  const [fonteConfigs, setFonteConfigs] = useState<FonteConfig[]>([])
 
   // Controles do formulário de adição (fonte ativa no momento)
   const [idFonte, setIdFonte] = useState('')
@@ -359,11 +357,9 @@ export default function Cenarios() {
 
   // cenários e estratégias do formulário atual (para a fonte selecionada)
   const [draftCenarios, setDraftCenarios] = useState<
-    { label: string; tcChave: string; cChave: string; id_tc: number; id_c: number }[]
+    { label: string; tcChave: string; cChave: string }[]
   >([])
-  const [draftEstrategias, setDraftEstrategias] = useState<
-    { label: string; chave: string; id_acao: number }[]
-  >([])
+  const [draftEstrategias, setDraftEstrategias] = useState<{ label: string; chave: string }[]>([])
 
   // Dados de referência
   const [refData, setRefData] = useState<any>({
@@ -397,30 +393,8 @@ export default function Cenarios() {
   const [indicadores, setIndicadores] = useState<any[]>([])
   const [selectedIndicadores, setSelectedIndicadores] = useState<number[]>([])
 
-  const fetchSelecoes = useCallback(async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    if (!user) return
-
-    const { data } = await supabase
-      .from('selecao_cenarios' as any)
-      .select(`
-        id, id_fonte, id_tc, id_c, id_acao, selecionado,
-        fonte_agua(nome_fonte),
-        tipos_cenarios(descricao, chave),
-        cenarios(cenarios, chave),
-        acoes(descricao, chave)
-      `)
-      .eq('id_usuario', user.id)
-      .order('criado_at', { ascending: false })
-
-    if (data) setSelecoes(data as any)
-  }, [])
-
   // ── Carregamento inicial ──────────────────────────────────────────────────
   useEffect(() => {
-    fetchSelecoes()
     supabase
       .from('simulacao_ssd')
       .select('*')
@@ -497,70 +471,40 @@ export default function Cenarios() {
     setIdTc('')
     setIdC('')
     setIdAcao('')
-    setDraftCenarios([])
-    setDraftEstrategias([])
+    const existing = fonteConfigs.find((fc) => fc.idFonte === novaFonte)
+    if (existing) {
+      setDraftCenarios([...existing.cenariosList])
+      setDraftEstrategias([...existing.estrategiasList])
+    } else {
+      setDraftCenarios([])
+      setDraftEstrategias([])
+    }
   }
 
-  // ── Confirma a configuração da fonte ativa no banco de dados ──────────
-  const handleConfirmarFonte = async () => {
+  // ── Confirma a configuração da fonte ativa na lista fonteConfigs ──────────
+  const handleConfirmarFonte = () => {
     if (!idFonte) return toast.error('Selecione uma fonte de água')
     if (draftCenarios.length === 0) return toast.error('Adicione ao menos um cenário')
     if (draftEstrategias.length === 0) return toast.error('Adicione ao menos uma estratégia')
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    if (!user) return toast.error('Usuário não autenticado')
+    const fonte = refData.fontes.find((f: any) => f.id_fonte.toString() === idFonte)
+    const nomefonteLabel = fonte?.nome_fonte ?? `Fonte ${idFonte}`
 
-    const inserts = []
-    for (const c of draftCenarios) {
-      for (const e of draftEstrategias) {
-        inserts.push({
-          id_fonte: Number(idFonte),
-          id_tc: c.id_tc,
-          id_c: c.id_c,
-          id_acao: e.id_acao,
-          selecionado: true,
-          id_usuario: user.id,
-        })
-      }
-    }
-
-    const { error } = await supabase.from('selecao_cenarios' as any).insert(inserts)
-
-    if (error) {
-      toast.error(`Erro ao salvar seleções: ${error.message}`)
-    } else {
-      toast.success('Configurações salvas com sucesso')
-      setIdFonte('')
-      setDraftCenarios([])
-      setDraftEstrategias([])
-      setIdTc('')
-      setIdC('')
-      setIdAcao('')
-      fetchSelecoes()
-    }
-  }
-
-  const handleToggleSelecao = async (id: string, selecionado: boolean) => {
-    setSelecoes((prev) => prev.map((s) => (s.id === id ? { ...s, selecionado } : s)))
-    const { error } = await supabase
-      .from('selecao_cenarios' as any)
-      .update({ selecionado })
-      .eq('id', id)
-    if (error) {
-      toast.error('Erro ao atualizar seleção')
-      fetchSelecoes()
-    }
-  }
-
-  const handleDeleteSelecao = async (id: string) => {
-    const { error } = await supabase
-      .from('selecao_cenarios' as any)
-      .delete()
-      .eq('id', id)
-    if (error) toast.error('Erro ao remover seleção')
-    else fetchSelecoes()
+    setFonteConfigs((prev) => {
+      const sem = prev.filter((fc) => fc.idFonte !== idFonte)
+      return [
+        ...sem,
+        { idFonte, nomefonteLabel, cenariosList: draftCenarios, estrategiasList: draftEstrategias },
+      ]
+    })
+    // Limpa o formulário para adicionar a próxima fonte
+    setIdFonte('')
+    setDraftCenarios([])
+    setDraftEstrategias([])
+    setIdTc('')
+    setIdC('')
+    setIdAcao('')
+    toast.success(`Fonte "${nomefonteLabel}" adicionada à seleção`)
   }
 
   // ── Gravação da simulação única ───────────────────────────────────────────
@@ -629,38 +573,25 @@ export default function Cenarios() {
   }
 
   // ── Query principal: busca dados_simulacao para todas as fontes configuradas ──
+  // CORREÇÃO JSONB: O PostgREST compara colunas jsonb usando .eq() com string JSON.
+  // Para que o matching funcione, a string JSON deve ter chaves na mesma ordem
+  // em que foram inseridas. Usamos stableJsonString() (chaves ordenadas A-Z)
+  // para garantir consistência — a importação deve usar a mesma ordenação.
+  // Para múltiplas fontes, combinamos com OR via .or() do PostgREST.
   const applyFinancialMetrics = async () => {
-    const activeSelecoes = selecoes.filter((s) => s.selecionado)
-    if (activeSelecoes.length === 0) return []
+    if (fonteConfigs.length === 0) return []
 
-    // Agrupa as seleções ativas para reconstruir a estrutura exigida pelas queries
-    const grouped = activeSelecoes.reduce((acc: any, s: any) => {
-      if (!acc[s.id_fonte]) {
-        acc[s.id_fonte] = {
-          idFonte: s.id_fonte.toString(),
-          cenariosList: [],
-          estrategiasList: [],
-        }
-      }
-      const tcKey = s.tipos_cenarios?.chave || s.id_tc.toString()
-      const cKey = s.cenarios?.chave || s.cenarios?.cenarios?.toLowerCase().replace(/\s+/g, '_')
-      if (
-        !acc[s.id_fonte].cenariosList.some((c: any) => c.tcChave === tcKey && c.cChave === cKey)
-      ) {
-        acc[s.id_fonte].cenariosList.push({ tcChave: tcKey, cChave: cKey })
-      }
-
-      const aKey = s.acoes?.chave || s.acoes?.descricao?.toLowerCase().replace(/\s+/g, '_')
-      if (!acc[s.id_fonte].estrategiasList.some((e: any) => e.chave === aKey)) {
-        acc[s.id_fonte].estrategiasList.push({ chave: aKey })
-      }
-      return acc
-    }, {})
-    const activeConfigs = Object.values(grouped)
+    // Monta um array de condições OR: cada fonte com seu par cenarios+estrategias
+    // PostgREST suporta OR aninhado com a sintaxe:
+    //   .or('and(id_fonte.eq.1,cenarios.eq.{...},estrategias.eq.[...]),and(...)')
+    // Para jsonb, usamos cs (contains) + cd (contained by) para garantir match exato
+    // na prática usamos eq com a string JSON serializada de forma estável.
 
     let allRows: any[] = []
 
-    for (const fc of activeConfigs as any[]) {
+    // Busca separada por fonte para evitar complexidade de OR com JSONB no PostgREST
+    // (o OR com .eq() em colunas jsonb é instável via query string; busca separada é mais confiável)
+    for (const fc of fonteConfigs) {
       const cenarioObj = buildCenarioJsonb(fc.cenariosList)
       const estrategiaArr = buildEstrategiaJsonb(fc.estrategiasList)
 
@@ -768,9 +699,7 @@ export default function Cenarios() {
   // ── Executa simulação ─────────────────────────────────────────────────────
   const handleSimulate = async () => {
     if (!simObj) return toast.error('Configuração de simulação não carregada')
-    if (selecoes.length === 0) return toast.error('Configure ao menos uma fonte para simular')
-    if (!selecoes.some((s) => s.selecionado))
-      return toast.error('Selecione ao menos uma configuração para simular')
+    if (fonteConfigs.length === 0) return toast.error('Configure ao menos uma fonte para simular')
 
     setLoading(true)
     let resData = await applyFinancialMetrics()
@@ -1151,8 +1080,6 @@ export default function Cenarios() {
                             label: `${t.descricao}: ${c.cenarios}`,
                             tcChave: t.chave ?? t.id_tc.toString(),
                             cChave: c.chave ?? c.cenarios.toLowerCase().replace(/\s+/g, '_'),
-                            id_tc: t.id_tc,
-                            id_c: c.id_cenarios,
                           },
                         ])
                         setIdTc('')
@@ -1207,7 +1134,6 @@ export default function Cenarios() {
                           {
                             label: a.descricao,
                             chave: a.chave ?? a.descricao.toLowerCase().replace(/\s+/g, '_'),
-                            id_acao: a.id_acao,
                           },
                         ])
                         setIdAcao('')
@@ -1250,7 +1176,7 @@ export default function Cenarios() {
           </div>
 
           {/* Tabela de fontes confirmadas — com coluna de fonte visível */}
-          {selecoes.length > 0 && (
+          {fonteConfigs.length > 0 && (
             <div className="mt-5">
               <h4 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">
                 Fontes configuradas para simulação
@@ -1259,42 +1185,35 @@ export default function Cenarios() {
                 <table className="w-full text-xs">
                   <thead className="bg-slate-100">
                     <tr>
-                      <th className="px-3 py-2 text-center font-semibold text-slate-600 w-10">
-                        Sel.
-                      </th>
                       <th className="px-3 py-2 text-left font-semibold text-slate-600 w-40">
                         Fonte
                       </th>
+                      <th className="px-3 py-2 text-left font-semibold text-slate-600">Cenários</th>
                       <th className="px-3 py-2 text-left font-semibold text-slate-600">
-                        Tipo de Cenário
+                        Estratégias
                       </th>
-                      <th className="px-3 py-2 text-left font-semibold text-slate-600">Cenário</th>
-                      <th className="px-3 py-2 text-left font-semibold text-slate-600">Ação</th>
                       <th className="px-3 py-2 w-10" />
                     </tr>
                   </thead>
                   <tbody className="divide-y">
-                    {selecoes.map((sel) => (
-                      <tr key={sel.id} className="hover:bg-slate-50">
-                        <td className="px-3 py-2 text-center">
-                          <Checkbox
-                            checked={!!sel.selecionado}
-                            onCheckedChange={(v) => handleToggleSelecao(sel.id, !!v)}
-                          />
-                        </td>
+                    {fonteConfigs.map((fc) => (
+                      <tr key={fc.idFonte} className="hover:bg-slate-50">
                         <td className="px-3 py-2 font-medium text-slate-700">
-                          {sel.fonte_agua?.nome_fonte}
+                          {fc.nomefonteLabel}
                         </td>
                         <td className="px-3 py-2 text-slate-600">
-                          {sel.tipos_cenarios?.descricao}
+                          {fc.cenariosList.map((c) => c.label).join(' · ')}
                         </td>
-                        <td className="px-3 py-2 text-slate-600">{sel.cenarios?.cenarios}</td>
-                        <td className="px-3 py-2 text-slate-600">{sel.acoes?.descricao}</td>
+                        <td className="px-3 py-2 text-slate-600">
+                          {fc.estrategiasList.map((e) => e.label).join(' · ')}
+                        </td>
                         <td className="px-3 py-2 text-center">
                           <button
-                            onClick={() => handleDeleteSelecao(sel.id)}
+                            onClick={() =>
+                              setFonteConfigs((p) => p.filter((x) => x.idFonte !== fc.idFonte))
+                            }
                             className="text-destructive hover:text-red-700"
-                            title="Remover configuração"
+                            title="Remover fonte"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -1511,19 +1430,14 @@ export default function Cenarios() {
           <div className="pt-6 flex flex-col gap-2">
             <Button
               onClick={handleSimulate}
-              disabled={loading || !simObj || selecoes.length === 0}
+              disabled={loading || !simObj || fonteConfigs.length === 0}
               className="w-full h-11 shadow-sm text-base disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? 'Processando...' : 'Executar Simulação'}
             </Button>
-            {selecoes.length === 0 && (
+            {fonteConfigs.length === 0 && (
               <p className="text-xs text-red-500 text-center font-medium">
                 Configure ao menos uma fonte para executar a simulação.
-              </p>
-            )}
-            {selecoes.length > 0 && !selecoes.some((s) => s.selecionado) && (
-              <p className="text-xs text-amber-500 text-center font-medium mt-1">
-                Selecione pelo menos uma configuração ativa.
               </p>
             )}
           </div>
