@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useSsdData } from '@/hooks/use-ssd-data'
-import { NativeSelect } from './components/NativeSelect'
+import { NativeSelect } from './NativeSelect'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { supabase } from '@/lib/supabase/client'
-import { CenariosDashboard } from './components/CenariosDashboard'
+import { CenariosDashboard } from './CenariosDashboard'
 import { Checkbox } from '@/components/ui/checkbox'
 import { toast } from 'sonner'
 import { Trash2, Plus } from 'lucide-react'
@@ -27,7 +27,6 @@ import {
   ReferenceLine,
   ReferenceArea,
 } from 'recharts'
-
 const MONTHS = [
   { v: '1', l: 'Janeiro' },
   { v: '2', l: 'Fevereiro' },
@@ -42,20 +41,16 @@ const MONTHS = [
   { v: '11', l: 'Novembro' },
   { v: '12', l: 'Dezembro' },
 ]
-
 const LINE_COLORS = ['#2563eb', '#16a34a', '#dc2626', '#d97706', '#7c3aed', '#0891b2', '#be185d']
-
-// ── Tipos ─────────────────────────────────────────────────────────────────────
-
+// ?? Tipos ?????????????????????????????????????????????????????????????????????
 type StatusSeg = 'seguro' | 'alerta' | 'crise' | 'colapso'
-
 /**
  * Registro gravado em selecao_cenarios.
  *
- * cenarios  → JSONB objeto:  { "tipo_chave": "cenario_chave", ... }
+ * cenarios  ? JSONB objeto:  { "tipo_chave": "cenario_chave", ... }
  *             ex: { "clima": "tendencial", "uso_terra": "pessimista" }
  *
- * estrategias → JSONB array: ["acao_chave1", "acao_chave2"]
+ * estrategias ? JSONB array: ["acao_chave1", "acao_chave2"]
  *             ex: ["instalar_barraginhas", "instalar_represa"]
  *
  * Dessa forma a query de verificação funciona:
@@ -75,9 +70,7 @@ type SelecaoCenario = {
   // perfil do usuário (join opcional via auth.users ou tabela profiles)
   profiles?: { email?: string; nome?: string }
 }
-
-// ── helpers de segurança hídrica ───────────────────────────────────────────────
-
+// ?? helpers de segurança hídrica ???????????????????????????????????????????????
 function getStatus(
   indice: number,
   limiarAlerta: number,
@@ -89,40 +82,33 @@ function getStatus(
   if (indice >= limiarColapso) return 'crise'
   return 'colapso'
 }
-
 const STATUS_LABEL: Record<StatusSeg, string> = {
   seguro: 'Seguro',
   alerta: 'Alerta',
   crise: 'Crise',
   colapso: 'Colapso',
 }
-
 const STATUS_COLORS: Record<StatusSeg, { bg: string; text: string; border: string }> = {
   seguro: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
   alerta: { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' },
   crise: { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200' },
   colapso: { bg: 'bg-rose-100', text: 'text-rose-900', border: 'border-rose-400' },
 }
-
 const STATUS_BADGE: Record<StatusSeg, string> = {
   seguro: 'bg-emerald-100 text-emerald-700',
   alerta: 'bg-amber-100 text-amber-700',
   crise: 'bg-red-100 text-red-700',
   colapso: 'bg-rose-200 text-rose-900',
 }
-
-// ── ChartWrapper ──────────────────────────────────────────────────────────────
-
+// ?? ChartWrapper ??????????????????????????????????????????????????????????????
 interface ChartWrapperProps {
   title: string
   chartData: any[]
   children: React.ReactNode
   height?: number
 }
-
 function ChartWrapper({ title, chartData, children, height = 340 }: ChartWrapperProps) {
   const [expanded, setExpanded] = useState(false)
-
   const downloadCsv = useCallback(() => {
     if (!chartData || chartData.length === 0) return
     const keys = Object.keys(chartData[0])
@@ -146,13 +132,11 @@ function ChartWrapper({ title, chartData, children, height = 340 }: ChartWrapper
     a.click()
     URL.revokeObjectURL(url)
   }, [chartData, title])
-
   const chartContent = (
     <ResponsiveContainer width="100%" height={expanded ? '100%' : height}>
       {children as React.ReactElement}
     </ResponsiveContainer>
   )
-
   const DownloadIcon = () => (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -169,7 +153,6 @@ function ChartWrapper({ title, chartData, children, height = 340 }: ChartWrapper
       <line x1="12" y1="15" x2="12" y2="3" />
     </svg>
   )
-
   return (
     <>
       <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200">
@@ -258,9 +241,7 @@ function ChartWrapper({ title, chartData, children, height = 340 }: ChartWrapper
     </>
   )
 }
-
-// ── Tooltip customizado ───────────────────────────────────────────────────────
-
+// ?? Tooltip customizado ???????????????????????????????????????????????????????
 const TooltipSeguranca = ({
   active,
   payload,
@@ -321,9 +302,7 @@ const TooltipSeguranca = ({
     </div>
   )
 }
-
-// ── Helpers JSONB ─────────────────────────────────────────────────────────────
-
+// ?? Helpers JSONB ?????????????????????????????????????????????????????????????
 /**
  * Monta o objeto JSONB de cenários a partir do draft.
  * Resultado: { "clima": "tendencial", "uso_terra": "pessimista" }
@@ -336,7 +315,6 @@ function buildCenarioJsonb(
     return acc
   }, {})
 }
-
 /**
  * Monta o array JSONB de estratégias a partir do draft.
  * Resultado: ["instalar_barraginhas", "instalar_represa"]
@@ -344,7 +322,6 @@ function buildCenarioJsonb(
 function buildEstrategiaJsonb(estrategiasList: { chave: string }[]): string[] {
   return estrategiasList.map((e) => e.chave)
 }
-
 /**
  * Serializa objeto JSONB com chaves ordenadas para garantir matching textual
  * idêntico ao gravado pelo PostgreSQL/Supabase.
@@ -358,7 +335,6 @@ function stableJsonString(obj: Record<string, string>): string {
     }, {})
   return JSON.stringify(sorted)
 }
-
 /** Formata objeto de cenários para exibição: "clima: tendencial, uso_terra: pessimista" */
 function formatCenarioObj(obj: Record<string, string> | null | undefined): string {
   if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return '-'
@@ -366,27 +342,21 @@ function formatCenarioObj(obj: Record<string, string> | null | undefined): strin
     .map(([k, v]) => `${k}: ${v}`)
     .join(' | ')
 }
-
 /** Formata array de estratégias para exibição */
 function formatEstrategiaArr(arr: string[] | null | undefined): string {
   if (!Array.isArray(arr) || arr.length === 0) return '-'
   return arr.join(', ')
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-
-export default function Cenarios() {
+// ?????????????????????????????????????????????????????????????????????????????
+export function Importacao() {
   const { cenario_demanda, cenario_consumo, cenario_perdas } = useSsdData()
-
-  // ── Estado: lista de seleções salvas no banco ─────────────────────────────
+  // ?? Estado: lista de seleções salvas no banco ?????????????????????????????
   const [selecoes, setSelecoes] = useState<SelecaoCenario[]>([])
-
   // Controles do formulário de adição
   const [idFonte, setIdFonte] = useState('')
   const [idTc, setIdTc] = useState('')
   const [idC, setIdC] = useState('')
   const [idAcao, setIdAcao] = useState('')
-
   /**
    * Draft de cenários: cada item leva label (exibição) + chaves para JSONB.
    * O objeto final será { tcChave: cChave, tcChave2: cChave2, ... }
@@ -394,7 +364,6 @@ export default function Cenarios() {
   const [draftCenarios, setDraftCenarios] = useState<
     { label: string; tcChave: string; cChave: string; id_tc: number; id_c: number }[]
   >([])
-
   /**
    * Draft de estratégias: cada item leva label (exibição) + chave para JSONB.
    * O array final será ["chave1", "chave2", ...]
@@ -402,7 +371,6 @@ export default function Cenarios() {
   const [draftEstrategias, setDraftEstrategias] = useState<
     { label: string; chave: string; id_acao: number }[]
   >([])
-
   // Dados de referência
   const [refData, setRefData] = useState<any>({
     fontes: [],
@@ -413,35 +381,31 @@ export default function Cenarios() {
     tcCenario: [],
     acoesFonte: [],
   })
-
-  // ── Estado do registro único de simulacao_ssd ─────────────────────────────
+  // ?? Estado do registro único de simulacao_ssd ?????????????????????????????
   const [simObj, setSimObj] = useState<any>(null)
   const [simEdit, setSimEdit] = useState<any>(null)
   const [simSaving, setSimSaving] = useState(false)
-
-  // ── Estado da simulação ───────────────────────────────────────────────────
+  // ?? Estado do arquivo de indicadores ?????????????????????????????????????
+  const [arqIndicadorFile, setArqIndicadorFile] = useState<File | null>(null)
+  // ?? Estado da simulação ???????????????????????????????????????????????????
   const [filters, setFilters] = useState<any>({})
   const [data, setData] = useState<any[]>([])
   const [groupedData, setGroupedData] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [ran, setRan] = useState(false)
-
   const [segurancaHidrica, setSegurancaHidrica] = useState<{
     indicesMes: { tempo: string; indice: number; volTotal: number; demTotal: number }[]
     chartData: any[]
     criticos: { tempo: string; indice: number; status: StatusSeg; deficit: number }[]
   } | null>(null)
-
   const [indicadores, setIndicadores] = useState<any[]>([])
   const [selectedIndicadores, setSelectedIndicadores] = useState<number[]>([])
-
-  // ── Busca seleções do usuário atual ───────────────────────────────────────
+  // ?? Busca seleções do usuário atual ???????????????????????????????????????
   const fetchSelecoes = useCallback(async () => {
     const {
       data: { user },
     } = await supabase.auth.getUser()
     if (!user) return
-
     const { data, error } = await supabase
       .from('selecao_cenarios')
       .select(`
@@ -457,15 +421,13 @@ export default function Cenarios() {
       `)
       .eq('id_usuario', user.id)
       .order('criado_at', { ascending: false })
-
     if (error) {
       toast.error(`Erro ao carregar seleções: ${error.message}`)
       return
     }
     if (data) setSelecoes(data as any)
   }, [])
-
-  // ── Carregamento inicial ──────────────────────────────────────────────────
+  // ?? Carregamento inicial ??????????????????????????????????????????????????
   useEffect(() => {
     fetchSelecoes()
     supabase
@@ -499,7 +461,6 @@ export default function Cenarios() {
       }),
     )
   }, [fetchSelecoes])
-
   useEffect(() => {
     if (!simObj) {
       setIndicadores([])
@@ -522,8 +483,7 @@ export default function Cenarios() {
         setSelectedIndicadores([])
       })
   }, [simObj])
-
-  // ── Selects filtrados pelo idFonte ativo no formulário ────────────────────
+  // ?? Selects filtrados pelo idFonte ativo no formulário ????????????????????
   const filteredTipos = refData.tiposCenario.filter((tc: any) =>
     refData.cenariosFonte.some(
       (cf: any) => cf.id_fonte === Number(idFonte) && cf.id_tc === tc.id_tc,
@@ -537,7 +497,6 @@ export default function Cenarios() {
       (af: any) => af.id_fonte === Number(idFonte) && af.id_acao === a.id_acao,
     ),
   )
-
   const handleFonteChange = (novaFonte: string) => {
     setIdFonte(novaFonte)
     setIdTc('')
@@ -546,32 +505,18 @@ export default function Cenarios() {
     setDraftCenarios([])
     setDraftEstrategias([])
   }
-
-  // ── Confirma a configuração da fonte ativa: grava UM registro com JSONB ───
+  // ?? Confirma a configuração da fonte ativa: grava UM registro com JSONB ???
   const handleConfirmarFonte = async () => {
     if (!idFonte) return toast.error('Selecione uma fonte de água')
     if (draftCenarios.length === 0) return toast.error('Adicione ao menos um cenário')
     if (draftEstrategias.length === 0) return toast.error('Adicione ao menos uma estratégia')
-
     const {
       data: { user },
     } = await supabase.auth.getUser()
     if (!user) return toast.error('Usuário não autenticado')
-
     // Monta os campos JSONB corretamente
     const cenarioJsonb = buildCenarioJsonb(draftCenarios)
     const estrategiaJsonb = buildEstrategiaJsonb(draftEstrategias)
-
-    /**
-     * Grava UM registro por fonte+configuração.
-     * cenarios  → objeto JSONB: { "clima": "tendencial", "uso_terra": "pessimista" }
-     * estrategias → array JSONB: ["instalar_barraginhas", "instalar_represa"]
-     *
-     * Isso permite a query exata:
-     *   WHERE id_fonte = 1
-     *     AND cenarios = '{"clima":"tendencial","uso_terra":"pessimista"}'::jsonb
-     *     AND estrategias = '["instalar_barraginhas"]'::jsonb
-     */
     const { error } = await supabase.from('selecao_cenarios').insert({
       id_fonte: Number(idFonte),
       cenarios: cenarioJsonb,
@@ -579,7 +524,6 @@ export default function Cenarios() {
       selecionado: true,
       id_usuario: user.id,
     })
-
     if (error) {
       toast.error(`Erro ao salvar seleção: ${error.message}`)
     } else {
@@ -593,7 +537,6 @@ export default function Cenarios() {
       fetchSelecoes()
     }
   }
-
   const handleToggleSelecao = async (id: string, selecionado: boolean) => {
     // Atualiza otimisticamente
     setSelecoes((prev) => prev.map((s) => (s.id === id ? { ...s, selecionado } : s)))
@@ -603,17 +546,49 @@ export default function Cenarios() {
       fetchSelecoes()
     }
   }
-
   const handleDeleteSelecao = async (id: string) => {
     const { error } = await supabase.from('selecao_cenarios').delete().eq('id', id)
     if (error) toast.error('Erro ao remover seleção')
     else fetchSelecoes()
   }
-
-  // ── Gravação da simulação única ───────────────────────────────────────────
+  // ?? Gravação da simulação única ???????????????????????????????????????????
   const handleSaveSim = async () => {
     if (!simEdit || !simObj) return
     setSimSaving(true)
+
+    // ?? Upload do arquivo de indicadores (se selecionado) ?????????????????
+    let arqIndicadorPath: string | null = simEdit.arq_indicador ?? null
+    if (arqIndicadorFile) {
+      const ext = arqIndicadorFile.name.split('.').pop() ?? ''
+      const storagePath = `indicadores/${simObj.id_s}_${Date.now()}${ext ? '.' + ext : ''}`
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('modelos')
+        .upload(storagePath, arqIndicadorFile, { upsert: true })
+      if (uploadError) {
+        toast.error(`Erro ao fazer upload do arquivo: ${uploadError.message}`)
+        setSimSaving(false)
+        return
+      }
+      arqIndicadorPath = uploadData.path
+      setArqIndicadorFile(null)
+    }
+
+    // ?? Grava na tabela modelos o nome/caminho do arquivo ?????????????????
+    // Ajuste a condição .eq() conforme a chave primária da sua tabela modelos
+    if (arqIndicadorPath !== (simObj.arq_indicador ?? null)) {
+      const { error: modelosError } = await supabase
+        .from('modelos')
+        .update({ arq_indicador: arqIndicadorPath })
+        .eq('id_s', simObj.id_s) // ? ajuste a chave primária se necessário
+      if (modelosError) {
+        toast.error(`Erro ao salvar arquivo no modelo: ${modelosError.message}`)
+        setSimSaving(false)
+        return
+      }
+      setSimObj((prev: any) => ({ ...prev, arq_indicador: arqIndicadorPath }))
+    }
+
+    // ?? Grava os demais campos em simulacao_ssd ???????????????????????????
     const { id_s, descricao, ...editableFields } = simEdit
     const { error } = await supabase
       .from('simulacao_ssd')
@@ -621,13 +596,12 @@ export default function Cenarios() {
       .eq('id_s', simObj.id_s)
     if (error) toast.error(`Erro ao salvar: ${error.message}`)
     else {
-      setSimObj({ ...simObj, ...editableFields })
+      setSimObj((prev: any) => ({ ...prev, ...editableFields }))
       toast.success('Configuração salva com sucesso')
     }
     setSimSaving(false)
   }
-
-  // ── Cálculos modulares ────────────────────────────────────────────────────
+  // ?? Cálculos modulares ????????????????????????????????????????????????????
   const aplicarCalculosModulares = (data: any[], sim: any, cd: any, cc: any, cp: any) => {
     const tempos = Array.from(new Set(data.map((d) => d.tempo))).sort()
     const pop_inicial = sim?.pop_inicial || 0
@@ -636,14 +610,12 @@ export default function Cenarios() {
     const perc_inicial_perdas = sim?.perc_inicial_perdas || 0
     const inicio_perdas = sim?.inicio_perdas || ''
     const perc_final_perdas = cp?.percentual || 0
-
     const temposNorm = tempos.map((t: any) => (t ? t.replace(/\//g, '-') : ''))
     const inicio_perdas_norm = inicio_perdas ? inicio_perdas.replace(/\//g, '-') : ''
     const startPerdasIdx = temposNorm.findIndex((t: any) => t >= inicio_perdas_norm)
     const totalStepsPerdas = startPerdasIdx >= 0 ? tempos.length - 1 - startPerdasIdx : 0
     const perdasStep =
       totalStepsPerdas > 0 ? (perc_inicial_perdas - perc_final_perdas) / totalStepsPerdas : 0
-
     return data.map((row) => {
       let rowDemanda = row.demanda || 0
       let rowPerdas = row.perdas || 0
@@ -671,32 +643,20 @@ export default function Cenarios() {
       return { ...row, demanda: rowDemanda, perdas: rowPerdas, populacao_calculada }
     })
   }
-
-  // ── Query principal: usa os JSONB gravados diretamente ────────────────────
+  // ?? Query principal: usa os JSONB gravados diretamente ????????????????????
   const applyFinancialMetrics = async () => {
     const activeSelecoes = selecoes.filter((s) => s.selecionado)
     if (activeSelecoes.length === 0) return []
-
     let allRows: any[] = []
-
     for (const sel of activeSelecoes) {
-      /**
-       * Os campos cenarios e estrategias já estão no formato JSONB correto
-       * pois foram gravados com buildCenarioJsonb / buildEstrategiaJsonb.
-       *
-       * Para o .eq() do PostgREST funcionar com JSONB, passamos a string JSON
-       * estável (chaves ordenadas para objeto, ordem de inserção para array).
-       */
       const cenarioStr = stableJsonString(sel.cenarios as Record<string, string>)
       const estrategiaStr = JSON.stringify(sel.estrategias)
-
       let q = supabase
         .from('dados_simulacao')
         .select('*')
         .eq('id_fonte', sel.id_fonte)
         .eq('cenarios', cenarioStr)
         .eq('estrategias', estrategiaStr)
-
       if (filters.ano_inicio) q = q.gte('tempo', `${filters.ano_inicio}/01`)
       if (filters.ano_fim) q = q.lte('tempo', `${filters.ano_fim}/12`)
       if (filters.meses && filters.meses.length > 0) {
@@ -705,7 +665,6 @@ export default function Cenarios() {
           .join(',')
         q = q.or(orString)
       }
-
       const { data: rows, error } = await q
       if (error) {
         console.error(`Erro fonte ${sel.id_fonte}:`, error)
@@ -714,9 +673,7 @@ export default function Cenarios() {
       }
       if (rows && rows.length > 0) allRows = [...allRows, ...rows]
     }
-
     if (allRows.length === 0) return []
-
     // Aplica métricas financeiras (capex/opex)
     const [{ data: capexAcao }, { data: acoesFonte }, { data: capexPerdas }, { data: opexData }] =
       await Promise.all([
@@ -725,7 +682,6 @@ export default function Cenarios() {
         supabase.from('capex_perdas').select('*'),
         supabase.from('opex').select('*'),
       ])
-
     const capexAcaoMap: Record<string, number> = {}
     if (capexAcao && acoesFonte) {
       capexAcao.forEach((ca) => {
@@ -737,7 +693,6 @@ export default function Cenarios() {
           })
       })
     }
-
     const capexPerdasMap: Record<string, number> = {}
     capexPerdas?.forEach((cp) => {
       if (cp.tempo) {
@@ -745,7 +700,6 @@ export default function Cenarios() {
         capexPerdasMap[k] = (capexPerdasMap[k] || 0) + (cp.capex || 0)
       }
     })
-
     const opexMap: Record<string, number> = {}
     opexData?.forEach((op) => {
       if (op.tempo) {
@@ -753,7 +707,6 @@ export default function Cenarios() {
         opexMap[k] = (opexMap[k] || 0) + (op.opex || 0)
       }
     })
-
     const updates: any[] = []
     const dsUpdated = allRows.map((row) => {
       const tNorm = row.tempo ? row.tempo.replace(/\//g, '-') : ''
@@ -776,25 +729,20 @@ export default function Cenarios() {
       }
       return row
     })
-
     if (updates.length > 0) {
       for (let i = 0; i < updates.length; i += 1000)
         await supabase.from('dados_simulacao').upsert(updates.slice(i, i + 1000))
     }
-
     return dsUpdated
   }
-
-  // ── Executa simulação ─────────────────────────────────────────────────────
+  // ?? Executa simulação ?????????????????????????????????????????????????????
   const handleSimulate = async () => {
     if (!simObj) return toast.error('Configuração de simulação não carregada')
     if (selecoes.length === 0) return toast.error('Configure ao menos uma fonte para simular')
     if (!selecoes.some((s) => s.selecionado))
       return toast.error('Selecione ao menos uma configuração para simular')
-
     setLoading(true)
     let resData = await applyFinancialMetrics()
-
     if (resData.length === 0) {
       toast.error(
         'Nenhum dado encontrado. Verifique se a importação foi realizada com as mesmas chaves de cenário e estratégia.',
@@ -804,14 +752,12 @@ export default function Cenarios() {
       setLoading(false)
       return
     }
-
     if (simObj?.demanda_auto || simObj?.perdas_auto) {
       const cd = cenario_demanda.find((c: any) => c.id_cd === parseInt(filters.id_cd_auto))
       const cc = cenario_consumo.find((c: any) => c.id_cc === parseInt(filters.id_cc_auto))
       const cp = cenario_perdas.find((c: any) => c.id_cp === parseInt(filters.id_cp_auto))
       resData = aplicarCalculosModulares(resData, simObj, cd, cc, cp)
     }
-
     const processedData = resData.map((row: any) => {
       const volume_captado = row.volume_captado || 0
       const perdas_percentual = row.perdas || 0
@@ -826,7 +772,6 @@ export default function Cenarios() {
         deficit: demanda - volume_distribuido,
       }
     })
-
     const groupedMap = processedData.reduce((acc: any, row: any) => {
       const key = `${row.tempo}_${row.id_fonte}`
       if (!acc[key])
@@ -848,7 +793,6 @@ export default function Cenarios() {
       acc[key].count += 1
       return acc
     }, {})
-
     const groupedArray = Object.values(groupedMap)
       .map((g: any) => ({
         tempo: g.tempo,
@@ -860,11 +804,9 @@ export default function Cenarios() {
         opex: g.opex / g.count,
       }))
       .sort((a: any, b: any) => a.tempo.localeCompare(b.tempo))
-
     const limiarAlerta = simObj?.limiar_alerta ?? 0.8
     const limiarCrise = simObj?.limiar_crise ?? 0.6
     const limiarColapso = simObj?.limiar_colapso ?? 0.4
-
     const porTempo: Record<string, { volTotal: number; demTotal: number; demCount: number }> = {}
     processedData.forEach((row: any) => {
       const t = row.tempo
@@ -873,7 +815,6 @@ export default function Cenarios() {
       porTempo[t].demTotal += row.demanda || 0
       porTempo[t].demCount += 1
     })
-
     const temposUnicos = Object.keys(porTempo).sort()
     const indicesMes = temposUnicos.map((tempo) => {
       const { volTotal, demTotal, demCount } = porTempo[tempo]
@@ -881,14 +822,12 @@ export default function Cenarios() {
       const indice = demRegional > 0 ? Math.min(1, volTotal / demRegional) : 1
       return { tempo, indice, volTotal, demTotal: demRegional }
     })
-
     const chartDataSeg = indicesMes.map(({ tempo, indice, volTotal, demTotal }) => ({
       tempo,
       Região: parseFloat(indice.toFixed(4)),
       __vol_total: volTotal,
       __dem_total: demTotal,
     }))
-
     const criticos = indicesMes
       .map(({ tempo, indice, volTotal, demTotal }) => ({
         tempo,
@@ -897,14 +836,12 @@ export default function Cenarios() {
         deficit: Math.max(0, demTotal - volTotal),
       }))
       .filter((r) => r.status !== 'seguro')
-
     setSegurancaHidrica({ indicesMes, chartData: chartDataSeg, criticos })
     setData(processedData)
     setGroupedData(groupedArray)
     setRan(true)
     setLoading(false)
   }
-
   const fontesMap = refData.fontes.reduce(
     (acc: any, f: any) => ({ ...acc, [f.id_fonte]: f.nome_fonte }),
     {},
@@ -912,12 +849,10 @@ export default function Cenarios() {
   const limiarAlerta = simObj?.limiar_alerta ?? 0.8
   const limiarCrise = simObj?.limiar_crise ?? 0.6
   const limiarColapso = simObj?.limiar_colapso ?? 0.4
-
   const toggleIndicador = (id: number) =>
     setSelectedIndicadores((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     )
-
   const indicadoresCharts = (() => {
     if (!ran || data.length === 0 || selectedIndicadores.length === 0) return []
     const indsSelected = indicadores.filter((ind) => selectedIndicadores.includes(ind.id_indicador))
@@ -963,7 +898,6 @@ export default function Cenarios() {
       }
     })
   })()
-
   const segCard = segurancaHidrica
     ? (() => {
         const { indicesMes } = segurancaHidrica
@@ -981,7 +915,6 @@ export default function Cenarios() {
         return { indicesMedio, mesesAlerta, mesesCrise, mesesColapso, statusGeral }
       })()
     : null
-
   const segChart = segurancaHidrica && (
     <LineChart data={segurancaHidrica.chartData} margin={{ top: 4, right: 24, left: 8, bottom: 4 }}>
       <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
@@ -1042,7 +975,6 @@ export default function Cenarios() {
       />
     </LineChart>
   )
-
   const SimField = ({
     label,
     field,
@@ -1072,7 +1004,6 @@ export default function Cenarios() {
       />
     </div>
   )
-
   const SimToggle = ({ label, field }: { label: string; field: string }) => (
     <label className="flex items-center gap-2 cursor-pointer">
       <Checkbox
@@ -1082,8 +1013,7 @@ export default function Cenarios() {
       <span className="text-sm">{label}</span>
     </label>
   )
-
-  // ── Render ────────────────────────────────────────────────────────────────
+  // ?? Render ????????????????????????????????????????????????????????????????
   return (
     <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
       <div>
@@ -1093,14 +1023,12 @@ export default function Cenarios() {
           hídrico.
         </p>
       </div>
-
       <div className="space-y-6">
-        {/* ── QUADRO 1: Cenários para Simulação ── */}
+        {/* ?? QUADRO 1: Cenários para Simulação ?? */}
         <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200 w-full">
           <h3 className="font-semibold text-primary border-b pb-3 mb-4 text-sm uppercase tracking-wider">
             Cenários para Simulação
           </h3>
-
           {/* Formulário de adição de uma fonte */}
           <div className="space-y-4 border border-slate-200 rounded-lg p-4 bg-slate-50">
             <p className="text-xs text-muted-foreground font-medium">
@@ -1108,7 +1036,6 @@ export default function Cenarios() {
               <strong>Adicionar Fonte</strong>. Cada fonte gera um registro com os cenários e
               estratégias escolhidos agrupados em campos JSONB.
             </p>
-
             {/* Fonte */}
             <div className="max-w-xs space-y-1">
               <label className="text-xs font-semibold text-muted-foreground">Fonte de Água</label>
@@ -1125,7 +1052,6 @@ export default function Cenarios() {
                 </SelectContent>
               </Select>
             </div>
-
             {idFonte && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Montagem de cenários */}
@@ -1215,7 +1141,6 @@ export default function Cenarios() {
                     ))}
                   </ul>
                 </div>
-
                 {/* Montagem de estratégias */}
                 <div className="border p-4 rounded-lg bg-white space-y-3">
                   <h4 className="font-semibold text-sm">Montagem de Estratégia</h4>
@@ -1283,7 +1208,6 @@ export default function Cenarios() {
                 </div>
               </div>
             )}
-
             <div className="flex justify-end pt-2">
               <Button
                 onClick={handleConfirmarFonte}
@@ -1294,8 +1218,7 @@ export default function Cenarios() {
               </Button>
             </div>
           </div>
-
-          {/* ── Tabela de seleções salvas ── */}
+          {/* ?? Tabela de seleções salvas ?? */}
           {selecoes.length > 0 && (
             <div className="mt-6">
               <div className="flex items-center justify-between mb-2">
@@ -1358,7 +1281,6 @@ export default function Cenarios() {
                               onCheckedChange={(v) => handleToggleSelecao(sel.id, !!v)}
                             />
                           </td>
-
                           {/* Data */}
                           <td className="px-3 py-2.5 text-slate-500 whitespace-nowrap">
                             {sel.criado_at
@@ -1371,19 +1293,16 @@ export default function Cenarios() {
                                 })
                               : '-'}
                           </td>
-
                           {/* Usuário */}
                           <td className="px-3 py-2.5 text-slate-600 whitespace-nowrap">
                             {sel.profiles?.nome ||
                               sel.profiles?.email ||
                               sel.id_usuario?.slice(0, 8) + '…'}
                           </td>
-
                           {/* Fonte */}
                           <td className="px-3 py-2.5 font-medium text-slate-700 whitespace-nowrap">
                             {sel.fonte_agua?.nome_fonte ?? `Fonte ${sel.id_fonte}`}
                           </td>
-
                           {/* Cenários: renderiza o objeto JSONB como pares chave: valor */}
                           <td className="px-3 py-2.5 text-slate-600 max-w-[260px]">
                             {sel.cenarios &&
@@ -1404,7 +1323,6 @@ export default function Cenarios() {
                               <span className="text-slate-400">-</span>
                             )}
                           </td>
-
                           {/* Estratégias: renderiza o array JSONB como badges */}
                           <td className="px-3 py-2.5 text-slate-600 max-w-[260px]">
                             {Array.isArray(sel.estrategias) && sel.estrategias.length > 0 ? (
@@ -1422,7 +1340,6 @@ export default function Cenarios() {
                               <span className="text-slate-400">-</span>
                             )}
                           </td>
-
                           {/* Remover */}
                           <td className="px-3 py-2.5 text-center">
                             <button
@@ -1442,8 +1359,7 @@ export default function Cenarios() {
             </div>
           )}
         </div>
-
-        {/* ── QUADRO 2: Configuração da Simulação ── */}
+        {/* ?? QUADRO 2: Configuração da Simulação ?? */}
         {simEdit && (
           <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200 w-full">
             <h3 className="font-semibold text-primary border-b pb-3 mb-4 text-sm uppercase tracking-wider">
@@ -1464,6 +1380,29 @@ export default function Cenarios() {
                 <SimToggle label="Demanda automática" field="demanda_auto" />
                 <SimToggle label="Perdas automáticas" field="perdas_auto" />
               </div>
+              {/* ?? Arquivo de Indicadores (arq_indicador) ?? */}
+              <div className="space-y-1 sm:col-span-2 lg:col-span-3 xl:col-span-4">
+                <label className="text-xs font-semibold text-muted-foreground">
+                  Arquivo de Indicadores
+                </label>
+                {simObj?.arq_indicador && (
+                  <p className="text-[11px] text-slate-400 truncate" title={simObj.arq_indicador}>
+                    Atual:{' '}
+                    <span className="font-mono">{simObj.arq_indicador.split('/').pop()}</span>{' '}
+                    <span className="text-slate-300">({simObj.arq_indicador})</span>
+                  </p>
+                )}
+                <Input
+                  type="file"
+                  className="h-8 text-sm"
+                  onChange={(e) => setArqIndicadorFile(e.target.files?.[0] ?? null)}
+                />
+                {arqIndicadorFile && (
+                  <p className="text-[11px] text-emerald-600">
+                    Selecionado: {arqIndicadorFile.name}
+                  </p>
+                )}
+              </div>
             </div>
             <div className="mt-5 flex justify-end">
               <Button onClick={handleSaveSim} disabled={simSaving} className="w-48">
@@ -1472,8 +1411,7 @@ export default function Cenarios() {
             </div>
           </div>
         )}
-
-        {/* ── QUADRO 3: Demanda e Perdas Automático ── */}
+        {/* ?? QUADRO 3: Demanda e Perdas Automático ?? */}
         {simObj && (simObj.demanda_auto || simObj.perdas_auto) && (
           <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200 w-full">
             <h3 className="font-semibold text-primary border-b pb-3 mb-4 text-sm uppercase tracking-wider">
@@ -1523,8 +1461,7 @@ export default function Cenarios() {
             </div>
           </div>
         )}
-
-        {/* ── QUADRO 4: Indicadores ── */}
+        {/* ?? QUADRO 4: Indicadores ?? */}
         {simObj && (
           <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200 w-full">
             <h3 className="font-semibold text-primary border-b pb-3 mb-4 text-sm uppercase tracking-wider">
@@ -1562,8 +1499,7 @@ export default function Cenarios() {
             )}
           </div>
         )}
-
-        {/* ── QUADRO 5: Período + Executar ── */}
+        {/* ?? QUADRO 5: Período + Executar ?? */}
         <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200 w-full">
           <h3 className="font-semibold text-primary border-b pb-3 mb-4 text-sm uppercase tracking-wider">
             Período
@@ -1664,7 +1600,6 @@ export default function Cenarios() {
           </div>
         </div>
       </div>
-
       {ran && data.length === 0 && (
         <div className="text-center p-12 bg-white rounded-lg border border-dashed">
           <p className="text-muted-foreground font-medium">
@@ -1675,8 +1610,7 @@ export default function Cenarios() {
           </p>
         </div>
       )}
-
-      {/* ── BLOCO 1: Card segurança hídrica ── */}
+      {/* ?? BLOCO 1: Card segurança hídrica ?? */}
       {segurancaHidrica && segCard && (
         <div>
           <h2 className="text-lg font-semibold text-primary mb-3">Índice de Segurança Hídrica</h2>
@@ -1729,8 +1663,7 @@ export default function Cenarios() {
           </div>
         </div>
       )}
-
-      {/* ── BLOCO 2: Gráfico segurança hídrica ── */}
+      {/* ?? BLOCO 2: Gráfico segurança hídrica ?? */}
       {segurancaHidrica && segurancaHidrica.chartData.length > 0 && (
         <div>
           <div className="flex flex-wrap gap-6 text-xs text-slate-500 mb-2 px-1">
@@ -1765,8 +1698,7 @@ export default function Cenarios() {
           </ChartWrapper>
         </div>
       )}
-
-      {/* ── BLOCO 3: Cronograma de períodos críticos ── */}
+      {/* ?? BLOCO 3: Cronograma de períodos críticos ?? */}
       {segurancaHidrica &&
         segurancaHidrica.criticos.length > 0 &&
         (() => {
@@ -1959,11 +1891,9 @@ export default function Cenarios() {
             </div>
           )
         })()}
-
-      {/* ── CenariosDashboard ── */}
+      {/* ?? CenariosDashboard ?? */}
       {data.length > 0 && <CenariosDashboard data={data} fontesMap={fontesMap} />}
-
-      {/* ── Gráficos de Indicadores ── */}
+      {/* ?? Gráficos de Indicadores ?? */}
       {indicadoresCharts.length > 0 && (
         <div className="space-y-6">
           {indicadoresCharts.map(({ unidade, chartData, linhas, titulo }) => (
