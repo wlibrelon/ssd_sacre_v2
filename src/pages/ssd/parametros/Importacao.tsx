@@ -1,8 +1,13 @@
-import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase/client'
+import { useState, useEffect, useCallback } from 'react'
+import { useSsdData } from '@/hooks/use-ssd-data'
+import { NativeSelect } from './components/NativeSelect'
 import { Button } from '@/components/ui/button'
-import { toast } from 'sonner'
+import { Input } from '@/components/ui/input'
+import { supabase } from '@/lib/supabase/client'
+import { CenariosDashboard } from './components/CenariosDashboard'
 import { Checkbox } from '@/components/ui/checkbox'
+import { toast } from 'sonner'
+import { Trash2, Plus } from 'lucide-react'
 import {
   Select,
   SelectContent,
@@ -10,188 +15,442 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog'
-import { Trash2, Folder, File as FileIcon, ChevronLeft } from 'lucide-react'
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  ReferenceLine,
+  ReferenceArea,
+} from 'recharts'
 
-// ── FileSelectDialog ──────────────────────────────────────────────────────────
+const MONTHS = [
+  { v: '1', l: 'Janeiro' },
+  { v: '2', l: 'Fevereiro' },
+  { v: '3', l: 'Março' },
+  { v: '4', l: 'Abril' },
+  { v: '5', l: 'Maio' },
+  { v: '6', l: 'Junho' },
+  { v: '7', l: 'Julho' },
+  { v: '8', l: 'Agosto' },
+  { v: '9', l: 'Setembro' },
+  { v: '10', l: 'Outubro' },
+  { v: '11', l: 'Novembro' },
+  { v: '12', l: 'Dezembro' },
+]
 
-function FileSelectDialog({
-  label,
-  value,
-  onChange,
-}: {
-  label: string
-  value: string
-  onChange: (v: string) => void
-}) {
-  const [open, setOpen] = useState(false)
-  const [path, setPath] = useState<string[]>([])
-  const [items, setItems] = useState<any[]>([])
-  const [loading, setLoading] = useState(false)
+const LINE_COLORS = ['#2563eb', '#16a34a', '#dc2626', '#d97706', '#7c3aed', '#0891b2', '#be185d']
 
-  const currentPathStr = path.join('/')
+// ── Tipos ─────────────────────────────────────────────────────────────────────
 
-  useEffect(() => {
-    if (open) {
-      setLoading(true)
-      supabase.storage
-        .from('dados_brutos')
-        .list(currentPathStr, { limit: 200 })
-        .then(({ data }) => setItems(data || []))
-        .finally(() => setLoading(false))
-    }
-  }, [open, path])
+type StatusSeg = 'seguro' | 'alerta' | 'crise' | 'colapso'
+
+type SelecaoCenario = {
+  id: string
+  id_fonte: number
+  selecionado: boolean
+  criado_at: string
+  id_usuario: string
+  cenarios: Record<string, string>
+  estrategias: string[]
+  fonte_agua?: { nome_fonte: string }
+  // O join com profiles é feito separadamente para evitar erro de FK cache
+  _userLabel?: string
+}
+
+// ── helpers de segurança hídrica ───────────────────────────────────────────────
+
+function getStatus(
+  indice: number,
+  limiarAlerta: number,
+  limiarCrise: number,
+  limiarColapso: number,
+): StatusSeg {
+  if (indice >= limiarAlerta) return 'seguro'
+  if (indice >= limiarCrise) return 'alerta'
+  if (indice >= limiarColapso) return 'crise'
+  return 'colapso'
+}
+
+const STATUS_LABEL: Record<StatusSeg, string> = {
+  seguro: 'Seguro',
+  alerta: 'Alerta',
+  crise: 'Crise',
+  colapso: 'Colapso',
+}
+
+const STATUS_COLORS: Record<StatusSeg, { bg: string; text: string; border: string }> = {
+  seguro: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
+  alerta: { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' },
+  crise: { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200' },
+  colapso: { bg: 'bg-rose-100', text: 'text-rose-900', border: 'border-rose-400' },
+}
+
+const STATUS_BADGE: Record<StatusSeg, string> = {
+  seguro: 'bg-emerald-100 text-emerald-700',
+  alerta: 'bg-amber-100 text-amber-700',
+  crise: 'bg-red-100 text-red-700',
+  colapso: 'bg-rose-200 text-rose-900',
+}
+
+// ── ChartWrapper ──────────────────────────────────────────────────────────────
+
+interface ChartWrapperProps {
+  title: string
+  chartData: any[]
+  children: React.ReactNode
+  height?: number
+}
+
+function ChartWrapper({ title, chartData, children, height = 340 }: ChartWrapperProps) {
+  const [expanded, setExpanded] = useState(false)
+
+  const downloadCsv = useCallback(() => {
+    if (!chartData || chartData.length === 0) return
+    const keys = Object.keys(chartData[0])
+    const header = keys.join(';')
+    const rows = chartData.map((row) =>
+      keys
+        .map((k) => {
+          const v = row[k]
+          if (v == null) return ''
+          if (typeof v === 'number') return v.toLocaleString('pt-BR', { maximumFractionDigits: 4 })
+          return String(v)
+        })
+        .join(';'),
+    )
+    const csv = [header, ...rows].join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${title.replace(/\s+/g, '_')}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }, [chartData, title])
+
+  const chartContent = (
+    <ResponsiveContainer width="100%" height={expanded ? '100%' : height}>
+      {children as React.ReactElement}
+    </ResponsiveContainer>
+  )
+
+  const DownloadIcon = () => (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      className="w-4 h-4"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <polyline points="7 10 12 15 17 10" />
+      <line x1="12" y1="15" x2="12" y2="3" />
+    </svg>
+  )
 
   return (
-    <div className="flex flex-col space-y-1">
-      <label className="text-xs font-semibold">{label}</label>
-      <div className="flex gap-2">
-        <Input value={value || ''} readOnly placeholder="Nenhum arquivo" className="flex-1" />
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button variant="outline" type="button">
-              Buscar
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-4xl">
-            <DialogHeader>
-              <DialogTitle>Selecionar: {label}</DialogTitle>
-            </DialogHeader>
-            <div className="flex items-center space-x-2 bg-slate-50 p-2 rounded border">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setPath((p) => p.slice(0, -1))}
-                disabled={path.length === 0}
+    <>
+      <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200">
+        <div className="flex items-center justify-between border-b pb-3 mb-4">
+          <h3 className="font-semibold text-primary text-sm uppercase tracking-wider">{title}</h3>
+          <div className="flex gap-2">
+            <button
+              onClick={downloadCsv}
+              title="Download CSV"
+              className="p-1.5 rounded hover:bg-slate-100 text-slate-500 hover:text-primary transition-colors"
+            >
+              <DownloadIcon />
+            </button>
+            <button
+              onClick={() => setExpanded(true)}
+              title="Ampliar"
+              className="p-1.5 rounded hover:bg-slate-100 text-slate-500 hover:text-primary transition-colors"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="w-4 h-4"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
               >
-                <ChevronLeft className="w-4 h-4 mr-1" /> Voltar
-              </Button>
-              <span className="text-sm">dados_brutos / {path.join(' / ')}</span>
+                <polyline points="15 3 21 3 21 9" />
+                <polyline points="9 21 3 21 3 15" />
+                <line x1="21" y1="3" x2="14" y2="10" />
+                <line x1="3" y1="21" x2="10" y2="14" />
+              </svg>
+            </button>
+          </div>
+        </div>
+        {chartContent}
+      </div>
+      {expanded && (
+        <div
+          className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4"
+          onClick={() => setExpanded(false)}
+        >
+          <div
+            className="bg-white rounded-xl shadow-2xl w-full max-w-6xl flex flex-col"
+            style={{ height: '85vh' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-6 py-4 border-b">
+              <h3 className="font-semibold text-primary text-sm uppercase tracking-wider">
+                {title}
+              </h3>
+              <div className="flex gap-2">
+                <button
+                  onClick={downloadCsv}
+                  title="Download CSV"
+                  className="p-1.5 rounded hover:bg-slate-100 text-slate-500 hover:text-primary transition-colors"
+                >
+                  <DownloadIcon />
+                </button>
+                <button
+                  onClick={() => setExpanded(false)}
+                  title="Fechar"
+                  className="p-1.5 rounded hover:bg-slate-100 text-slate-500 hover:text-primary transition-colors"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="w-4 h-4"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+              </div>
             </div>
-            <div className="border rounded-md min-h-[300px] max-h-[400px] overflow-y-auto">
-              {loading ? (
-                <div className="p-8 text-center">Carregando...</div>
-              ) : (
-                <div className="divide-y">
-                  {items.map((item) => (
-                    <div
-                      key={item.name}
-                      className="flex items-center p-3 hover:bg-slate-50 cursor-pointer"
-                      onClick={() => {
-                        if (!item.id) setPath((p) => [...p, item.name])
-                        else {
-                          onChange(currentPathStr ? `${currentPathStr}/${item.name}` : item.name)
-                          setOpen(false)
-                        }
-                      }}
-                    >
-                      {!item.id ? (
-                        <Folder className="w-5 h-5 text-blue-500 mr-3" />
-                      ) : (
-                        <FileIcon className="w-5 h-5 text-slate-500 mr-3" />
-                      )}
-                      <span className="text-sm">{item.name}</span>
-                    </div>
-                  ))}
+            <div className="flex-1 p-6">{chartContent}</div>
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
+
+// ── Tooltip customizado ───────────────────────────────────────────────────────
+
+const TooltipSeguranca = ({
+  active,
+  payload,
+  label,
+  limiarAlerta,
+  limiarCrise,
+  limiarColapso,
+}: any) => {
+  if (!active || !payload || payload.length === 0) return null
+  return (
+    <div className="bg-white border border-slate-200 rounded-lg shadow-lg p-3 text-xs space-y-1 min-w-[200px]">
+      <p className="font-semibold text-slate-700 border-b pb-1 mb-1">{label}</p>
+      {payload.map((entry: any) => {
+        const indice = typeof entry.value === 'number' ? entry.value : null
+        if (indice == null) return null
+        const status = getStatus(indice, limiarAlerta, limiarCrise, limiarColapso)
+        const vol = entry.payload['__vol_total']
+        const dem = entry.payload['__dem_total']
+        return (
+          <div key={entry.dataKey} className="space-y-0.5">
+            <div className="flex items-center gap-1.5">
+              <span
+                className="w-2.5 h-2.5 rounded-full inline-block shrink-0"
+                style={{ background: entry.color }}
+              />
+              <span className="font-medium text-slate-600">{entry.dataKey}</span>
+            </div>
+            <div className="pl-4 space-y-0.5 text-slate-500">
+              <div>
+                Índice:{' '}
+                <span className={`font-bold ${STATUS_COLORS[status].text}`}>
+                  {indice.toLocaleString('pt-BR', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                </span>{' '}
+                <span
+                  className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${STATUS_BADGE[status]}`}
+                >
+                  {STATUS_LABEL[status]}
+                </span>
+              </div>
+              {vol != null && (
+                <div>
+                  Vol. total distribuído:{' '}
+                  {vol.toLocaleString('pt-BR', { maximumFractionDigits: 0 })} m³
+                </div>
+              )}
+              {dem != null && (
+                <div>
+                  Demanda regional: {dem.toLocaleString('pt-BR', { maximumFractionDigits: 0 })} m³
                 </div>
               )}
             </div>
-          </DialogContent>
-        </Dialog>
-      </div>
+          </div>
+        )
+      })}
     </div>
   )
 }
 
 // ── Helpers JSONB ─────────────────────────────────────────────────────────────
 
-function buildCenarioJsonb(cenariosList: { tcChave: string; cChave: string }[]) {
+function buildCenarioJsonb(
+  cenariosList: { tcChave: string; cChave: string }[],
+): Record<string, string> {
   return cenariosList.reduce<Record<string, string>>((acc, item) => {
     acc[item.tcChave] = item.cChave
     return acc
   }, {})
 }
 
-function buildEstrategiaJsonb(estrategiasList: { chave: string }[]) {
+function buildEstrategiaJsonb(estrategiasList: { chave: string }[]): string[] {
   return estrategiasList.map((e) => e.chave)
 }
 
-// ── Tipo para indicador com arquivo associado ─────────────────────────────────
-// Cada entrada representa um indicador selecionado + o arquivo CSV a importar.
-// campo_extra é a chave que será usada no JSONB valores_extras.
-
-type IndicadorItem = {
-  id_indicador: number
-  descricao: string
-  unidade: string
-  campo_extra: string // chave no JSONB de valores_extras
-  arq_indicador: string // path no storage para o CSV deste indicador
+function stableJsonString(obj: Record<string, string>): string {
+  const sorted = Object.keys(obj)
+    .sort()
+    .reduce<Record<string, string>>((acc, k) => {
+      acc[k] = obj[k]
+      return acc
+    }, {})
+  return JSON.stringify(sorted)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-export function Importacao() {
-  const [modelos, setModelos] = useState<any[]>([])
-  const [selectedModels, setSelectedModels] = useState<Record<number, boolean>>({})
-  const [importStatus, setImportStatus] = useState<
-    Record<number, { label: string; detail?: string }>
-  >({})
+export default function Cenarios() {
+  const { cenario_demanda, cenario_consumo, cenario_perdas } = useSsdData()
 
-  const [refData, setRefData] = useState<any>({
-    fontes: [],
-    tiposCenario: [],
-    cenarios: [],
-    acoes: [],
-    cenariosFonte: [],
-    tcCenario: [],
-    acoesFonte: [],
-    // indicadores por fonte: { [id_fonte]: Indicador[] }
-    indicadoresFonte: {} as Record<number, any[]>,
-  })
+  // ── Estado: lista de seleções salvas no banco ─────────────────────────────
+  const [selecoes, setSelecoes] = useState<SelecaoCenario[]>([])
+  const [selecaoLoading, setSelecaoLoading] = useState(true)
 
+  // Controles do formulário de adição
   const [idFonte, setIdFonte] = useState('')
   const [idTc, setIdTc] = useState('')
   const [idC, setIdC] = useState('')
   const [idAcao, setIdAcao] = useState('')
-  const [idIndicador, setIdIndicador] = useState('')
 
-  const [cenariosList, setCenariosList] = useState<
-    { label: string; tcChave: string; cChave: string }[]
+  const [draftCenarios, setDraftCenarios] = useState<
+    { label: string; tcChave: string; cChave: string; id_tc: number; id_c: number }[]
   >([])
-  const [estrategiasList, setEstrategiasList] = useState<{ label: string; chave: string }[]>([])
-  // Lista de indicadores selecionados com seus arquivos
-  const [indicadoresList, setIndicadoresList] = useState<IndicadorItem[]>([])
 
-  const [files, setFiles] = useState({
-    arq_mod: '',
-    arq_perdas: '',
-    arq_demanda: '',
-    arq_capex_estrategias: '',
-    arq_capex_perdas: '',
-    arq_opex: '',
+  const [draftEstrategias, setDraftEstrategias] = useState<
+    { label: string; chave: string; id_acao: number }[]
+  >([])
+
+  // Dados de referência
+  const [refData, setRefData] = useState<any>({
+    fontes: [],
+    tiposCenario: [],
+    cenariosBd: [],
+    acoesBd: [],
+    cenariosFonte: [],
+    tcCenario: [],
+    acoesFonte: [],
   })
 
-  // ── Diagnóstico de carregamento de indicadores (exibido na UI) ──────────
-  const [indDiag, setIndDiag] = useState<{ tentativa: string; rows: any[]; erro?: string } | null>(
-    null,
-  )
+  // ── Estado do registro único de simulacao_ssd ─────────────────────────────
+  const [simObj, setSimObj] = useState<any>(null)
+  const [simEdit, setSimEdit] = useState<any>(null)
+  const [simSaving, setSimSaving] = useState(false)
 
-  // ── Carregamento de dados de referência ───────────────────────────────────
+  // ── Estado da simulação ───────────────────────────────────────────────────
+  const [filters, setFilters] = useState<any>({})
+  const [data, setData] = useState<any[]>([])
+  const [groupedData, setGroupedData] = useState<any[]>([])
+  const [loading, setLoading] = useState(false)
+  const [ran, setRan] = useState(false)
+
+  const [segurancaHidrica, setSegurancaHidrica] = useState<{
+    indicesMes: { tempo: string; indice: number; volTotal: number; demTotal: number }[]
+    chartData: any[]
+    criticos: { tempo: string; indice: number; status: StatusSeg; deficit: number }[]
+  } | null>(null)
+
+  const [indicadores, setIndicadores] = useState<any[]>([])
+  const [selectedIndicadores, setSelectedIndicadores] = useState<number[]>([])
+
+  // ── CORREÇÃO: Busca seleções SEM join em profiles ─────────────────────────
+  // O join profiles causava erro "Could not find a relationship between
+  // 'selecao_cenarios' and 'profiles' in the schema cache" porque o PostgREST
+  // não infere automaticamente a FK id_usuario → profiles.id.
+  // Solução: buscar as seleções sem esse join e, se necessário, buscar o
+  // e-mail do usuário atual separadamente via auth.getUser().
+  const fetchSelecoes = useCallback(async () => {
+    setSelecaoLoading(true)
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) {
+      setSelecaoLoading(false)
+      return
+    }
+
+    // 1. Busca as seleções sem o join problemático em profiles
+    const { data: rows, error } = await supabase
+      .from('selecao_cenarios')
+      .select(`
+        id,
+        id_fonte,
+        selecionado,
+        criado_at,
+        id_usuario,
+        cenarios,
+        estrategias,
+        fonte_agua ( nome_fonte )
+      `)
+      .eq('id_usuario', user.id)
+      .order('criado_at', { ascending: false })
+
+    if (error) {
+      toast.error(`Erro ao carregar seleções: ${error.message}`)
+      setSelecaoLoading(false)
+      return
+    }
+
+    // 2. Adiciona o label do usuário atual (evita uma query extra para outros usuários)
+    const userLabel = user.email ?? user.id.slice(0, 8) + '…'
+    const enriched: SelecaoCenario[] = (rows ?? []).map((r: any) => ({
+      ...r,
+      _userLabel: userLabel,
+    }))
+
+    setSelecoes(enriched)
+    setSelecaoLoading(false)
+  }, [])
+
+  // ── Carregamento inicial ──────────────────────────────────────────────────
   useEffect(() => {
+    fetchSelecoes()
     supabase
-      .from('modelos')
-      .select('*, fonte_agua(nome_fonte)')
-      .then((res) => setModelos(res.data || []))
-
-    // Dados de referência fixos (sem indicadores)
+      .from('simulacao_ssd')
+      .select('*')
+      .limit(1)
+      .single()
+      .then(({ data: row }) => {
+        if (row) {
+          setSimObj(row)
+          setSimEdit({ ...row })
+        }
+      })
     Promise.all([
       supabase.from('fonte_agua').select('*'),
       supabase.from('tipos_cenarios').select('*'),
@@ -200,396 +459,775 @@ export function Importacao() {
       supabase.from('cenarios_fonte').select('*'),
       supabase.from('tipo_cenario_cenario').select('*'),
       supabase.from('acoes_fonte').select('*'),
-    ]).then((res) => {
-      setRefData((prev: any) => ({
-        ...prev,
+    ]).then((res) =>
+      setRefData({
         fontes: res[0].data || [],
         tiposCenario: res[1].data || [],
-        cenarios: res[2].data || [],
-        acoes: res[3].data || [],
+        cenariosBd: res[2].data || [],
+        acoesBd: res[3].data || [],
         cenariosFonte: res[4].data || [],
         tcCenario: res[5].data || [],
         acoesFonte: res[6].data || [],
-      }))
-    })
+      }),
+    )
+  }, [fetchSelecoes])
 
-    // Busca indicadores com estratégia em cascata para descobrir o schema real:
-    // Tentativa 1 — indicadores tem id_fonte direto
-    // Tentativa 2 — tabela indicadores_fonte (relação N:N)
-    // Tentativa 3 — indicadores_aplicado (usada na simulação)
-    const carregarIndicadores = async () => {
-      const erros: string[] = []
-
-      // Tentativa 1: campo id_fonte diretamente na tabela indicadores
-      const t1 = await supabase.from('indicadores').select('*')
-      if (!t1.error && t1.data && t1.data.length > 0 && 'id_fonte' in t1.data[0]) {
-        const indicadoresFonte: Record<number, any[]> = {}
-        t1.data.forEach((row: any) => {
-          const fid = Number(row.id_fonte)
-          if (!indicadoresFonte[fid]) indicadoresFonte[fid] = []
-          indicadoresFonte[fid].push(row)
-        })
-        setIndDiag({ tentativa: 'indicadores (id_fonte direto)', rows: t1.data })
-        setRefData((prev: any) => ({ ...prev, indicadoresFonte }))
-        return
-      }
-      erros.push(
-        t1.error
-          ? `indicadores: ${t1.error.message}`
-          : `indicadores: ${t1.data?.length ?? 0} rows, sem campo id_fonte`,
-      )
-
-      // Tentativa 2: tabela indicadores_fonte como N:N com join
-      const t2 = await supabase.from('indicadores_fonte').select('*, indicadores(*)')
-      if (!t2.error && t2.data && t2.data.length > 0) {
-        const indicadoresFonte: Record<number, any[]> = {}
-        t2.data.forEach((row: any) => {
-          const fid = Number(row.id_fonte)
-          if (!indicadoresFonte[fid]) indicadoresFonte[fid] = []
-          const ind = row.indicadores ?? row
-          if (ind) indicadoresFonte[fid].push(ind)
-        })
-        setIndDiag({ tentativa: 'indicadores_fonte JOIN indicadores', rows: t2.data })
-        setRefData((prev: any) => ({ ...prev, indicadoresFonte }))
-        return
-      }
-      erros.push(t2.error ? `indicadores_fonte: ${t2.error.message}` : `indicadores_fonte: 0 rows`)
-
-      // Tentativa 3: indicadores_aplicado com id_fonte
-      const t3 = await supabase.from('indicadores_aplicado').select('*, indicadores(*)')
-      if (!t3.error && t3.data && t3.data.length > 0) {
-        const indicadoresFonte: Record<number, any[]> = {}
-        t3.data.forEach((row: any) => {
-          const fid = Number(row.id_fonte ?? 0)
-          if (!fid) return
-          if (!indicadoresFonte[fid]) indicadoresFonte[fid] = []
-          const ind = row.indicadores ?? row
-          if (ind) indicadoresFonte[fid].push(ind)
-        })
-        setIndDiag({ tentativa: 'indicadores_aplicado JOIN indicadores', rows: t3.data })
-        setRefData((prev: any) => ({ ...prev, indicadoresFonte }))
-        return
-      }
-      erros.push(
-        t3.error
-          ? `indicadores_aplicado: ${t3.error.message}`
-          : `indicadores_aplicado: 0 rows com id_fonte`,
-      )
-
-      // Nenhuma tentativa funcionou
-      setIndDiag({ tentativa: 'nenhuma funcionou', rows: [], erro: erros.join(' | ') })
+  useEffect(() => {
+    if (!simObj) {
+      setIndicadores([])
+      setSelectedIndicadores([])
+      return
     }
+    supabase
+      .from('indicadores_aplicado')
+      .select('*, indicadores(*)')
+      .then(({ data: rows }) => {
+        if (!rows) return
+        const unique = Object.values(
+          rows.reduce((acc: any, r: any) => {
+            if (r.indicadores && !acc[r.indicadores.id_indicador])
+              acc[r.indicadores.id_indicador] = r.indicadores
+            return acc
+          }, {}),
+        )
+        setIndicadores(unique as any[])
+        setSelectedIndicadores([])
+      })
+  }, [simObj])
 
-    carregarIndicadores()
-  }, [])
-
-  // ── Selects filtrados pela fonte selecionada ──────────────────────────────
+  // ── Selects filtrados pelo idFonte ativo no formulário ────────────────────
   const filteredTipos = refData.tiposCenario.filter((tc: any) =>
     refData.cenariosFonte.some(
       (cf: any) => cf.id_fonte === Number(idFonte) && cf.id_tc === tc.id_tc,
     ),
   )
-  const filteredCenarios = refData.cenarios.filter((c: any) =>
+  const filteredCenarios = refData.cenariosBd.filter((c: any) =>
     refData.tcCenario.some((tcc: any) => tcc.id_tc === Number(idTc) && tcc.id_c === c.id_cenarios),
   )
-  const filteredAcoes = refData.acoes.filter((a: any) =>
+  const filteredAcoes = refData.acoesBd.filter((a: any) =>
     refData.acoesFonte.some(
       (af: any) => af.id_fonte === Number(idFonte) && af.id_acao === a.id_acao,
     ),
   )
-  // Indicadores disponíveis para a fonte selecionada (excluindo já adicionados)
-  const filteredIndicadores: any[] = idFonte
-    ? (refData.indicadoresFonte[Number(idFonte)] || []).filter(
-        (ind: any) => !indicadoresList.some((i) => i.id_indicador === ind.id_indicador),
-      )
-    : []
 
-  // ── Resolve labels para exibição na tabela ────────────────────────────────
-  function resolveCenarioLabel(cenarioObj: Record<string, string>): string {
-    return Object.entries(cenarioObj)
-      .map(([tcChave, cChave]) => {
-        const tc = refData.tiposCenario.find(
-          (t: any) => (t.chave ?? t.id_tc.toString()) === tcChave,
-        )
-        const c = refData.cenarios.find(
-          (x: any) => (x.chave ?? x.cenarios.toLowerCase().replace(/\s+/g, '_')) === cChave,
-        )
-        return `${tc?.descricao ?? tcChave}: ${c?.cenarios ?? cChave}`
-      })
-      .join(', ')
+  const handleFonteChange = (novaFonte: string) => {
+    setIdFonte(novaFonte)
+    setIdTc('')
+    setIdC('')
+    setIdAcao('')
+    setDraftCenarios([])
+    setDraftEstrategias([])
   }
 
-  function resolveEstrategiaLabel(arr: string[]): string {
-    return arr
-      .map((chave) => {
-        const a = refData.acoes.find(
-          (x: any) => (x.chave ?? x.descricao.toLowerCase().replace(/\s+/g, '_')) === chave,
-        )
-        return a?.descricao ?? chave
-      })
-      .join(', ')
-  }
-
-  // ── Salva configuração (modelo) ───────────────────────────────────────────
-  // Os indicadores e seus arquivos são gravados na tabela 'modelos' como JSONB
-  // no campo 'indicadores_config': [{ id_indicador, campo_extra, arq_indicador }, ...]
-  // Isso permite que a importação saiba quais CSVs buscar e em qual chave gravar.
-  const handleSaveModel = async () => {
+  // ── Confirma a configuração da fonte ativa ────────────────────────────────
+  const handleConfirmarFonte = async () => {
     if (!idFonte) return toast.error('Selecione uma fonte de água')
+    if (draftCenarios.length === 0) return toast.error('Adicione ao menos um cenário')
+    if (draftEstrategias.length === 0) return toast.error('Adicione ao menos uma estratégia')
 
-    const cenarioJsonb = buildCenarioJsonb(cenariosList)
-    const estrategiaJsonb = buildEstrategiaJsonb(estrategiasList)
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return toast.error('Usuário não autenticado')
 
-    // Valida que indicadores com arquivo vazios não bloqueiem (arquivo é opcional —
-    // indicadores sem arquivo serão ignorados na importação)
-    const indicadoresConfig = indicadoresList.map(
-      ({ id_indicador, campo_extra, arq_indicador }) => ({
-        id_indicador,
-        campo_extra,
-        arq_indicador: arq_indicador || null,
-      }),
-    )
+    const cenarioJsonb = buildCenarioJsonb(draftCenarios)
+    const estrategiaJsonb = buildEstrategiaJsonb(draftEstrategias)
 
-    const { data, error } = await supabase
-      .from('modelos')
-      .insert({
-        id_fonte: Number(idFonte),
-        cenario: cenarioJsonb,
-        estrategia: estrategiaJsonb,
-        // JSONB com a lista de indicadores e arquivos associados
-        indicadores_config: indicadoresConfig.length > 0 ? indicadoresConfig : null,
-        ...files,
-      })
-      .select('*, fonte_agua(nome_fonte)')
-      .single()
+    const { error } = await supabase.from('selecao_cenarios').insert({
+      id_fonte: Number(idFonte),
+      cenarios: cenarioJsonb,
+      estrategias: estrategiaJsonb,
+      selecionado: true,
+      id_usuario: user.id,
+    })
 
-    if (error) return toast.error(error.message)
-    setModelos([...modelos, data])
-    toast.success('Modelo salvo com sucesso')
-    setIdFonte('')
-    setCenariosList([])
-    setEstrategiasList([])
-    setIndicadoresList([])
-    setFiles({
-      arq_mod: '',
-      arq_perdas: '',
-      arq_demanda: '',
-      arq_capex_estrategias: '',
-      arq_capex_perdas: '',
-      arq_opex: '',
+    if (error) {
+      toast.error(`Erro ao salvar seleção: ${error.message}`)
+    } else {
+      toast.success('Configuração salva com sucesso')
+      setIdFonte('')
+      setDraftCenarios([])
+      setDraftEstrategias([])
+      setIdTc('')
+      setIdC('')
+      setIdAcao('')
+      fetchSelecoes()
+    }
+  }
+
+  const handleToggleSelecao = async (id: string, selecionado: boolean) => {
+    setSelecoes((prev) => prev.map((s) => (s.id === id ? { ...s, selecionado } : s)))
+    const { error } = await supabase.from('selecao_cenarios').update({ selecionado }).eq('id', id)
+    if (error) {
+      toast.error('Erro ao atualizar seleção')
+      fetchSelecoes()
+    }
+  }
+
+  const handleDeleteSelecao = async (id: string) => {
+    const { error } = await supabase.from('selecao_cenarios').delete().eq('id', id)
+    if (error) toast.error('Erro ao remover seleção')
+    else fetchSelecoes()
+  }
+
+  // ── Gravação da simulação única ───────────────────────────────────────────
+  const handleSaveSim = async () => {
+    if (!simEdit || !simObj) return
+    setSimSaving(true)
+    const { id_s, descricao, ...editableFields } = simEdit
+    const { error } = await supabase
+      .from('simulacao_ssd')
+      .update(editableFields)
+      .eq('id_s', simObj.id_s)
+    if (error) toast.error(`Erro ao salvar: ${error.message}`)
+    else {
+      setSimObj({ ...simObj, ...editableFields })
+      toast.success('Configuração salva com sucesso')
+    }
+    setSimSaving(false)
+  }
+
+  // ── Cálculos modulares ────────────────────────────────────────────────────
+  const aplicarCalculosModulares = (data: any[], sim: any, cd: any, cc: any, cp: any) => {
+    const tempos = Array.from(new Set(data.map((d) => d.tempo))).sort()
+    const pop_inicial = sim?.pop_inicial || 0
+    const vol_hab = cc?.vol_hab || 0
+    const perc_demanda = cd?.percentual || 0
+    const perc_inicial_perdas = sim?.perc_inicial_perdas || 0
+    const inicio_perdas = sim?.inicio_perdas || ''
+    const perc_final_perdas = cp?.percentual || 0
+
+    const temposNorm = tempos.map((t: any) => (t ? t.replace(/\//g, '-') : ''))
+    const inicio_perdas_norm = inicio_perdas ? inicio_perdas.replace(/\//g, '-') : ''
+    const startPerdasIdx = temposNorm.findIndex((t: any) => t >= inicio_perdas_norm)
+    const totalStepsPerdas = startPerdasIdx >= 0 ? tempos.length - 1 - startPerdasIdx : 0
+    const perdasStep =
+      totalStepsPerdas > 0 ? (perc_inicial_perdas - perc_final_perdas) / totalStepsPerdas : 0
+
+    return data.map((row) => {
+      let rowDemanda = row.demanda || 0
+      let rowPerdas = row.perdas || 0
+      let populacao_calculada = 0
+      const tIdx = tempos.indexOf(row.tempo)
+      if (sim?.demanda_auto && cd && cc) {
+        const ano_inicial = parseInt((tempos[0] || '0').split(/[-/]/)[0])
+        const row_ano = parseInt((row.tempo || '0').split(/[-/]/)[0])
+        const popAtual = pop_inicial * Math.pow(1 + perc_demanda / 100, row_ano - ano_inicial)
+        populacao_calculada = popAtual
+        rowDemanda = popAtual * vol_hab
+      }
+      if (sim?.perdas_auto && cp) {
+        if (startPerdasIdx === -1 || tIdx <= startPerdasIdx) {
+          rowPerdas = perc_inicial_perdas
+        } else {
+          const passos = tIdx - startPerdasIdx
+          rowPerdas = perc_inicial_perdas - perdasStep * passos
+          if (perc_inicial_perdas >= perc_final_perdas && rowPerdas < perc_final_perdas)
+            rowPerdas = perc_final_perdas
+          else if (perc_inicial_perdas < perc_final_perdas && rowPerdas > perc_final_perdas)
+            rowPerdas = perc_final_perdas
+        }
+      }
+      return { ...row, demanda: rowDemanda, perdas: rowPerdas, populacao_calculada }
     })
   }
 
-  // ── fetchCSV: lê um arquivo CSV do storage e retorna [{tempo, valor}] ─────
-  const fetchCSV = async (path: string | null | undefined, label = '') => {
-    if (!path) return []
-    const cleanPath = path.trim().replace(/\\/g, '/').replace(/\/+/g, '/').replace(/^\//, '')
-    const { data, error } = await supabase.storage.from('dados_brutos').download(cleanPath)
-    if (error) throw new Error(`Erro ao baixar "${cleanPath}" (${label}): ${error.message}`)
-    if (!data) return []
-    const lines = (await data.text())
-      .split('\n')
-      .map((l) => l.trim())
-      .filter(Boolean)
-    if (lines.length < 2) return []
-    const header = lines[0].toLowerCase().split(/[,;]/)
-    const tIdx = header.findIndex((h) => h.includes('tempo'))
-    const tIdxFinal = tIdx >= 0 ? tIdx : 0
-    const vIdx = header.findIndex(
-      (h) =>
-        h.includes(label.toLowerCase()) ||
-        h.replace(/_/g, '') === label.toLowerCase().replace(/_/g, ''),
-    )
-    const vIdxFinal = vIdx >= 0 ? vIdx : tIdxFinal === 0 ? 1 : 0
-    return lines
-      .slice(1)
-      .map((l) => {
-        const parts = l.split(/[,;]/)
-        return {
-          tempo: (parts[tIdxFinal] || '').trim().replace(/-/g, '/'),
-          valor:
-            parseFloat((parts[vIdxFinal] || '0').trim().replace(/\./g, '').replace(',', '.')) || 0,
-        }
-      })
-      .filter((d) => d.tempo)
-  }
+  // ── Query principal ───────────────────────────────────────────────────────
+  const applyFinancialMetrics = async () => {
+    const activeSelecoes = selecoes.filter((s) => s.selecionado)
+    if (activeSelecoes.length === 0) return []
 
-  // ── Importação principal ──────────────────────────────────────────────────
-  const handleImport = async () => {
-    const selectedIds = Object.keys(selectedModels)
-      .filter((k) => selectedModels[Number(k)])
-      .map(Number)
-    if (selectedIds.length === 0) return toast.error('Selecione ao menos um modelo')
+    let allRows: any[] = []
 
-    let hasError = false
-    for (const id_mod of selectedIds) {
-      setImportStatus((prev) => ({ ...prev, [id_mod]: { label: 'Importando...' } }))
-      try {
-        const mod = modelos.find((m) => m.id_mod === id_mod)
-        if (!mod) throw new Error('Modelo não encontrado')
+    for (const sel of activeSelecoes) {
+      const cenarioStr = stableJsonString(sel.cenarios as Record<string, string>)
+      const estrategiaStr = JSON.stringify(sel.estrategias)
 
-        // ── 1. Carrega CSVs dos campos fixos ─────────────────────────────
-        const [mD, pD, dD, ceD, cpD, oD] = await Promise.all([
-          fetchCSV(mod.arq_mod, 'volume_captado'),
-          fetchCSV(mod.arq_perdas, 'perdas'),
-          fetchCSV(mod.arq_demanda, 'demanda'),
-          fetchCSV(mod.arq_capex_estrategias, 'capex_estrategia'),
-          fetchCSV(mod.arq_capex_perdas, 'capex_perdas'),
-          fetchCSV(mod.arq_opex, 'opex'),
-        ])
+      let q = supabase
+        .from('dados_simulacao')
+        .select('*')
+        .eq('id_fonte', sel.id_fonte)
+        .eq('cenarios', cenarioStr)
+        .eq('estrategias', estrategiaStr)
 
-        // ── 2. Carrega CSVs dos indicadores dinamicamente ─────────────────
-        // indicadores_config: [{ id_indicador, campo_extra, arq_indicador }]
-        // Cada um gera uma série { tempo, valor } que vai para valores_extras[campo_extra]
-        let indConfig: {
-          id_indicador: number
-          campo_extra: string
-          arq_indicador: string | null
-        }[] = []
-        if (mod.indicadores_config) {
-          if (typeof mod.indicadores_config === 'string') {
-            try {
-              indConfig = JSON.parse(mod.indicadores_config)
-            } catch {
-              indConfig = []
-            }
-          } else if (Array.isArray(mod.indicadores_config)) {
-            indConfig = mod.indicadores_config
-          }
-        }
-
-        // Busca dados de cada indicador em paralelo (ignora os sem arquivo)
-        const indDataMap: Record<string, { tempo: string; valor: number }[]> = {}
-        await Promise.all(
-          indConfig
-            .filter((ic) => !!ic.arq_indicador && !!ic.campo_extra)
-            .map(async (ic) => {
-              const rows = await fetchCSV(ic.arq_indicador!, ic.campo_extra)
-              indDataMap[ic.campo_extra] = rows
-            }),
-        )
-
-        // ── 3. Monta o conjunto de tempos unificado ───────────────────────
-        const allIndRows = Object.values(indDataMap).flat()
-        const allTempos = new Set(
-          [...mD, ...pD, ...dD, ...ceD, ...cpD, ...oD, ...allIndRows].map((d) => d.tempo),
-        )
-        if (allTempos.size === 0)
-          throw new Error('Nenhuma linha de dados encontrada nos arquivos CSV')
-
-        // ── 4. Normaliza JSONB de cenários e estratégias ──────────────────
-        let cenariosObj: Record<string, string> = {}
-        if (typeof mod.cenario === 'string') {
-          try {
-            cenariosObj = JSON.parse(mod.cenario || '{}')
-          } catch {
-            cenariosObj = {}
-          }
-        } else if (mod.cenario && typeof mod.cenario === 'object' && !Array.isArray(mod.cenario)) {
-          cenariosObj = mod.cenario
-        }
-
-        let estrategiasArr: string[] = []
-        if (typeof mod.estrategia === 'string') {
-          try {
-            estrategiasArr = JSON.parse(mod.estrategia || '[]')
-          } catch {
-            estrategiasArr = []
-          }
-        } else if (Array.isArray(mod.estrategia)) {
-          estrategiasArr = mod.estrategia
-        }
-
-        // ── 5. Monta as linhas para inserção ─────────────────────────────
-        // valores_extras: JSONB dinâmico { campo_extra: valor, ... }
-        // Cada chave corresponde a um indicador definido pelo gestor.
-        const rows = Array.from(allTempos).map((t) => {
-          // Monta o objeto valores_extras apenas com os indicadores que têm dado para este tempo
-          const valoresExtras: Record<string, number> = {}
-          Object.entries(indDataMap).forEach(([campo, serie]) => {
-            const found = serie.find((d) => d.tempo === t)
-            if (found !== undefined) valoresExtras[campo] = found.valor
-          })
-
-          return {
-            id_mod: mod.id_mod,
-            id_fonte: mod.id_fonte,
-            tempo: t,
-            volume_captado: mD.find((d) => d.tempo === t)?.valor ?? 0,
-            perdas: pD.find((d) => d.tempo === t)?.valor ?? 0,
-            demanda: dD.find((d) => d.tempo === t)?.valor ?? 0,
-            capex_estrategia: ceD.find((d) => d.tempo === t)?.valor ?? 0,
-            capex_perdas: cpD.find((d) => d.tempo === t)?.valor ?? 0,
-            opex: oD.find((d) => d.tempo === t)?.valor ?? 0,
-            cenarios: cenariosObj,
-            estrategias: estrategiasArr,
-            // JSONB dinâmico com valores dos indicadores por campo_extra
-            // Ex: { "iqr": 0.85, "turbidez": 12.3 }
-            valores_extras: Object.keys(valoresExtras).length > 0 ? valoresExtras : null,
-          }
-        })
-
-        // ── 6. Limpa registros anteriores e insere os novos ───────────────
-        const { error: deleteError } = await supabase
-          .from('dados_simulacao')
-          .delete()
-          .eq('id_mod', mod.id_mod)
-          .eq('id_fonte', mod.id_fonte)
-        if (deleteError) throw new Error(`Erro ao limpar dados anteriores: ${deleteError.message}`)
-
-        for (let i = 0; i < rows.length; i += 500) {
-          const { error } = await supabase
-            .from('dados_simulacao')
-            .insert(rows.slice(i, i + 500) as any)
-          if (error)
-            throw new Error(
-              `Erro no banco (lote ${i / 500 + 1}): ${error.message}${error.details ? ` — ${error.details}` : ''}${error.hint ? ` | Dica: ${error.hint}` : ''}`,
-            )
-        }
-
-        setImportStatus((prev) => ({
-          ...prev,
-          [id_mod]: { label: `Concluído (${rows.length} linhas)` },
-        }))
-      } catch (err: any) {
-        hasError = true
-        const msg: string = err?.message ?? String(err)
-        setImportStatus((prev) => ({ ...prev, [id_mod]: { label: 'Erro', detail: msg } }))
-        toast.error(`Modelo ${id_mod}: ${msg}`, { duration: 10000 })
+      if (filters.ano_inicio) q = q.gte('tempo', `${filters.ano_inicio}/01`)
+      if (filters.ano_fim) q = q.lte('tempo', `${filters.ano_fim}/12`)
+      if (filters.meses && filters.meses.length > 0) {
+        const orString = filters.meses
+          .map((m: string) => `tempo.ilike.%/${m.padStart(2, '0')}`)
+          .join(',')
+        q = q.or(orString)
       }
+
+      const { data: rows, error } = await q
+      if (error) {
+        console.error(`Erro fonte ${sel.id_fonte}:`, error)
+        toast.error(`Erro ao buscar dados (fonte ${sel.id_fonte}): ${error.message}`)
+        continue
+      }
+      if (rows && rows.length > 0) allRows = [...allRows, ...rows]
     }
-    if (!hasError) toast.success('Importação concluída com sucesso')
+
+    if (allRows.length === 0) return []
+
+    const [{ data: capexAcao }, { data: acoesFonte }, { data: capexPerdas }, { data: opexData }] =
+      await Promise.all([
+        supabase.from('capex_acao').select('*'),
+        supabase.from('acoes_fonte').select('*'),
+        supabase.from('capex_perdas').select('*'),
+        supabase.from('opex').select('*'),
+      ])
+
+    const capexAcaoMap: Record<string, number> = {}
+    if (capexAcao && acoesFonte) {
+      capexAcao.forEach((ca) => {
+        acoesFonte
+          .filter((a) => a.id_acao === ca.id_acao)
+          .forEach((a) => {
+            const key = `${(ca.tempo || '').replace(/\//g, '-')}_${a.id_fonte}`
+            capexAcaoMap[key] = (capexAcaoMap[key] || 0) + (ca.capex || 0)
+          })
+      })
+    }
+
+    const capexPerdasMap: Record<string, number> = {}
+    capexPerdas?.forEach((cp) => {
+      if (cp.tempo) {
+        const k = cp.tempo.replace(/\//g, '-')
+        capexPerdasMap[k] = (capexPerdasMap[k] || 0) + (cp.capex || 0)
+      }
+    })
+
+    const opexMap: Record<string, number> = {}
+    opexData?.forEach((op) => {
+      if (op.tempo) {
+        const k = op.tempo.replace(/\//g, '-')
+        opexMap[k] = (opexMap[k] || 0) + (op.opex || 0)
+      }
+    })
+
+    const updates: any[] = []
+    const dsUpdated = allRows.map((row) => {
+      const tNorm = row.tempo ? row.tempo.replace(/\//g, '-') : ''
+      const newCapexEst = capexAcaoMap[`${tNorm}_${row.id_fonte}`] || 0
+      const newCapexPer = capexPerdasMap[tNorm] || 0
+      const newOpex = opexMap[tNorm] || 0
+      if (
+        row.capex_estrategia !== newCapexEst ||
+        row.capex_perdas !== newCapexPer ||
+        row.opex !== newOpex
+      ) {
+        const updated = {
+          ...row,
+          capex_estrategia: newCapexEst,
+          capex_perdas: newCapexPer,
+          opex: newOpex,
+        }
+        updates.push(updated)
+        return updated
+      }
+      return row
+    })
+
+    if (updates.length > 0) {
+      for (let i = 0; i < updates.length; i += 1000)
+        await supabase.from('dados_simulacao').upsert(updates.slice(i, i + 1000))
+    }
+
+    return dsUpdated
   }
+
+  // ── Executa simulação ─────────────────────────────────────────────────────
+  const handleSimulate = async () => {
+    if (!simObj) return toast.error('Configuração de simulação não carregada')
+    if (selecoes.length === 0) return toast.error('Configure ao menos uma fonte para simular')
+    if (!selecoes.some((s) => s.selecionado))
+      return toast.error('Selecione ao menos uma configuração para simular')
+
+    setLoading(true)
+    let resData = await applyFinancialMetrics()
+
+    if (resData.length === 0) {
+      toast.error(
+        'Nenhum dado encontrado. Verifique se a importação foi realizada com as mesmas chaves de cenário e estratégia.',
+      )
+      setRan(true)
+      setData([])
+      setLoading(false)
+      return
+    }
+
+    if (simObj?.demanda_auto || simObj?.perdas_auto) {
+      const cd = cenario_demanda.find((c: any) => c.id_cd === parseInt(filters.id_cd_auto))
+      const cc = cenario_consumo.find((c: any) => c.id_cc === parseInt(filters.id_cc_auto))
+      const cp = cenario_perdas.find((c: any) => c.id_cp === parseInt(filters.id_cp_auto))
+      resData = aplicarCalculosModulares(resData, simObj, cd, cc, cp)
+    }
+
+    const processedData = resData.map((row: any) => {
+      const volume_captado = row.volume_captado || 0
+      const perdas_percentual = row.perdas || 0
+      const volume_distribuido = volume_captado * (1 - perdas_percentual / 100)
+      const demanda = row.demanda || 0
+      const capex = (row.capex_estrategia || 0) + (row.capex_perdas || 0)
+      return {
+        ...row,
+        capex,
+        volume_distribuido,
+        distribuicao_total: volume_distribuido,
+        deficit: demanda - volume_distribuido,
+      }
+    })
+
+    const groupedMap = processedData.reduce((acc: any, row: any) => {
+      const key = `${row.tempo}_${row.id_fonte}`
+      if (!acc[key])
+        acc[key] = {
+          tempo: row.tempo,
+          id_fonte: row.id_fonte,
+          volume_distribuido: 0,
+          demanda: 0,
+          deficit: 0,
+          capex: 0,
+          opex: 0,
+          count: 0,
+        }
+      acc[key].volume_distribuido += row.volume_distribuido || 0
+      acc[key].demanda += row.demanda || 0
+      acc[key].deficit += row.deficit || 0
+      acc[key].capex += row.capex || 0
+      acc[key].opex += row.opex || 0
+      acc[key].count += 1
+      return acc
+    }, {})
+
+    const groupedArray = Object.values(groupedMap)
+      .map((g: any) => ({
+        tempo: g.tempo,
+        id_fonte: g.id_fonte,
+        volume_distribuido: g.volume_distribuido,
+        demanda: g.demanda / g.count,
+        deficit: g.deficit,
+        capex: g.capex / g.count,
+        opex: g.opex / g.count,
+      }))
+      .sort((a: any, b: any) => a.tempo.localeCompare(b.tempo))
+
+    const limiarAlerta = simObj?.limiar_alerta ?? 0.8
+    const limiarCrise = simObj?.limiar_crise ?? 0.6
+    const limiarColapso = simObj?.limiar_colapso ?? 0.4
+
+    const porTempo: Record<string, { volTotal: number; demTotal: number; demCount: number }> = {}
+    processedData.forEach((row: any) => {
+      const t = row.tempo
+      if (!porTempo[t]) porTempo[t] = { volTotal: 0, demTotal: 0, demCount: 0 }
+      porTempo[t].volTotal += row.volume_distribuido || 0
+      porTempo[t].demTotal += row.demanda || 0
+      porTempo[t].demCount += 1
+    })
+
+    const temposUnicos = Object.keys(porTempo).sort()
+    const indicesMes = temposUnicos.map((tempo) => {
+      const { volTotal, demTotal, demCount } = porTempo[tempo]
+      const demRegional = demCount > 0 ? demTotal / demCount : 0
+      const indice = demRegional > 0 ? Math.min(1, volTotal / demRegional) : 1
+      return { tempo, indice, volTotal, demTotal: demRegional }
+    })
+
+    const chartDataSeg = indicesMes.map(({ tempo, indice, volTotal, demTotal }) => ({
+      tempo,
+      Região: parseFloat(indice.toFixed(4)),
+      __vol_total: volTotal,
+      __dem_total: demTotal,
+    }))
+
+    const criticos = indicesMes
+      .map(({ tempo, indice, volTotal, demTotal }) => ({
+        tempo,
+        indice,
+        status: getStatus(indice, limiarAlerta, limiarCrise, limiarColapso),
+        deficit: Math.max(0, demTotal - volTotal),
+      }))
+      .filter((r) => r.status !== 'seguro')
+
+    setSegurancaHidrica({ indicesMes, chartData: chartDataSeg, criticos })
+    setData(processedData)
+    setGroupedData(groupedArray)
+    setRan(true)
+    setLoading(false)
+  }
+
+  const fontesMap = refData.fontes.reduce(
+    (acc: any, f: any) => ({ ...acc, [f.id_fonte]: f.nome_fonte }),
+    {},
+  )
+  const limiarAlerta = simObj?.limiar_alerta ?? 0.8
+  const limiarCrise = simObj?.limiar_crise ?? 0.6
+  const limiarColapso = simObj?.limiar_colapso ?? 0.4
+
+  const toggleIndicador = (id: number) =>
+    setSelectedIndicadores((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    )
+
+  const indicadoresCharts = (() => {
+    if (!ran || data.length === 0 || selectedIndicadores.length === 0) return []
+    const indsSelected = indicadores.filter((ind) => selectedIndicadores.includes(ind.id_indicador))
+    const porUnidade: Record<string, any[]> = {}
+    indsSelected.forEach((ind) => {
+      const u = ind.unidade || 'sem_unidade'
+      if (!porUnidade[u]) porUnidade[u] = []
+      porUnidade[u].push(ind)
+    })
+    return Object.entries(porUnidade).map(([unidade, inds]) => {
+      const tempos = Array.from(new Set(data.map((d: any) => d.tempo))).sort()
+      const fontes = Array.from(new Set(data.map((d: any) => d.id_fonte))) as number[]
+      const chartData = tempos.map((tempo) => {
+        const point: any = { tempo }
+        fontes.forEach((id_fonte) => {
+          const rows = data.filter((d: any) => d.tempo === tempo && d.id_fonte === id_fonte)
+          inds.forEach((ind) => {
+            const values = rows
+              .map((r: any) => r.valores_extras?.[ind.campo_extra])
+              .filter((v: any) => v != null && !isNaN(Number(v)))
+              .map(Number)
+            if (values.length > 0) {
+              const avg = values.reduce((a: number, b: number) => a + b, 0) / values.length
+              point[`${fontesMap[id_fonte] || id_fonte} – ${ind.descricao || ind.campo_extra}`] =
+                avg
+            }
+          })
+        })
+        return point
+      })
+      const linhas: string[] = []
+      fontes.forEach((id_fonte) => {
+        inds.forEach((ind) => {
+          const key = `${fontesMap[id_fonte] || id_fonte} – ${ind.descricao || ind.campo_extra}`
+          if (chartData.some((pt: any) => pt[key] != null)) linhas.push(key)
+        })
+      })
+      return {
+        unidade,
+        chartData,
+        linhas,
+        titulo: inds.map((i: any) => i.descricao || i.campo_extra).join(' - '),
+      }
+    })
+  })()
+
+  const segCard = segurancaHidrica
+    ? (() => {
+        const { indicesMes } = segurancaHidrica
+        const indicesMedio = indicesMes.reduce((s, m) => s + m.indice, 0) / (indicesMes.length || 1)
+        const mesesAlerta = indicesMes.filter(
+          (m) => getStatus(m.indice, limiarAlerta, limiarCrise, limiarColapso) === 'alerta',
+        ).length
+        const mesesCrise = indicesMes.filter(
+          (m) => getStatus(m.indice, limiarAlerta, limiarCrise, limiarColapso) === 'crise',
+        ).length
+        const mesesColapso = indicesMes.filter(
+          (m) => getStatus(m.indice, limiarAlerta, limiarCrise, limiarColapso) === 'colapso',
+        ).length
+        const statusGeral = getStatus(indicesMedio, limiarAlerta, limiarCrise, limiarColapso)
+        return { indicesMedio, mesesAlerta, mesesCrise, mesesColapso, statusGeral }
+      })()
+    : null
+
+  const segChart = segurancaHidrica && (
+    <LineChart data={segurancaHidrica.chartData} margin={{ top: 4, right: 24, left: 8, bottom: 4 }}>
+      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+      <ReferenceArea
+        y1={0}
+        y2={limiarColapso}
+        fill="#9f1239"
+        fillOpacity={0.12}
+        ifOverflow="hidden"
+      />
+      <ReferenceArea
+        y1={limiarColapso}
+        y2={limiarCrise}
+        fill="#ef4444"
+        fillOpacity={0.07}
+        ifOverflow="hidden"
+      />
+      <ReferenceArea
+        y1={limiarCrise}
+        y2={limiarAlerta}
+        fill="#f59e0b"
+        fillOpacity={0.07}
+        ifOverflow="hidden"
+      />
+      <XAxis dataKey="tempo" tick={{ fontSize: 11 }} interval="preserveStartEnd" />
+      <YAxis
+        domain={[0, 1]}
+        tick={{ fontSize: 11 }}
+        tickFormatter={(v) => v.toFixed(1)}
+        label={{
+          value: 'Índice (0–1)',
+          angle: -90,
+          position: 'insideLeft',
+          offset: 10,
+          style: { fontSize: 11 },
+        }}
+      />
+      <Tooltip
+        content={
+          <TooltipSeguranca
+            limiarAlerta={limiarAlerta}
+            limiarCrise={limiarCrise}
+            limiarColapso={limiarColapso}
+          />
+        }
+      />
+      <Legend wrapperStyle={{ fontSize: 12 }} />
+      <ReferenceLine y={limiarAlerta} stroke="#f59e0b" strokeDasharray="6 3" strokeWidth={1.5} />
+      <ReferenceLine y={limiarCrise} stroke="#ef4444" strokeDasharray="6 3" strokeWidth={1.5} />
+      <ReferenceLine y={limiarColapso} stroke="#9f1239" strokeDasharray="6 3" strokeWidth={1.5} />
+      <Line
+        type="monotone"
+        dataKey="Região"
+        stroke={LINE_COLORS[0]}
+        dot={false}
+        strokeWidth={2}
+        connectNulls
+      />
+    </LineChart>
+  )
+
+  const SimField = ({
+    label,
+    field,
+    type = 'text',
+  }: {
+    label: string
+    field: string
+    type?: string
+  }) => (
+    <div className="space-y-1">
+      <label className="text-xs font-semibold text-muted-foreground">{label}</label>
+      <Input
+        type={type}
+        value={simEdit?.[field] ?? ''}
+        className="h-8 text-sm"
+        onChange={(e) =>
+          setSimEdit((prev: any) => ({
+            ...prev,
+            [field]:
+              type === 'number'
+                ? e.target.value === ''
+                  ? ''
+                  : Number(e.target.value)
+                : e.target.value,
+          }))
+        }
+      />
+    </div>
+  )
+
+  const SimToggle = ({ label, field }: { label: string; field: string }) => (
+    <label className="flex items-center gap-2 cursor-pointer">
+      <Checkbox
+        checked={!!simEdit?.[field]}
+        onCheckedChange={(v) => setSimEdit((prev: any) => ({ ...prev, [field]: !!v }))}
+      />
+      <span className="text-sm">{label}</span>
+    </label>
+  )
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="space-y-6 pb-20">
-      {/* ── CARD 1: Configuração de cenários, estratégias e indicadores ── */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm">
-            Configuração de cenários, estratégias e indicadores para as fontes de água
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Seleção de Fonte */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl">
-            <div className="space-y-1">
-              <label className="text-xs font-semibold">Fonte de Água</label>
-              <Select
-                value={idFonte}
-                onValueChange={(v) => {
-                  setIdFonte(v)
-                  // Limpa itens da fonte anterior ao trocar
-                  setIdTc('')
-                  setIdC('')
-                  setIdAcao('')
-                  setIdIndicador('')
-                  setCenariosList([])
-                  setEstrategiasList([])
-                  setIndicadoresList([])
-                }}
-              >
+    <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
+      <div>
+        <h1 className="text-3xl font-bold text-primary mb-2">Simulação de Cenários</h1>
+        <p className="text-muted-foreground">
+          Configure as fontes, cenários e estratégias para simular o comportamento do sistema
+          hídrico.
+        </p>
+      </div>
+
+      <div className="space-y-6">
+        {/* ── QUADRO 1: Configurações salvas — exibido SEMPRE ao abrir ── */}
+        <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200 w-full">
+          <div className="flex items-center justify-between border-b pb-3 mb-4">
+            <h3 className="font-semibold text-primary text-sm uppercase tracking-wider">
+              Configurações para Simulação
+            </h3>
+            {!selecaoLoading && (
+              <span className="text-xs text-muted-foreground">
+                {selecoes.filter((s) => s.selecionado).length} de {selecoes.length} selecionadas
+              </span>
+            )}
+          </div>
+
+          {/* Estado de carregamento */}
+          {selecaoLoading && (
+            <div className="flex items-center gap-2 py-4 text-sm text-muted-foreground">
+              <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+              </svg>
+              Carregando configurações…
+            </div>
+          )}
+
+          {/* Tabela sempre visível após carregamento */}
+          {!selecaoLoading && selecoes.length === 0 && (
+            <div className="text-center py-8 border border-dashed rounded-lg">
+              <p className="text-sm text-muted-foreground font-medium">
+                Nenhuma configuração salva ainda.
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Use o formulário abaixo para adicionar fontes à simulação.
+              </p>
+            </div>
+          )}
+
+          {!selecaoLoading && selecoes.length > 0 && (
+            <div className="border rounded-lg overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead className="bg-slate-100 sticky top-0 z-10">
+                    <tr>
+                      {/* Marcar todos */}
+                      <th className="px-3 py-2.5 text-center font-semibold text-slate-600 w-10">
+                        <Checkbox
+                          checked={selecoes.length > 0 && selecoes.every((s) => s.selecionado)}
+                          onCheckedChange={(v) =>
+                            selecoes.forEach((s) => handleToggleSelecao(s.id, !!v))
+                          }
+                          title="Marcar / desmarcar todos"
+                        />
+                      </th>
+                      <th className="px-3 py-2.5 text-left font-semibold text-slate-600 whitespace-nowrap">
+                        Data
+                      </th>
+                      <th className="px-3 py-2.5 text-left font-semibold text-slate-600 whitespace-nowrap">
+                        Usuário
+                      </th>
+                      <th className="px-3 py-2.5 text-left font-semibold text-slate-600 whitespace-nowrap">
+                        Fonte
+                      </th>
+                      <th className="px-3 py-2.5 text-left font-semibold text-slate-600">
+                        Cenários
+                      </th>
+                      <th className="px-3 py-2.5 text-left font-semibold text-slate-600">
+                        Estratégias
+                      </th>
+                      <th className="px-3 py-2.5 w-10" />
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {selecoes.map((sel) => (
+                      <tr
+                        key={sel.id}
+                        className={`hover:bg-slate-50 transition-colors ${sel.selecionado ? 'bg-blue-50/40' : ''}`}
+                      >
+                        {/* Checkbox */}
+                        <td className="px-3 py-2.5 text-center">
+                          <Checkbox
+                            checked={!!sel.selecionado}
+                            onCheckedChange={(v) => handleToggleSelecao(sel.id, !!v)}
+                          />
+                        </td>
+
+                        {/* Data */}
+                        <td className="px-3 py-2.5 text-slate-500 whitespace-nowrap">
+                          {sel.criado_at
+                            ? new Date(sel.criado_at).toLocaleString('pt-BR', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: '2-digit',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })
+                            : '-'}
+                        </td>
+
+                        {/* Usuário — vem de _userLabel (sem join problemático) */}
+                        <td className="px-3 py-2.5 text-slate-600 whitespace-nowrap">
+                          {sel._userLabel ?? sel.id_usuario?.slice(0, 8) + '…'}
+                        </td>
+
+                        {/* Fonte */}
+                        <td className="px-3 py-2.5 font-medium text-slate-700 whitespace-nowrap">
+                          {sel.fonte_agua?.nome_fonte ?? `Fonte ${sel.id_fonte}`}
+                        </td>
+
+                        {/* Cenários como badges chave: valor */}
+                        <td className="px-3 py-2.5 text-slate-600 max-w-[260px]">
+                          {sel.cenarios &&
+                          typeof sel.cenarios === 'object' &&
+                          !Array.isArray(sel.cenarios) ? (
+                            <div className="flex flex-wrap gap-1">
+                              {Object.entries(sel.cenarios).map(([k, v]) => (
+                                <span
+                                  key={k}
+                                  className="inline-flex items-center gap-1 bg-blue-50 border border-blue-200 text-blue-700 rounded px-1.5 py-0.5 text-[11px] font-mono"
+                                >
+                                  <span className="font-semibold">{k}:</span>
+                                  <span>{v}</span>
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-slate-400">-</span>
+                          )}
+                        </td>
+
+                        {/* Estratégias como badges */}
+                        <td className="px-3 py-2.5 text-slate-600 max-w-[260px]">
+                          {Array.isArray(sel.estrategias) && sel.estrategias.length > 0 ? (
+                            <div className="flex flex-wrap gap-1">
+                              {sel.estrategias.map((e) => (
+                                <span
+                                  key={e}
+                                  className="inline-block bg-emerald-50 border border-emerald-200 text-emerald-700 rounded px-1.5 py-0.5 text-[11px] font-mono"
+                                >
+                                  {e}
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-slate-400">-</span>
+                          )}
+                        </td>
+
+                        {/* Remover */}
+                        <td className="px-3 py-2.5 text-center">
+                          <button
+                            onClick={() => handleDeleteSelecao(sel.id)}
+                            className="text-destructive hover:text-red-700 transition-colors"
+                            title="Remover configuração"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* ── Formulário de adição de nova fonte ── */}
+          <div className="mt-6 space-y-4 border border-slate-200 rounded-lg p-4 bg-slate-50">
+            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Adicionar nova fonte à simulação
+            </h4>
+
+            {/* Fonte */}
+            <div className="max-w-xs space-y-1">
+              <label className="text-xs font-semibold text-muted-foreground">Fonte de Água</label>
+              <Select value={idFonte} onValueChange={handleFonteChange}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione a fonte..." />
                 </SelectTrigger>
@@ -602,430 +1240,723 @@ export function Importacao() {
                 </SelectContent>
               </Select>
             </div>
-          </div>
 
-          {/* Três quadros lado a lado: Cenários | Estratégias | Indicadores */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* ── Montagem de Cenários ── */}
-            <div className="border p-4 rounded-lg bg-slate-50 space-y-4">
-              <h3 className="font-semibold text-sm">Montagem de Cenários</h3>
-              <div className="space-y-2">
-                <Select value={idTc} onValueChange={setIdTc}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Tipo de cenário..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {filteredTipos.map((t: any) => (
-                      <SelectItem key={t.id_tc} value={t.id_tc.toString()}>
-                        {t.descricao}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Select value={idC} onValueChange={setIdC}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Cenário..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {filteredCenarios.map((c: any) => (
-                      <SelectItem key={c.id_cenarios} value={c.id_cenarios.toString()}>
-                        {c.cenarios}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button
-                  className="w-full"
-                  disabled={!idTc || !idC}
-                  onClick={() => {
-                    const t = refData.tiposCenario.find((x: any) => x.id_tc.toString() === idTc)
-                    const c = refData.cenarios.find((x: any) => x.id_cenarios.toString() === idC)
-                    if (t && c) {
-                      setCenariosList((p) => [
-                        ...p,
-                        {
-                          label: `${t.descricao}: ${c.cenarios}`,
-                          tcChave: t.chave ?? t.id_tc.toString(),
-                          cChave: c.chave ?? c.cenarios.toLowerCase().replace(/\s+/g, '_'),
-                        },
-                      ])
-                      setIdTc('')
-                      setIdC('')
-                    }
-                  }}
-                >
-                  Adicionar Cenário
-                </Button>
-              </div>
-              <ul className="space-y-2">
-                {cenariosList.map((c, i) => (
-                  <li
-                    key={i}
-                    className="flex justify-between items-center bg-white p-2 rounded border text-sm"
-                  >
-                    {c.label}
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6 text-destructive"
-                      onClick={() => setCenariosList((p) => p.filter((_, idx) => idx !== i))}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* ── Montagem de Estratégia ── */}
-            <div className="border p-4 rounded-lg bg-slate-50 space-y-4">
-              <h3 className="font-semibold text-sm">Montagem de Estratégia</h3>
-              <div className="space-y-2">
-                <Select value={idAcao} onValueChange={setIdAcao}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Escolha a ação..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {filteredAcoes.map((a: any) => (
-                      <SelectItem key={a.id_acao} value={a.id_acao.toString()}>
-                        {a.descricao}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button
-                  className="w-full"
-                  disabled={!idAcao}
-                  onClick={() => {
-                    const a = refData.acoes.find((x: any) => x.id_acao.toString() === idAcao)
-                    if (a) {
-                      setEstrategiasList((p) => [
-                        ...p,
-                        {
-                          label: a.descricao,
-                          chave: a.chave ?? a.descricao.toLowerCase().replace(/\s+/g, '_'),
-                        },
-                      ])
-                      setIdAcao('')
-                    }
-                  }}
-                >
-                  Adicionar Ação
-                </Button>
-              </div>
-              <ul className="space-y-2">
-                {estrategiasList.map((e, i) => (
-                  <li
-                    key={i}
-                    className="flex justify-between items-center bg-white p-2 rounded border text-sm"
-                  >
-                    {e.label}
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6 text-destructive"
-                      onClick={() => setEstrategiasList((p) => p.filter((_, idx) => idx !== i))}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* ── Definição de Indicadores ── */}
-            <div className="border p-4 rounded-lg bg-slate-50 space-y-4">
-              <h3 className="font-semibold text-sm">Definição de Indicadores</h3>
-
-              {/* Painel de diagnóstico — visível apenas enquanto a estrutura não for confirmada */}
-              {indDiag && (
-                <div
-                  className={`text-[11px] rounded p-2 border ${indDiag.erro ? 'bg-red-50 border-red-200 text-red-700' : 'bg-emerald-50 border-emerald-200 text-emerald-700'}`}
-                >
-                  <p className="font-semibold">Diagnóstico indicadores</p>
-                  <p>
-                    Tentativa: <strong>{indDiag.tentativa}</strong> — {indDiag.rows.length}{' '}
-                    registro(s) encontrado(s)
-                  </p>
-                  {indDiag.erro && <p className="mt-1 text-red-600">{indDiag.erro}</p>}
-                  {indDiag.rows.length > 0 && (
-                    <details className="mt-1">
-                      <summary className="cursor-pointer">
-                        Ver primeiros campos do 1º registro
-                      </summary>
-                      <pre className="mt-1 text-[10px] whitespace-pre-wrap break-all">
-                        {JSON.stringify(indDiag.rows[0], null, 2)}
-                      </pre>
-                    </details>
-                  )}
-                </div>
-              )}
-
-              {!idFonte ? (
-                <p className="text-xs text-muted-foreground">
-                  Selecione uma fonte de água para ver os indicadores disponíveis.
-                </p>
-              ) : filteredIndicadores.length === 0 && indicadoresList.length === 0 ? (
-                <p className="text-xs text-muted-foreground">
-                  Nenhum indicador disponível para esta fonte (id_fonte={idFonte}).
-                  {indDiag && (
-                    <>
-                      {' '}
-                      Tentativa usada: <strong>{indDiag.tentativa}</strong>.
-                    </>
-                  )}
-                </p>
-              ) : (
-                <div className="space-y-2">
-                  {filteredIndicadores.length > 0 && (
-                    <>
-                      <Select value={idIndicador} onValueChange={setIdIndicador}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione o indicador..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {filteredIndicadores.map((ind: any) => (
-                            <SelectItem key={ind.id_indicador} value={ind.id_indicador.toString()}>
-                              {ind.descricao}
-                              {ind.unidade ? ` (${ind.unidade})` : ''}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Button
-                        className="w-full"
-                        disabled={!idIndicador}
-                        onClick={() => {
-                          const allInds: any[] = refData.indicadoresFonte[Number(idFonte)] || []
-                          const ind = allInds.find(
-                            (x: any) => x.id_indicador.toString() === idIndicador,
-                          )
-                          if (ind) {
-                            setIndicadoresList((p) => [
-                              ...p,
-                              {
-                                id_indicador: ind.id_indicador,
-                                descricao: ind.descricao,
-                                unidade: ind.unidade || '',
-                                campo_extra: ind.campo_extra,
-                                arq_indicador: '',
-                              },
-                            ])
-                            setIdIndicador('')
-                          }
-                        }}
-                      >
-                        Adicionar Indicador
-                      </Button>
-                    </>
-                  )}
-                </div>
-              )}
-
-              {/* Lista de indicadores adicionados com seleção do arquivo CSV */}
-              {indicadoresList.length > 0 && (
-                <ul className="space-y-3 mt-2">
-                  {indicadoresList.map((ind, i) => (
-                    <li key={i} className="bg-white p-3 rounded border space-y-2">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <p className="text-sm font-medium">{ind.descricao}</p>
-                          <p className="text-[11px] text-muted-foreground">
-                            Chave:{' '}
-                            <code className="bg-slate-100 px-1 rounded">{ind.campo_extra}</code>
-                            {ind.unidade && (
-                              <>
-                                {' '}
-                                · Unidade: <strong>{ind.unidade}</strong>
-                              </>
-                            )}
-                          </p>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 text-destructive shrink-0"
-                          onClick={() => setIndicadoresList((p) => p.filter((_, idx) => idx !== i))}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                      {/* Seleção do arquivo CSV para este indicador */}
-                      <FileSelectDialog
-                        label={`Arquivo CSV — ${ind.descricao}`}
-                        value={ind.arq_indicador}
-                        onChange={(v) =>
-                          setIndicadoresList((p) =>
-                            p.map((item, idx) =>
-                              idx === i ? { ...item, arq_indicador: v } : item,
-                            ),
+            {idFonte && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Montagem de cenários */}
+                <div className="border p-4 rounded-lg bg-white space-y-3">
+                  <h4 className="font-semibold text-sm">Cenários</h4>
+                  <Select value={idTc} onValueChange={setIdTc}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Tipo de cenário..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {filteredTipos.map((t: any) => (
+                        <SelectItem key={t.id_tc} value={t.id_tc.toString()}>
+                          {t.descricao}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select value={idC} onValueChange={setIdC}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Cenário..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {filteredCenarios.map((c: any) => (
+                        <SelectItem key={c.id_cenarios} value={c.id_cenarios.toString()}>
+                          {c.cenarios}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    className="w-full"
+                    size="sm"
+                    disabled={!idTc || !idC}
+                    onClick={() => {
+                      const t = refData.tiposCenario.find((x: any) => x.id_tc.toString() === idTc)
+                      const c = refData.cenariosBd.find(
+                        (x: any) => x.id_cenarios.toString() === idC,
+                      )
+                      if (t && c) {
+                        if (draftCenarios.some((d) => d.id_tc === t.id_tc)) {
+                          return toast.error(
+                            'Este tipo de cenário já foi adicionado. Remova-o antes de substituir.',
                           )
                         }
-                      />
-                    </li>
-                  ))}
-                </ul>
+                        setDraftCenarios((p) => [
+                          ...p,
+                          {
+                            label: `${t.descricao}: ${c.cenarios}`,
+                            tcChave: t.chave ?? t.id_tc.toString(),
+                            cChave: c.chave ?? c.cenarios.toLowerCase().replace(/\s+/g, '_'),
+                            id_tc: t.id_tc,
+                            id_c: c.id_cenarios,
+                          },
+                        ])
+                        setIdTc('')
+                        setIdC('')
+                      }
+                    }}
+                  >
+                    <Plus className="w-3.5 h-3.5 mr-1" /> Adicionar Cenário
+                  </Button>
+                  <ul className="space-y-1.5">
+                    {draftCenarios.map((c, i) => (
+                      <li
+                        key={i}
+                        className="flex justify-between items-center bg-slate-50 px-3 py-1.5 rounded border text-xs"
+                      >
+                        <span>{c.label}</span>
+                        <button
+                          onClick={() => setDraftCenarios((p) => p.filter((_, idx) => idx !== i))}
+                          className="text-destructive hover:text-red-700 ml-2"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                {/* Montagem de estratégias */}
+                <div className="border p-4 rounded-lg bg-white space-y-3">
+                  <h4 className="font-semibold text-sm">Estratégias</h4>
+                  <Select value={idAcao} onValueChange={setIdAcao}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Escolha a ação..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {filteredAcoes.map((a: any) => (
+                        <SelectItem key={a.id_acao} value={a.id_acao.toString()}>
+                          {a.descricao}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    className="w-full"
+                    size="sm"
+                    disabled={!idAcao}
+                    onClick={() => {
+                      const a = refData.acoesBd.find((x: any) => x.id_acao.toString() === idAcao)
+                      if (a) {
+                        const chave = a.chave ?? a.descricao.toLowerCase().replace(/\s+/g, '_')
+                        if (draftEstrategias.some((d) => d.chave === chave)) {
+                          return toast.error('Esta ação já foi adicionada.')
+                        }
+                        setDraftEstrategias((p) => [
+                          ...p,
+                          { label: a.descricao, chave, id_acao: a.id_acao },
+                        ])
+                        setIdAcao('')
+                      }
+                    }}
+                  >
+                    <Plus className="w-3.5 h-3.5 mr-1" /> Adicionar Ação
+                  </Button>
+                  <ul className="space-y-1.5">
+                    {draftEstrategias.map((e, i) => (
+                      <li
+                        key={i}
+                        className="flex justify-between items-center bg-slate-50 px-3 py-1.5 rounded border text-xs"
+                      >
+                        <span>{e.label}</span>
+                        <button
+                          onClick={() =>
+                            setDraftEstrategias((p) => p.filter((_, idx) => idx !== i))
+                          }
+                          className="text-destructive hover:text-red-700 ml-2"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-end pt-2">
+              <Button
+                onClick={handleConfirmarFonte}
+                disabled={!idFonte || draftCenarios.length === 0 || draftEstrategias.length === 0}
+                className="gap-2"
+              >
+                <Plus className="w-4 h-4" /> Adicionar Fonte à Simulação
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* ── QUADRO 2: Configuração da Simulação ── */}
+        {simEdit && (
+          <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200 w-full">
+            <h3 className="font-semibold text-primary border-b pb-3 mb-4 text-sm uppercase tracking-wider">
+              Configuração da Simulação
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              <SimField label="População Inicial" field="pop_inicial" type="number" />
+              <SimField
+                label="Perc. Inicial de Perdas (%)"
+                field="perc_inicial_perdas"
+                type="number"
+              />
+              <SimField label="Início da Redução de Perdas" field="inicio_perdas" type="text" />
+              <SimField label="Limiar de Alerta (0–1)" field="limiar_alerta" type="number" />
+              <SimField label="Limiar de Crise (0–1)" field="limiar_crise" type="number" />
+              <SimField label="Limiar de Colapso (0–1)" field="limiar_colapso" type="number" />
+              <div className="flex flex-col gap-3 pt-1">
+                <SimToggle label="Demanda automática" field="demanda_auto" />
+                <SimToggle label="Perdas automáticas" field="perdas_auto" />
+              </div>
+            </div>
+            <div className="mt-5 flex justify-end">
+              <Button onClick={handleSaveSim} disabled={simSaving} className="w-48">
+                {simSaving ? 'Salvando...' : 'Salvar Configuração'}
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* ── QUADRO 3: Demanda e Perdas Automático ── */}
+        {simObj && (simObj.demanda_auto || simObj.perdas_auto) && (
+          <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200 w-full">
+            <h3 className="font-semibold text-primary border-b pb-3 mb-4 text-sm uppercase tracking-wider">
+              Demanda e Perdas (Automático)
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {simObj.demanda_auto && (
+                <div className="space-y-3">
+                  <h4 className="text-sm font-semibold text-muted-foreground">Demanda</h4>
+                  <NativeSelect
+                    className="w-full"
+                    options={cenario_demanda.map((o: any) => ({
+                      value: o.id_cd,
+                      label: o.nome_cenario_demanda,
+                    }))}
+                    value={filters.id_cd_auto || ''}
+                    onChange={(v: any) => setFilters({ ...filters, id_cd_auto: v })}
+                    placeholder="Cenário Demanda"
+                  />
+                  <NativeSelect
+                    className="w-full"
+                    options={cenario_consumo.map((o: any) => ({
+                      value: o.id_cc,
+                      label: o.nome_cenario_consumo,
+                    }))}
+                    value={filters.id_cc_auto || ''}
+                    onChange={(v: any) => setFilters({ ...filters, id_cc_auto: v })}
+                    placeholder="Cenário Consumo"
+                  />
+                </div>
+              )}
+              {simObj.perdas_auto && (
+                <div className="space-y-3">
+                  <h4 className="text-sm font-semibold text-muted-foreground">Perdas</h4>
+                  <NativeSelect
+                    className="w-full"
+                    options={cenario_perdas.map((o: any) => ({
+                      value: o.id_cp,
+                      label: o.nome_cenario_perdas,
+                    }))}
+                    value={filters.id_cp_auto || ''}
+                    onChange={(v: any) => setFilters({ ...filters, id_cp_auto: v })}
+                    placeholder="Cenário Perdas"
+                  />
+                </div>
               )}
             </div>
           </div>
-        </CardContent>
-      </Card>
+        )}
 
-      {/* ── CARD 2: Seleção de arquivos de dados fixos ── */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm">Seleção de arquivo para importação</CardTitle>
-        </CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FileSelectDialog
-            label="Arquivo de Modelo"
-            value={files.arq_mod}
-            onChange={(v) => setFiles((p) => ({ ...p, arq_mod: v }))}
-          />
-          <FileSelectDialog
-            label="Arquivo de Perdas"
-            value={files.arq_perdas}
-            onChange={(v) => setFiles((p) => ({ ...p, arq_perdas: v }))}
-          />
-          <FileSelectDialog
-            label="Arquivo de Demanda"
-            value={files.arq_demanda}
-            onChange={(v) => setFiles((p) => ({ ...p, arq_demanda: v }))}
-          />
-          <FileSelectDialog
-            label="Arquivo de CAPEX Estratégias"
-            value={files.arq_capex_estrategias}
-            onChange={(v) => setFiles((p) => ({ ...p, arq_capex_estrategias: v }))}
-          />
-          <FileSelectDialog
-            label="Arquivo de CAPEX Perdas"
-            value={files.arq_capex_perdas}
-            onChange={(v) => setFiles((p) => ({ ...p, arq_capex_perdas: v }))}
-          />
-          <FileSelectDialog
-            label="Arquivo de OPEX"
-            value={files.arq_opex}
-            onChange={(v) => setFiles((p) => ({ ...p, arq_opex: v }))}
-          />
-          <div className="col-span-full mt-4">
-            <Button onClick={handleSaveModel}>Salvar Configuração</Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* ── Tabela de modelos configurados ── */}
-      <div className="border rounded overflow-hidden max-h-[500px] overflow-y-auto bg-white">
-        <table className="w-full text-sm">
-          <thead className="bg-slate-100 sticky top-0 z-10">
-            <tr>
-              <th className="p-2 w-12">Imp</th>
-              <th className="p-2 text-left">Fonte</th>
-              <th className="p-2 text-left">Cenários</th>
-              <th className="p-2 text-left">Estratégias</th>
-              <th className="p-2 text-left">Indicadores</th>
-              <th className="p-2 text-left">Status</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y">
-            {modelos.map((m) => {
-              let cenarioObj: Record<string, string> = {}
-              if (typeof m.cenario === 'string') {
-                try {
-                  cenarioObj = JSON.parse(m.cenario || '{}')
-                } catch {
-                  cenarioObj = {}
-                }
-              } else if (m.cenario && typeof m.cenario === 'object' && !Array.isArray(m.cenario)) {
-                cenarioObj = m.cenario
-              }
-
-              let estrategiaArr: string[] = []
-              if (typeof m.estrategia === 'string') {
-                try {
-                  estrategiaArr = JSON.parse(m.estrategia || '[]')
-                } catch {
-                  estrategiaArr = []
-                }
-              } else if (Array.isArray(m.estrategia)) {
-                estrategiaArr = m.estrategia
-              }
-
-              // Exibe os indicadores configurados (nome da chave campo_extra + descrição se disponível)
-              let indConfig: { campo_extra: string; id_indicador: number }[] = []
-              if (typeof m.indicadores_config === 'string') {
-                try {
-                  indConfig = JSON.parse(m.indicadores_config || '[]')
-                } catch {
-                  indConfig = []
-                }
-              } else if (Array.isArray(m.indicadores_config)) {
-                indConfig = m.indicadores_config
-              }
-
-              const indLabel =
-                indConfig.length > 0
-                  ? indConfig
-                      .map((ic) => {
-                        // Tenta resolver a descrição a partir dos dados carregados em memória
-                        const allInds = Object.values(refData.indicadoresFonte).flat() as any[]
-                        const found = allInds.find((x: any) => x.id_indicador === ic.id_indicador)
-                        return found ? `${found.descricao} (${ic.campo_extra})` : ic.campo_extra
-                      })
-                      .join(', ')
-                  : '-'
-
-              return (
-                <tr key={m.id_mod} className="hover:bg-slate-50">
-                  <td className="p-2 text-center">
+        {/* ── QUADRO 4: Indicadores ── */}
+        {simObj && (
+          <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200 w-full">
+            <h3 className="font-semibold text-primary border-b pb-3 mb-4 text-sm uppercase tracking-wider">
+              Indicadores
+            </h3>
+            {indicadores.length === 0 ? (
+              <p className="text-xs text-muted-foreground">
+                Nenhum indicador configurado para esta simulação.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground mb-3">
+                  Selecione os indicadores para gerar gráficos de série histórica por fonte de água.
+                </p>
+                {indicadores.map((ind) => (
+                  <label
+                    key={ind.id_indicador}
+                    className="flex items-center gap-3 border p-2.5 rounded-md hover:bg-slate-50 cursor-pointer"
+                  >
                     <Checkbox
-                      checked={!!selectedModels[m.id_mod]}
-                      onCheckedChange={(c) => setSelectedModels((p) => ({ ...p, [m.id_mod]: !!c }))}
+                      checked={selectedIndicadores.includes(ind.id_indicador)}
+                      onCheckedChange={() => toggleIndicador(ind.id_indicador)}
                     />
-                  </td>
-                  <td className="p-2 font-medium">{m.fonte_agua?.nome_fonte}</td>
-                  <td className="p-2">
-                    {Object.keys(cenarioObj).length > 0 ? resolveCenarioLabel(cenarioObj) : '-'}
-                  </td>
-                  <td className="p-2">
-                    {estrategiaArr.length > 0 ? resolveEstrategiaLabel(estrategiaArr) : '-'}
-                  </td>
-                  <td className="p-2 text-slate-600 text-xs">{indLabel}</td>
-                  <td className="p-2">
-                    {importStatus[m.id_mod] ? (
-                      <div>
-                        <span
-                          className={`font-semibold ${
-                            importStatus[m.id_mod].label === 'Erro'
-                              ? 'text-destructive'
-                              : importStatus[m.id_mod].label.startsWith('Concluído')
-                                ? 'text-green-600'
-                                : 'text-muted-foreground'
-                          }`}
-                        >
-                          {importStatus[m.id_mod].label}
-                        </span>
-                        {importStatus[m.id_mod].detail && (
-                          <p className="text-xs text-destructive mt-0.5 whitespace-pre-wrap break-all">
-                            {importStatus[m.id_mod].detail}
-                          </p>
-                        )}
-                      </div>
-                    ) : (
-                      <span className="text-muted-foreground">-</span>
+                    <span className="text-sm font-medium flex-1">
+                      {ind.descricao || ind.campo_extra}
+                    </span>
+                    {ind.unidade && (
+                      <span className="text-xs text-muted-foreground bg-slate-100 px-2 py-0.5 rounded">
+                        {ind.unidade}
+                      </span>
                     )}
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── QUADRO 5: Período + Executar ── */}
+        <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200 w-full">
+          <h3 className="font-semibold text-primary border-b pb-3 mb-4 text-sm uppercase tracking-wider">
+            Período
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-muted-foreground">Ano Início</label>
+              <NativeSelect
+                className="w-full"
+                options={[
+                  2026, 2027, 2028, 2029, 2030, 2031, 2032, 2033, 2034, 2035, 2036, 2037, 2038,
+                  2039, 2040, 2041, 2042, 2043, 2044, 2045, 2046, 2047, 2048, 2049, 2050,
+                ].map((y) => ({ value: y, label: y.toString() }))}
+                value={filters.ano_inicio || ''}
+                onChange={(v: any) => setFilters({ ...filters, ano_inicio: v })}
+                placeholder="Início"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-muted-foreground">Ano Fim</label>
+              <NativeSelect
+                className="w-full"
+                options={[
+                  2026, 2027, 2028, 2029, 2030, 2031, 2032, 2033, 2034, 2035, 2036, 2037, 2038,
+                  2039, 2040, 2041, 2042, 2043, 2044, 2045, 2046, 2047, 2048, 2049, 2050,
+                ].map((y) => ({ value: y, label: y.toString() }))}
+                value={filters.ano_fim || ''}
+                onChange={(v: any) => setFilters({ ...filters, ano_fim: v })}
+                placeholder="Fim"
+              />
+            </div>
+          </div>
+          <div className="space-y-2 mt-4">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-semibold text-muted-foreground">
+                Meses (Múltipla Seleção)
+              </label>
+              <div className="space-x-2">
+                <button
+                  type="button"
+                  className="text-xs text-primary hover:underline"
+                  onClick={() => setFilters({ ...filters, meses: MONTHS.map((m) => m.v) })}
+                >
+                  Marcar todos
+                </button>
+                <button
+                  type="button"
+                  className="text-xs text-primary hover:underline"
+                  onClick={() => setFilters({ ...filters, meses: [] })}
+                >
+                  Desmarcar todos
+                </button>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+              {MONTHS.map((m) => (
+                <label
+                  key={m.v}
+                  className="flex items-center space-x-2 border p-2 rounded-md hover:bg-slate-50 cursor-pointer"
+                >
+                  <input
+                    type="checkbox"
+                    className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+                    checked={filters.meses?.includes(m.v) || false}
+                    onChange={(e) => {
+                      const current = filters.meses || []
+                      setFilters({
+                        ...filters,
+                        meses: e.target.checked
+                          ? [...current, m.v]
+                          : current.filter((x: string) => x !== m.v),
+                      })
+                    }}
+                  />
+                  <span className="text-xs font-medium">{m.l}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+          <div className="pt-6 flex flex-col gap-2">
+            <Button
+              onClick={handleSimulate}
+              disabled={loading || !simObj || selecoes.length === 0}
+              className="w-full h-11 shadow-sm text-base disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? 'Processando...' : 'Executar Simulação'}
+            </Button>
+            {!selecaoLoading && selecoes.length === 0 && (
+              <p className="text-xs text-red-500 text-center font-medium">
+                Configure ao menos uma fonte para executar a simulação.
+              </p>
+            )}
+            {!selecaoLoading && selecoes.length > 0 && !selecoes.some((s) => s.selecionado) && (
+              <p className="text-xs text-amber-500 text-center font-medium mt-1">
+                Selecione pelo menos uma configuração ativa para executar.
+              </p>
+            )}
+          </div>
+        </div>
       </div>
 
-      <div className="flex justify-end">
-        <Button onClick={handleImport} className="w-48">
-          Importar dados
-        </Button>
-      </div>
+      {ran && data.length === 0 && (
+        <div className="text-center p-12 bg-white rounded-lg border border-dashed">
+          <p className="text-muted-foreground font-medium">
+            Nenhum dado encontrado para os filtros selecionados.
+          </p>
+          <p className="text-xs text-muted-foreground mt-2">
+            Verifique se a importação foi realizada com as mesmas chaves de cenário e estratégia.
+          </p>
+        </div>
+      )}
+
+      {/* ── BLOCO 1: Card segurança hídrica ── */}
+      {segurancaHidrica && segCard && (
+        <div>
+          <h2 className="text-lg font-semibold text-primary mb-3">Índice de Segurança Hídrica</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {(() => {
+              const { indicesMedio, mesesAlerta, mesesCrise, mesesColapso, statusGeral } = segCard
+              const c = STATUS_COLORS[statusGeral]
+              return (
+                <div className={`rounded-xl border p-4 space-y-3 ${c.bg} ${c.border}`}>
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="text-sm font-semibold text-slate-700 leading-tight">
+                      Região (todas as fontes)
+                    </span>
+                    <span
+                      className={`shrink-0 text-[11px] font-bold px-2 py-0.5 rounded-full ${STATUS_BADGE[statusGeral]}`}
+                    >
+                      {STATUS_LABEL[statusGeral]}
+                    </span>
+                  </div>
+                  <div className={`text-3xl font-bold ${c.text}`}>
+                    {indicesMedio.toLocaleString('pt-BR', {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
+                  </div>
+                  <p className="text-[11px] text-slate-500 -mt-2">índice médio do período</p>
+                  <div className="flex flex-wrap gap-3 text-xs pt-1 border-t border-slate-200">
+                    <div>
+                      <span className="font-bold text-amber-600">{mesesAlerta}</span>
+                      <span className="text-slate-500 ml-1">
+                        {mesesAlerta === 1 ? 'mês em alerta' : 'meses em alerta'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="font-bold text-red-600">{mesesCrise}</span>
+                      <span className="text-slate-500 ml-1">
+                        {mesesCrise === 1 ? 'mês em crise' : 'meses em crise'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="font-bold text-rose-900">{mesesColapso}</span>
+                      <span className="text-slate-500 ml-1">
+                        {mesesColapso === 1 ? 'mês em colapso' : 'meses em colapso'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )
+            })()}
+          </div>
+        </div>
+      )}
+
+      {/* ── BLOCO 2: Gráfico segurança hídrica ── */}
+      {segurancaHidrica && segurancaHidrica.chartData.length > 0 && (
+        <div>
+          <div className="flex flex-wrap gap-6 text-xs text-slate-500 mb-2 px-1">
+            <div className="flex items-center gap-1.5">
+              <span className="w-7 border-t-2 border-dashed border-amber-400 inline-block" />
+              <span>
+                Limiar de Alerta (
+                {limiarAlerta.toLocaleString('pt-BR', { minimumFractionDigits: 1 })})
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="w-7 border-t-2 border-dashed border-red-400 inline-block" />
+              <span>
+                Limiar de Crise ({limiarCrise.toLocaleString('pt-BR', { minimumFractionDigits: 1 })}
+                )
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="w-7 border-t-2 border-dashed border-rose-800 inline-block" />
+              <span>
+                Limiar de Colapso (
+                {limiarColapso.toLocaleString('pt-BR', { minimumFractionDigits: 1 })})
+              </span>
+            </div>
+          </div>
+          <ChartWrapper
+            title="Série Temporal – Índice de Segurança Hídrica Regional"
+            chartData={segurancaHidrica.chartData}
+            height={340}
+          >
+            {segChart as React.ReactElement}
+          </ChartWrapper>
+        </div>
+      )}
+
+      {/* ── BLOCO 3: Cronograma de períodos críticos ── */}
+      {segurancaHidrica &&
+        segurancaHidrica.criticos.length > 0 &&
+        (() => {
+          const MONTH_LABELS = [
+            'Jan',
+            'Fev',
+            'Mar',
+            'Abr',
+            'Mai',
+            'Jun',
+            'Jul',
+            'Ago',
+            'Set',
+            'Out',
+            'Nov',
+            'Dez',
+          ]
+          const MONTH_LABELS_FULL = [
+            'Janeiro',
+            'Fevereiro',
+            'Março',
+            'Abril',
+            'Maio',
+            'Junho',
+            'Julho',
+            'Agosto',
+            'Setembro',
+            'Outubro',
+            'Novembro',
+            'Dezembro',
+          ]
+          const MESES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+          type Cell = { status: StatusSeg; deficit: number }
+          const criMap: Record<string, Record<number, Cell>> = {}
+          segurancaHidrica.criticos.forEach(({ tempo, status, deficit }) => {
+            const parts = tempo.split(/[-/]/)
+            const ano = parts[0]
+            const mes = parseInt(parts[1], 10)
+            if (!criMap[ano]) criMap[ano] = {}
+            criMap[ano][mes] = { status, deficit }
+          })
+          const anos = Object.keys(criMap).sort()
+          const fmt = (v: number) =>
+            v >= 1_000_000
+              ? `${(v / 1_000_000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}M m³`
+              : v >= 1_000
+                ? `${(v / 1_000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}k m³`
+                : `${v.toLocaleString('pt-BR', { maximumFractionDigits: 0 })} m³`
+          const cellCss: Record<StatusSeg, { bg: string; dot: string }> = {
+            seguro: { bg: '#ecfdf5', dot: '#10b981' },
+            alerta: { bg: '#fffbeb', dot: '#f59e0b' },
+            crise: { bg: '#fee2e2', dot: '#ef4444' },
+            colapso: { bg: '#ffe4e6', dot: '#9f1239' },
+          }
+          const downloadCsv = () => {
+            const headerRow = [
+              'Ano',
+              ...MONTH_LABELS_FULL.map((m) => `${m} - Status`),
+              ...MONTH_LABELS_FULL.map((m) => `${m} - Déficit (m³)`),
+            ].join(';')
+            const rows = anos.map((ano) =>
+              [
+                ano,
+                ...MESES.map((m) => (criMap[ano]?.[m] ? STATUS_LABEL[criMap[ano][m].status] : '')),
+                ...MESES.map((m) =>
+                  criMap[ano]?.[m]
+                    ? criMap[ano][m].deficit.toLocaleString('pt-BR', { maximumFractionDigits: 0 })
+                    : '',
+                ),
+              ].join(';'),
+            )
+            const csv = [headerRow, ...rows].join('\n')
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+            const url = URL.createObjectURL(blob)
+            const a = document.createElement('a')
+            a.href = url
+            a.download = 'periodos_criticos_matriz.csv'
+            a.click()
+            URL.revokeObjectURL(url)
+          }
+          return (
+            <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200">
+              <div className="flex items-center justify-between border-b pb-3 mb-4">
+                <div>
+                  <h3 className="font-semibold text-primary text-sm uppercase tracking-wider">
+                    Cronograma de Períodos Críticos
+                  </h3>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    Células marcadas indicam meses com déficit hídrico — passe o mouse para ver o
+                    valor
+                  </p>
+                </div>
+                <button
+                  onClick={downloadCsv}
+                  title="Download CSV"
+                  className="p-1.5 rounded hover:bg-slate-100 text-slate-500 hover:text-primary transition-colors shrink-0 ml-4"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="w-4 h-4"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="7 10 12 15 17 10" />
+                    <line x1="12" y1="15" x2="12" y2="3" />
+                  </svg>
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-4 text-xs mb-4">
+                {(['alerta', 'crise', 'colapso'] as StatusSeg[]).map((s) => (
+                  <div key={s} className="flex items-center gap-1.5">
+                    <span
+                      className="w-3.5 h-3.5 rounded-sm inline-block border"
+                      style={{ backgroundColor: cellCss[s].bg, borderColor: cellCss[s].dot }}
+                    />
+                    <span className="text-slate-600">{STATUS_LABEL[s]}</span>
+                  </div>
+                ))}
+                <div className="flex items-center gap-1.5">
+                  <span className="w-3.5 h-3.5 rounded-sm inline-block bg-slate-100 border border-slate-200" />
+                  <span className="text-slate-400">Sem ocorrência</span>
+                </div>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="border-collapse text-xs w-full">
+                  <thead>
+                    <tr>
+                      <th className="sticky left-0 z-10 bg-slate-100 px-3 py-2.5 text-left font-semibold text-slate-600 border border-slate-200 whitespace-nowrap min-w-[60px]">
+                        Ano
+                      </th>
+                      {MONTH_LABELS.map((m) => (
+                        <th
+                          key={m}
+                          className="bg-slate-100 px-0 py-2.5 text-center font-semibold text-slate-600 border border-slate-200 whitespace-nowrap w-[52px]"
+                        >
+                          {m}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {anos.map((ano) => (
+                      <tr key={ano} className="group">
+                        <td className="sticky left-0 z-10 bg-slate-50 group-hover:bg-slate-100 px-3 py-1.5 font-semibold text-slate-700 border border-slate-200 whitespace-nowrap transition-colors">
+                          {ano}
+                        </td>
+                        {MESES.map((m) => {
+                          const cell = criMap[ano]?.[m]
+                          if (!cell)
+                            return (
+                              <td
+                                key={m}
+                                className="border border-slate-100 w-[52px] py-1.5"
+                                style={{ backgroundColor: '#f8fafc' }}
+                              />
+                            )
+                          const css = cellCss[cell.status]
+                          return (
+                            <td
+                              key={m}
+                              className="border border-slate-200 w-[52px] py-1.5 text-center cursor-default"
+                              style={{ backgroundColor: css.bg }}
+                              title={`${MONTH_LABELS_FULL[m - 1]}/${ano} · ${STATUS_LABEL[cell.status]} · Déficit: ${fmt(cell.deficit)}`}
+                            >
+                              <div
+                                className="mx-auto rounded-sm flex items-center justify-center font-bold leading-none"
+                                style={{
+                                  width: 32,
+                                  height: 22,
+                                  backgroundColor: css.dot,
+                                  color: '#fff',
+                                  fontSize: 9,
+                                }}
+                              >
+                                {STATUS_LABEL[cell.status].slice(0, 3).toUpperCase()}
+                              </div>
+                            </td>
+                          )
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )
+        })()}
+
+      {/* ── CenariosDashboard ── */}
+      {data.length > 0 && <CenariosDashboard data={data} fontesMap={fontesMap} />}
+
+      {/* ── Gráficos de Indicadores ── */}
+      {indicadoresCharts.length > 0 && (
+        <div className="space-y-6">
+          {indicadoresCharts.map(({ unidade, chartData, linhas, titulo }) => (
+            <ChartWrapper
+              key={unidade}
+              title={`Indicadores: ${titulo}`}
+              chartData={chartData}
+              height={320}
+            >
+              <LineChart data={chartData} margin={{ top: 4, right: 24, left: 8, bottom: 4 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="tempo" tick={{ fontSize: 11 }} interval="preserveStartEnd" />
+                <YAxis
+                  tick={{ fontSize: 11 }}
+                  label={{
+                    value: unidade,
+                    angle: -90,
+                    position: 'insideLeft',
+                    offset: 10,
+                    style: { fontSize: 11 },
+                  }}
+                />
+                <Tooltip
+                  contentStyle={{ fontSize: 12 }}
+                  formatter={(value: any) =>
+                    typeof value === 'number'
+                      ? value.toLocaleString('pt-BR', { maximumFractionDigits: 2 })
+                      : value
+                  }
+                />
+                <Legend wrapperStyle={{ fontSize: 12 }} />
+                {linhas.map((linha, idx) => (
+                  <Line
+                    key={linha}
+                    type="monotone"
+                    dataKey={linha}
+                    stroke={LINE_COLORS[idx % LINE_COLORS.length]}
+                    dot={false}
+                    strokeWidth={2}
+                  />
+                ))}
+              </LineChart>
+            </ChartWrapper>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
