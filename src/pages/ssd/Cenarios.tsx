@@ -54,7 +54,7 @@ type SelecaoCenario = {
   selecionado: boolean
   criado_at: string
   id_usuario: string
-  cenarios: Record<string, string>
+  cenarios: string[] // array de strings: ["Clima: Pessimista", ...]
   estrategias: string[]
   fonte_agua?: { nome_fonte: string }
   _userLabel?: string
@@ -303,20 +303,6 @@ const TooltipSeguranca = ({
   )
 }
 
-// ── Helpers JSONB ──────────────────────────────────────────────────────────────
-function buildCenarioJsonb(
-  cenariosList: { tcChave: string; cChave: string }[],
-): Record<string, string> {
-  return cenariosList.reduce<Record<string, string>>((acc, item) => {
-    acc[item.tcChave] = item.cChave
-    return acc
-  }, {})
-}
-
-function buildEstrategiaJsonb(estrategiasList: { chave: string }[]): string[] {
-  return estrategiasList.map((e) => e.chave)
-}
-
 // ── Componente principal ───────────────────────────────────────────────────────
 export default function Cenarios() {
   const { cenario_demanda, cenario_consumo, cenario_perdas } = useSsdData()
@@ -329,12 +315,8 @@ export default function Cenarios() {
   const [idC, setIdC] = useState('')
   const [idAcao, setIdAcao] = useState('')
 
-  const [draftCenarios, setDraftCenarios] = useState<
-    { label: string; tcChave: string; cChave: string; id_tc: number; id_c: number }[]
-  >([])
-  const [draftEstrategias, setDraftEstrategias] = useState<
-    { label: string; chave: string; id_acao: number }[]
-  >([])
+  const [draftCenarios, setDraftCenarios] = useState<string[]>([])
+  const [draftEstrategias, setDraftEstrategias] = useState<string[]>([])
 
   const [refData, setRefData] = useState<any>({
     fontes: [],
@@ -490,8 +472,8 @@ export default function Cenarios() {
 
     const { error } = await supabase.from('selecao_cenarios').insert({
       id_fonte: Number(idFonte),
-      cenarios: buildCenarioJsonb(draftCenarios), // { tcChave: cChave }
-      estrategias: buildEstrategiaJsonb(draftEstrategias), // ["chave1", "chave2"]
+      cenarios: draftCenarios, // ["Clima: Pessimista", ...]
+      estrategias: draftEstrategias, // ["Captação a montante: Uso moderado"]
       selecionado: true,
       id_usuario: user.id,
     })
@@ -586,15 +568,11 @@ export default function Cenarios() {
 
   // ── Query principal ────────────────────────────────────────────────────────
   /**
-   * COMPARAÇÃO DE JSONB:
+   * Tanto selecao_cenarios quanto dados_simulacao gravam no formato array de strings:
+   *   cenarios:    ["Clima: Pessimista", "Uso da Terra: Pessimista"]
+   *   estrategias: ["Captação a montante: Uso moderado"]
    *
-   * Tanto selecao_cenarios quanto dados_simulacao gravam cenários no formato:
-   *   { "tcChave": "cChave", ... }   ex: { "clima": "pessimista" }
-   * E estratégias no formato:
-   *   ["chave1", "chave2"]           ex: ["barraginhas"]
-   *
-   * Para garantir igualdade semântica de JSONB independente da ordem de chaves
-   * no PostgreSQL, usamos .contains() + .containedBy() em vez de .eq():
+   * Usamos .contains() + .containedBy() para igualdade semântica de array JSONB:
    *   A = B  ↔  A @> B  AND  A <@ B
    *
    * Para arrays JSONB o mesmo vale: ["a","b"] @> ["b","a"] não é verdadeiro
@@ -609,19 +587,18 @@ export default function Cenarios() {
     let allRows: any[] = []
 
     for (const sel of activeSelecoes) {
-      // cenarios: usa contains + containedBy para igualdade JSONB real (ordem-independente)
-      const cenarioObj = sel.cenarios as Record<string, string>
+      const cenarioArr = sel.cenarios as string[]
       const estrategiaArr = sel.estrategias as string[]
 
       let q = supabase
         .from('dados_simulacao')
         .select('*')
         .eq('id_fonte', sel.id_fonte)
-        // Igualdade semântica de JSONB: A @> B e B @> A
-        .contains('cenarios', cenarioObj)
-        .containedBy('cenarios', cenarioObj)
-        // Estratégias: array JSONB — ordem é determinística, .eq() funciona
-        .eq('estrategias', JSON.stringify(estrategiaArr))
+        // Arrays JSONB: contains + containedBy = igualdade semântica
+        .contains('cenarios', cenarioArr)
+        .containedBy('cenarios', cenarioArr)
+        .contains('estrategias', estrategiaArr)
+        .containedBy('estrategias', estrategiaArr)
 
       if (filters.ano_inicio) q = q.gte('tempo', `${filters.ano_inicio}/01`)
       if (filters.ano_fim) q = q.lte('tempo', `${filters.ano_fim}/12`)
@@ -638,6 +615,7 @@ export default function Cenarios() {
         toast.error(`Erro ao buscar dados (fonte ${sel.id_fonte}): ${error.message}`)
         continue
       }
+      console.log(`[simulação] linhas encontradas: ${rows?.length ?? 0}`)
       if (rows && rows.length > 0) allRows = [...allRows, ...rows]
     }
 
@@ -1123,19 +1101,16 @@ export default function Cenarios() {
                         <td className="px-3 py-2.5 font-medium text-slate-700 whitespace-nowrap">
                           {sel.fonte_agua?.nome_fonte ?? `Fonte ${sel.id_fonte}`}
                         </td>
-                        {/* Cenários: JSONB { tcChave: cChave } → badges */}
+                        {/* Cenários: array de strings */}
                         <td className="px-3 py-2.5 text-slate-600 max-w-[260px]">
-                          {sel.cenarios &&
-                          typeof sel.cenarios === 'object' &&
-                          !Array.isArray(sel.cenarios) ? (
+                          {Array.isArray(sel.cenarios) && sel.cenarios.length > 0 ? (
                             <div className="flex flex-wrap gap-1">
-                              {Object.entries(sel.cenarios).map(([k, v]) => (
+                              {sel.cenarios.map((c) => (
                                 <span
-                                  key={k}
-                                  className="inline-flex items-center gap-1 bg-blue-50 border border-blue-200 text-blue-700 rounded px-1.5 py-0.5 text-[11px] font-mono"
+                                  key={c}
+                                  className="inline-block bg-blue-50 border border-blue-200 text-blue-700 rounded px-1.5 py-0.5 text-[11px]"
                                 >
-                                  <span className="font-semibold">{k}:</span>
-                                  <span>{v}</span>
+                                  {c}
                                 </span>
                               ))}
                             </div>
@@ -1143,14 +1118,14 @@ export default function Cenarios() {
                             <span className="text-slate-400">-</span>
                           )}
                         </td>
-                        {/* Estratégias: array ["chave1"] → badges */}
+                        {/* Estratégias: array de strings */}
                         <td className="px-3 py-2.5 text-slate-600 max-w-[260px]">
                           {Array.isArray(sel.estrategias) && sel.estrategias.length > 0 ? (
                             <div className="flex flex-wrap gap-1">
                               {sel.estrategias.map((e) => (
                                 <span
                                   key={e}
-                                  className="inline-block bg-emerald-50 border border-emerald-200 text-emerald-700 rounded px-1.5 py-0.5 text-[11px] font-mono"
+                                  className="inline-block bg-emerald-50 border border-emerald-200 text-emerald-700 rounded px-1.5 py-0.5 text-[11px]"
                                 >
                                   {e}
                                 </span>
@@ -1237,20 +1212,10 @@ export default function Cenarios() {
                         (x: any) => x.id_cenarios.toString() === idC,
                       )
                       if (t && c) {
-                        if (draftCenarios.some((d) => d.id_tc === t.id_tc))
-                          return toast.error(
-                            'Este tipo já foi adicionado. Remova-o antes de substituir.',
-                          )
-                        setDraftCenarios((p) => [
-                          ...p,
-                          {
-                            label: `${t.descricao}: ${c.cenarios}`,
-                            tcChave: t.chave ?? t.id_tc.toString(),
-                            cChave: c.chave ?? c.cenarios.toLowerCase().replace(/\s+/g, '_'),
-                            id_tc: t.id_tc,
-                            id_c: c.id_cenarios,
-                          },
-                        ])
+                        const label = `${t.descricao}: ${c.cenarios}`
+                        if (draftCenarios.includes(label))
+                          return toast.error('Este cenário já foi adicionado.')
+                        setDraftCenarios((p) => [...p, label])
                         setIdTc('')
                         setIdC('')
                       }
@@ -1258,19 +1223,13 @@ export default function Cenarios() {
                   >
                     <Plus className="w-3.5 h-3.5 mr-1" /> Adicionar Cenário
                   </Button>
-                  {/* Preview JSONB */}
-                  {draftCenarios.length > 0 && (
-                    <div className="bg-slate-50 border rounded p-2 text-[10px] font-mono text-slate-500 break-all">
-                      {JSON.stringify(buildCenarioJsonb(draftCenarios))}
-                    </div>
-                  )}
                   <ul className="space-y-1.5">
                     {draftCenarios.map((c, i) => (
                       <li
                         key={i}
                         className="flex justify-between items-center bg-slate-50 px-3 py-1.5 rounded border text-xs"
                       >
-                        <span>{c.label}</span>
+                        <span>{c}</span>
                         <button
                           onClick={() => setDraftCenarios((p) => p.filter((_, idx) => idx !== i))}
                           className="text-destructive hover:text-red-700 ml-2"
@@ -1304,32 +1263,22 @@ export default function Cenarios() {
                     onClick={() => {
                       const a = refData.acoesBd.find((x: any) => x.id_acao.toString() === idAcao)
                       if (a) {
-                        const chave = a.chave ?? a.descricao.toLowerCase().replace(/\s+/g, '_')
-                        if (draftEstrategias.some((d) => d.chave === chave))
+                        if (draftEstrategias.includes(a.descricao))
                           return toast.error('Esta ação já foi adicionada.')
-                        setDraftEstrategias((p) => [
-                          ...p,
-                          { label: a.descricao, chave, id_acao: a.id_acao },
-                        ])
+                        setDraftEstrategias((p) => [...p, a.descricao])
                         setIdAcao('')
                       }
                     }}
                   >
                     <Plus className="w-3.5 h-3.5 mr-1" /> Adicionar Ação
                   </Button>
-                  {/* Preview array */}
-                  {draftEstrategias.length > 0 && (
-                    <div className="bg-slate-50 border rounded p-2 text-[10px] font-mono text-slate-500 break-all">
-                      {JSON.stringify(buildEstrategiaJsonb(draftEstrategias))}
-                    </div>
-                  )}
                   <ul className="space-y-1.5">
                     {draftEstrategias.map((e, i) => (
                       <li
                         key={i}
                         className="flex justify-between items-center bg-slate-50 px-3 py-1.5 rounded border text-xs"
                       >
-                        <span>{e.label}</span>
+                        <span>{e}</span>
                         <button
                           onClick={() =>
                             setDraftEstrategias((p) => p.filter((_, idx) => idx !== i))
