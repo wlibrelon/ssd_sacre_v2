@@ -1603,7 +1603,10 @@ export function Importacao() {
                   <label className="text-xs font-semibold text-muted-foreground">
                     Arquivo de Indicadores (Storage › bucket: modelos › pasta: indicadores/)
                   </label>
-                  <Select value={selectedArqIndicador} onValueChange={setSelectedArqIndicador}>
+                  <Select
+                    value={selectedArqIndicador || '__none__'}
+                    onValueChange={(v) => setSelectedArqIndicador(v === '__none__' ? '' : v)}
+                  >
                     <SelectTrigger className="w-full">
                       <SelectValue
                         placeholder={
@@ -1612,7 +1615,7 @@ export function Importacao() {
                       />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">— Nenhum —</SelectItem>
+                      <SelectItem value="__none__">— Nenhum —</SelectItem>
                       {storageFiles.map((f) => (
                         <SelectItem key={f.fullPath} value={f.fullPath}>
                           <div className="flex items-center gap-2">
@@ -1730,16 +1733,19 @@ export function Importacao() {
                               <td key={col} className="px-2 py-1.5">
                                 {col === 'arq_indicador' ? (
                                   <Select
-                                    value={newModelo[col] ?? ''}
+                                    value={newModelo[col] ?? '__none__'}
                                     onValueChange={(v) =>
-                                      setNewModelo((p) => ({ ...p, [col]: v || null }))
+                                      setNewModelo((p) => ({
+                                        ...p,
+                                        [col]: v === '__none__' ? null : v,
+                                      }))
                                     }
                                   >
                                     <SelectTrigger className="h-7 text-xs">
                                       <SelectValue placeholder="Selecionar..." />
                                     </SelectTrigger>
                                     <SelectContent>
-                                      <SelectItem value="">— Nenhum —</SelectItem>
+                                      <SelectItem value="__none__">— Nenhum —</SelectItem>
                                       {storageFiles.map((f) => (
                                         <SelectItem key={f.fullPath} value={f.fullPath}>
                                           {f.name}
@@ -1797,11 +1803,17 @@ export function Importacao() {
                                       <span className="text-slate-500 font-mono">{row.id_s}</span>
                                     ) : col === 'arq_indicador' ? (
                                       <Select
-                                        value={editingModelo.fields[col] ?? ''}
+                                        value={editingModelo.fields[col] ?? '__none__'}
                                         onValueChange={(v) =>
                                           setEditingModelo((p) =>
                                             p
-                                              ? { ...p, fields: { ...p.fields, [col]: v || null } }
+                                              ? {
+                                                  ...p,
+                                                  fields: {
+                                                    ...p.fields,
+                                                    [col]: v === '__none__' ? null : v,
+                                                  },
+                                                }
                                               : null,
                                           )
                                         }
@@ -1810,7 +1822,7 @@ export function Importacao() {
                                           <SelectValue placeholder="Selecionar..." />
                                         </SelectTrigger>
                                         <SelectContent>
-                                          <SelectItem value="">— Nenhum —</SelectItem>
+                                          <SelectItem value="__none__">— Nenhum —</SelectItem>
                                           {storageFiles.map((f) => (
                                             <SelectItem key={f.fullPath} value={f.fullPath}>
                                               {f.name}
