@@ -21,6 +21,23 @@ import {
 } from '@/components/ui/dialog'
 import { Trash2, Folder, File as FileIcon, ChevronLeft } from 'lucide-react'
 
+const formatData = (data: any): string => {
+  if (data === null || data === undefined) return ''
+  if (typeof data === 'string' || typeof data === 'number' || typeof data === 'boolean')
+    return String(data)
+  if (Array.isArray(data)) {
+    return data
+      .map((item) => (typeof item === 'object' ? JSON.stringify(item) : String(item)))
+      .join(', ')
+  }
+  if (typeof data === 'object') {
+    return Object.values(data)
+      .map((item) => (typeof item === 'object' ? JSON.stringify(item) : String(item)))
+      .join(', ')
+  }
+  return String(data)
+}
+
 function FileSelectDialog({
   label,
   value,
@@ -142,33 +159,47 @@ export function Importacao() {
   })
 
   useEffect(() => {
-    supabase
-      .from('simulacao_ssd')
-      .select('*')
-      .then((res) => setSimulacoes(res.data || []))
-    supabase
-      .from('modelos')
-      .select('*, fonte_agua(nome_fonte)')
-      .then((res) => setModelos(res.data || []))
-    Promise.all([
-      supabase.from('fonte_agua').select('*'),
-      supabase.from('tipos_cenarios').select('*'),
-      supabase.from('cenarios').select('*'),
-      supabase.from('acoes').select('*'),
-      supabase.from('cenarios_fonte').select('*'),
-      supabase.from('tipo_cenario_cenario').select('*'),
-      supabase.from('acoes_fonte').select('*'),
-    ]).then((res) =>
-      setRefData({
-        fontes: res[0].data || [],
-        tiposCenario: res[1].data || [],
-        cenarios: res[2].data || [],
-        acoes: res[3].data || [],
-        cenariosFonte: res[4].data || [],
-        tcCenario: res[5].data || [],
-        acoesFonte: res[6].data || [],
-      }),
-    )
+    let mounted = true
+
+    const fetchData = async () => {
+      try {
+        const [simRes, modRes, refRes] = await Promise.all([
+          supabase.from('simulacao_ssd').select('*'),
+          supabase.from('modelos').select('*, fonte_agua(nome_fonte)'),
+          Promise.all([
+            supabase.from('fonte_agua').select('*'),
+            supabase.from('tipos_cenarios').select('*'),
+            supabase.from('cenarios').select('*'),
+            supabase.from('acoes').select('*'),
+            supabase.from('cenarios_fonte').select('*'),
+            supabase.from('tipo_cenario_cenario').select('*'),
+            supabase.from('acoes_fonte').select('*'),
+          ]),
+        ])
+
+        if (mounted) {
+          setSimulacoes(simRes.data || [])
+          setModelos(modRes.data || [])
+          setRefData({
+            fontes: refRes[0].data || [],
+            tiposCenario: refRes[1].data || [],
+            cenarios: refRes[2].data || [],
+            acoes: refRes[3].data || [],
+            cenariosFonte: refRes[4].data || [],
+            tcCenario: refRes[5].data || [],
+            acoesFonte: refRes[6].data || [],
+          })
+        }
+      } catch (error) {
+        console.error('Failed to fetch data:', error)
+      }
+    }
+
+    fetchData()
+
+    return () => {
+      mounted = false
+    }
   }, [])
 
   const filteredTipos = refData.tiposCenario.filter((tc: any) =>
@@ -312,7 +343,7 @@ export function Importacao() {
             <SelectContent>
               {simulacoes.map((s) => (
                 <SelectItem key={s.id_s} value={s.id_s.toString()}>
-                  {s.descricao}
+                  {formatData(s.descricao)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -336,7 +367,7 @@ export function Importacao() {
               <SelectContent>
                 {refData.fontes.map((f: any) => (
                   <SelectItem key={f.id_fonte} value={f.id_fonte.toString()}>
-                    {f.nome_fonte}
+                    {formatData(f.nome_fonte)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -353,7 +384,7 @@ export function Importacao() {
                   <SelectContent>
                     {filteredTipos.map((t: any) => (
                       <SelectItem key={t.id_tc} value={t.id_tc.toString()}>
-                        {t.descricao}
+                        {formatData(t.descricao)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -365,7 +396,7 @@ export function Importacao() {
                   <SelectContent>
                     {filteredCenarios.map((c: any) => (
                       <SelectItem key={c.id_cenarios} value={c.id_cenarios.toString()}>
-                        {c.cenarios}
+                        {formatData(c.cenarios)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -392,7 +423,7 @@ export function Importacao() {
                     key={i}
                     className="flex justify-between items-center bg-white p-2 rounded border text-sm"
                   >
-                    {c}
+                    {formatData(c)}
                     <Button
                       variant="ghost"
                       size="icon"
@@ -415,7 +446,7 @@ export function Importacao() {
                   <SelectContent>
                     {filteredAcoes.map((a: any) => (
                       <SelectItem key={a.id_acao} value={a.id_acao.toString()}>
-                        {a.descricao}
+                        {formatData(a.descricao)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -440,7 +471,7 @@ export function Importacao() {
                     key={i}
                     className="flex justify-between items-center bg-white p-2 rounded border text-sm"
                   >
-                    {e}
+                    {formatData(e)}
                     <Button
                       variant="ghost"
                       size="icon"
@@ -518,10 +549,10 @@ export function Importacao() {
                     onCheckedChange={(c) => setSelectedModels((p) => ({ ...p, [m.id_mod]: !!c }))}
                   />
                 </td>
-                <td className="p-2 font-medium">{m.fonte_agua?.nome_fonte}</td>
-                <td className="p-2">{(m.cenario || []).join(', ')}</td>
-                <td className="p-2">{(m.estrategia || []).join(', ')}</td>
-                <td className="p-2 font-semibold">{importStatus[m.id_mod] || '-'}</td>
+                <td className="p-2 font-medium">{formatData(m.fonte_agua?.nome_fonte)}</td>
+                <td className="p-2">{formatData(m.cenario)}</td>
+                <td className="p-2">{formatData(m.estrategia)}</td>
+                <td className="p-2 font-semibold">{formatData(importStatus[m.id_mod]) || '-'}</td>
               </tr>
             ))}
           </tbody>

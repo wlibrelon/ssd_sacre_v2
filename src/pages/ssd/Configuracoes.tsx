@@ -1,3 +1,4 @@
+import React from 'react'
 import { Grupo1 } from './components/Grupo1'
 import { Grupo2 } from './components/Grupo2'
 import { Grupo4 } from './components/Grupo4'
@@ -9,6 +10,30 @@ import {
   AccordionTrigger,
   AccordionContent,
 } from '@/components/ui/accordion'
+
+class ErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean; error: any }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props)
+    this.state = { hasError: false, error: null }
+  }
+  static getDerivedStateFromError(error: any) {
+    return { hasError: true, error }
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="p-4 bg-red-50 border border-red-200 rounded-md text-red-800 my-4">
+          <h3 className="font-bold">Erro ao carregar componente</h3>
+          <p className="text-sm mt-1">{this.state.error?.message || 'Erro desconhecido'}</p>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
 
 export default function Configuracoes() {
   return (
@@ -28,7 +53,9 @@ export default function Configuracoes() {
             Configuração de fontes de água, cenários e ações
           </AccordionTrigger>
           <AccordionContent className="pt-2 pb-6">
-            <Grupo1 />
+            <ErrorBoundary>
+              <Grupo1 />
+            </ErrorBoundary>
           </AccordionContent>
         </AccordionItem>
 
@@ -37,7 +64,9 @@ export default function Configuracoes() {
             Associações de Referência
           </AccordionTrigger>
           <AccordionContent className="pt-2 pb-6">
-            <Grupo2 />
+            <ErrorBoundary>
+              <Grupo2 />
+            </ErrorBoundary>
           </AccordionContent>
         </AccordionItem>
 
@@ -46,7 +75,9 @@ export default function Configuracoes() {
             Configuração de Demandas e Perdas
           </AccordionTrigger>
           <AccordionContent className="pt-2 pb-6">
-            <Grupo4 />
+            <ErrorBoundary>
+              <Grupo4 />
+            </ErrorBoundary>
           </AccordionContent>
         </AccordionItem>
 
@@ -55,7 +86,9 @@ export default function Configuracoes() {
             Upload de arquivos de dados
           </AccordionTrigger>
           <AccordionContent className="pt-2 pb-6">
-            <GrupoUpload />
+            <ErrorBoundary>
+              <GrupoUpload />
+            </ErrorBoundary>
           </AccordionContent>
         </AccordionItem>
 
@@ -64,7 +97,9 @@ export default function Configuracoes() {
             Importação de dados
           </AccordionTrigger>
           <AccordionContent className="pt-2 pb-6">
-            <Importacao />
+            <ErrorBoundary>
+              <Importacao />
+            </ErrorBoundary>
           </AccordionContent>
         </AccordionItem>
       </Accordion>
