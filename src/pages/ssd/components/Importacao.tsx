@@ -204,8 +204,20 @@ export function Importacao() {
                   />
                 </td>
                 <td className="p-2 font-medium">{m.fonte_agua?.nome_fonte}</td>
-                <td className="p-2">{m.cenario}</td>
-                <td className="p-2">{m.estrategia}</td>
+                <td className="p-2">
+                  {typeof m.cenario === 'object' && m.cenario !== null
+                    ? Array.isArray(m.cenario)
+                      ? m.cenario.join(', ')
+                      : Object.keys(m.cenario).join(', ')
+                    : String(m.cenario || '-')}
+                </td>
+                <td className="p-2">
+                  {typeof m.estrategia === 'object' && m.estrategia !== null
+                    ? Array.isArray(m.estrategia)
+                      ? m.estrategia.join(', ')
+                      : Object.keys(m.estrategia).join(', ')
+                    : String(m.estrategia || '-')}
+                </td>
               </tr>
             ))}
             {modelos.length === 0 && (
