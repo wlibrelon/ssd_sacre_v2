@@ -197,7 +197,7 @@ export function Importacao() {
 
   // Lista completa de indicadores disponíveis (tabela indicadores)
   const [indicadores, setIndicadores] = useState<
-    { id_indicador: number; descricao: string; campo_extra: string }[]
+    { id_indicador: number; descricao: string; campo_extra: string; id_fonte: number }[]
   >([])
 
   // Draft de montagem de indicadores no formulário
@@ -219,8 +219,14 @@ export function Importacao() {
   const [idTc, setIdTc] = useState('')
   const [idC, setIdC] = useState('')
   const [idAcao, setIdAcao] = useState('')
-  const [cenariosList, setCenariosList] = useState<string[]>([])
-  const [estrategiasList, setEstrategiasList] = useState<string[]>([])
+  // Cada item guarda label (exibição) + chave do tipo + chave do cenário
+  // Formato final gravado: { tcChave: cChave, ... } — igual ao selecao_cenarios
+  const [cenariosList, setCenariosList] = useState<
+    { label: string; tcChave: string; cChave: string }[]
+  >([])
+  // Cada item guarda label (exibição) + chave da ação
+  // Formato final gravado: ["chave1", "chave2"] — igual ao selecao_cenarios
+  const [estrategiasList, setEstrategiasList] = useState<{ label: string; chave: string }[]>([])
   const [files, setFiles] = useState({
     arq_mod: '',
     arq_perdas: '',
@@ -243,7 +249,7 @@ export function Importacao() {
           supabase.from('modelos').select('*, fonte_agua(nome_fonte)'),
           supabase
             .from('indicadores')
-            .select('id_indicador, descricao, campo_extra')
+            .select('id_indicador, descricao, campo_extra, id_fonte')
             .order('descricao'),
           Promise.all([
             supabase.from('fonte_agua').select('*'),
@@ -293,9 +299,11 @@ export function Importacao() {
     ),
   )
 
-  // Indicadores ainda não adicionados ao draft
+  // Indicadores filtrados pela fonte selecionada e não adicionados ao draft
   const indicadoresDisponiveis = indicadores.filter(
-    (ind) => !indicadoresDraft.some((d) => d.id_indicador === ind.id_indicador),
+    (ind) =>
+      ind.id_fonte === Number(idFonte) &&
+      !indicadoresDraft.some((d) => d.id_indicador === ind.id_indicador),
   )
 
   // ── Adicionar indicador ao draft ─────────────────────────────────────────────
@@ -330,12 +338,21 @@ export function Importacao() {
           }, {})
         : null
 
+    // Monta JSONB de cenários igual ao selecao_cenarios: { tcChave: cChave }
+    const cenarioJsonb = cenariosList.reduce<Record<string, string>>((acc, item) => {
+      acc[item.tcChave] = item.cChave
+      return acc
+    }, {})
+
+    // Monta array de estratégias igual ao selecao_cenarios: ["chave1", "chave2"]
+    const estrategiaArray = estrategiasList.map((e) => e.chave)
+
     const { data, error } = await supabase
       .from('modelos')
       .insert({
         id_fonte: Number(idFonte),
-        cenario: cenariosList,
-        estrategia: estrategiasList,
+        cenario: cenarioJsonb,
+        estrategia: estrategiaArray,
         arq_mod: files.arq_mod || null,
         arq_perdas: files.arq_perdas || null,
         arq_demanda: files.arq_demanda || null,
@@ -790,7 +807,20 @@ export function Importacao() {
                   const t = refData.tiposCenario.find((x: any) => x.id_tc.toString() === idTc)
                   const c = refData.cenarios.find((x: any) => x.id_cenarios.toString() === idC)
                   if (t && c) {
-                    setCenariosList((p) => [...p, `${t.descricao}: ${c.cenarios}`])
+                    const tcChave: string = t.chave ?? t.id_tc.toString()
+                    const cChave: string = c.chave ?? c.cenarios.toLowerCase().replace(/\s+/g, '_')
+                    // Impede duplicata de tipo
+                    if (cenariosList.some((d) => d.tcChave === tcChave)) {
+                      return toast.error('Este tipo de cenário já foi adicionado')
+                    }
+                    setCenariosList((p) => [
+                      ...p,
+                      {
+                        label: `${t.descricao}: ${c.cenarios}`,
+                        tcChave,
+                        cChave,
+                      },
+                    ])
                     setIdTc('')
                     setIdC('')
                   }
@@ -798,13 +828,24 @@ export function Importacao() {
               >
                 Adicionar Cenário
               </Button>
+              {/* Preview do JSONB que será gravado */}
+              {cenariosList.length > 0 && (
+                <div className="bg-slate-100 border rounded p-2 text-[10px] font-mono text-slate-500 break-all">
+                  {JSON.stringify(
+                    cenariosList.reduce<Record<string, string>>((a, d) => {
+                      a[d.tcChave] = d.cChave
+                      return a
+                    }, {}),
+                  )}
+                </div>
+              )}
               <ul className="space-y-1.5">
                 {cenariosList.map((c, i) => (
                   <li
                     key={i}
                     className="flex justify-between items-center bg-white px-2 py-1.5 rounded border text-xs"
                   >
-                    <span className="truncate flex-1 mr-2">{formatData(c)}</span>
+                    <span className="truncate flex-1 mr-2">{c.label}</span>
                     <Button
                       variant="ghost"
                       size="icon"
@@ -840,20 +881,30 @@ export function Importacao() {
                 onClick={() => {
                   const a = refData.acoes.find((x: any) => x.id_acao.toString() === idAcao)
                   if (a) {
-                    setEstrategiasList((p) => [...p, a.descricao])
+                    const chave: string = a.chave ?? a.descricao.toLowerCase().replace(/\s+/g, '_')
+                    if (estrategiasList.some((d) => d.chave === chave)) {
+                      return toast.error('Esta ação já foi adicionada')
+                    }
+                    setEstrategiasList((p) => [...p, { label: a.descricao, chave }])
                     setIdAcao('')
                   }
                 }}
               >
                 Adicionar Ação
               </Button>
+              {/* Preview do array que será gravado */}
+              {estrategiasList.length > 0 && (
+                <div className="bg-slate-100 border rounded p-2 text-[10px] font-mono text-slate-500 break-all">
+                  {JSON.stringify(estrategiasList.map((e) => e.chave))}
+                </div>
+              )}
               <ul className="space-y-1.5">
                 {estrategiasList.map((e, i) => (
                   <li
                     key={i}
                     className="flex justify-between items-center bg-white px-2 py-1.5 rounded border text-xs"
                   >
-                    <span className="truncate flex-1 mr-2">{formatData(e)}</span>
+                    <span className="truncate flex-1 mr-2">{e.label}</span>
                     <Button
                       variant="ghost"
                       size="icon"
@@ -1062,18 +1113,41 @@ export function Importacao() {
                       {formatData(m.fonte_agua?.nome_fonte) || `Fonte ${m.id_fonte}`}
                     </td>
 
-                    {/* Cenários */}
-                    <td className="px-3 py-2 text-slate-600 max-w-[160px]">
-                      <span className="block truncate" title={formatData(m.cenario)}>
-                        {formatData(m.cenario) || <span className="text-slate-300">—</span>}
-                      </span>
+                    {/* Cenários — JSONB { tcChave: cChave } */}
+                    <td className="px-3 py-2 text-slate-600 max-w-[180px]">
+                      {m.cenario && typeof m.cenario === 'object' && !Array.isArray(m.cenario) ? (
+                        <div className="flex flex-wrap gap-1">
+                          {Object.entries(m.cenario).map(([k, v]) => (
+                            <span
+                              key={k}
+                              className="inline-flex items-center gap-0.5 bg-blue-50 border border-blue-200 text-blue-700 rounded px-1 py-0.5 text-[10px] font-mono"
+                            >
+                              <span className="font-semibold">{k}:</span>
+                              {String(v)}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-slate-300">—</span>
+                      )}
                     </td>
 
-                    {/* Estratégias */}
-                    <td className="px-3 py-2 text-slate-600 max-w-[160px]">
-                      <span className="block truncate" title={formatData(m.estrategia)}>
-                        {formatData(m.estrategia) || <span className="text-slate-300">—</span>}
-                      </span>
+                    {/* Estratégias — array ["chave1", "chave2"] */}
+                    <td className="px-3 py-2 text-slate-600 max-w-[180px]">
+                      {Array.isArray(m.estrategia) && m.estrategia.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {m.estrategia.map((e: string) => (
+                            <span
+                              key={e}
+                              className="inline-block bg-emerald-50 border border-emerald-200 text-emerald-700 rounded px-1 py-0.5 text-[10px] font-mono"
+                            >
+                              {e}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-slate-300">—</span>
+                      )}
                     </td>
 
                     {/* Arquivos simples */}
