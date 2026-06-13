@@ -45,8 +45,7 @@ const MONTHS = [
 
 const LINE_COLORS = ['#2563eb', '#16a34a', '#dc2626', '#d97706', '#7c3aed', '#0891b2', '#be185d']
 
-// ── Tipos ─────────────────────────────────────────────────────────────────────
-
+// ── Tipos ──────────────────────────────────────────────────────────────────────
 type StatusSeg = 'seguro' | 'alerta' | 'crise' | 'colapso'
 
 type SelecaoCenario = {
@@ -58,12 +57,10 @@ type SelecaoCenario = {
   cenarios: Record<string, string>
   estrategias: string[]
   fonte_agua?: { nome_fonte: string }
-  // O join com profiles é feito separadamente para evitar erro de FK cache
   _userLabel?: string
 }
 
-// ── helpers de segurança hídrica ───────────────────────────────────────────────
-
+// ── Helpers de segurança hídrica ───────────────────────────────────────────────
 function getStatus(
   indice: number,
   limiarAlerta: number,
@@ -97,8 +94,7 @@ const STATUS_BADGE: Record<StatusSeg, string> = {
   colapso: 'bg-rose-200 text-rose-900',
 }
 
-// ── ChartWrapper ──────────────────────────────────────────────────────────────
-
+// ── ChartWrapper ───────────────────────────────────────────────────────────────
 interface ChartWrapperProps {
   title: string
   chartData: any[]
@@ -245,8 +241,7 @@ function ChartWrapper({ title, chartData, children, height = 340 }: ChartWrapper
   )
 }
 
-// ── Tooltip customizado ───────────────────────────────────────────────────────
-
+// ── Tooltip customizado ────────────────────────────────────────────────────────
 const TooltipSeguranca = ({
   active,
   payload,
@@ -308,8 +303,7 @@ const TooltipSeguranca = ({
   )
 }
 
-// ── Helpers JSONB ─────────────────────────────────────────────────────────────
-
+// ── Helpers JSONB ──────────────────────────────────────────────────────────────
 function buildCenarioJsonb(
   cenariosList: { tcChave: string; cChave: string }[],
 ): Record<string, string> {
@@ -323,26 +317,13 @@ function buildEstrategiaJsonb(estrategiasList: { chave: string }[]): string[] {
   return estrategiasList.map((e) => e.chave)
 }
 
-function stableJsonString(obj: Record<string, string>): string {
-  const sorted = Object.keys(obj)
-    .sort()
-    .reduce<Record<string, string>>((acc, k) => {
-      acc[k] = obj[k]
-      return acc
-    }, {})
-  return JSON.stringify(sorted)
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-
+// ── Componente principal ───────────────────────────────────────────────────────
 export default function Cenarios() {
   const { cenario_demanda, cenario_consumo, cenario_perdas } = useSsdData()
 
-  // ── Estado: lista de seleções salvas no banco ─────────────────────────────
   const [selecoes, setSelecoes] = useState<SelecaoCenario[]>([])
   const [selecaoLoading, setSelecaoLoading] = useState(true)
 
-  // Controles do formulário de adição
   const [idFonte, setIdFonte] = useState('')
   const [idTc, setIdTc] = useState('')
   const [idC, setIdC] = useState('')
@@ -351,12 +332,10 @@ export default function Cenarios() {
   const [draftCenarios, setDraftCenarios] = useState<
     { label: string; tcChave: string; cChave: string; id_tc: number; id_c: number }[]
   >([])
-
   const [draftEstrategias, setDraftEstrategias] = useState<
     { label: string; chave: string; id_acao: number }[]
   >([])
 
-  // Dados de referência
   const [refData, setRefData] = useState<any>({
     fontes: [],
     tiposCenario: [],
@@ -367,12 +346,10 @@ export default function Cenarios() {
     acoesFonte: [],
   })
 
-  // ── Estado do registro único de simulacao_ssd ─────────────────────────────
   const [simObj, setSimObj] = useState<any>(null)
   const [simEdit, setSimEdit] = useState<any>(null)
   const [simSaving, setSimSaving] = useState(false)
 
-  // ── Estado da simulação ───────────────────────────────────────────────────
   const [filters, setFilters] = useState<any>({})
   const [data, setData] = useState<any[]>([])
   const [groupedData, setGroupedData] = useState<any[]>([])
@@ -388,12 +365,7 @@ export default function Cenarios() {
   const [indicadores, setIndicadores] = useState<any[]>([])
   const [selectedIndicadores, setSelectedIndicadores] = useState<number[]>([])
 
-  // ── CORREÇÃO: Busca seleções SEM join em profiles ─────────────────────────
-  // O join profiles causava erro "Could not find a relationship between
-  // 'selecao_cenarios' and 'profiles' in the schema cache" porque o PostgREST
-  // não infere automaticamente a FK id_usuario → profiles.id.
-  // Solução: buscar as seleções sem esse join e, se necessário, buscar o
-  // e-mail do usuário atual separadamente via auth.getUser().
+  // ── Fetch seleções ─────────────────────────────────────────────────────────
   const fetchSelecoes = useCallback(async () => {
     setSelecaoLoading(true)
     const {
@@ -404,19 +376,11 @@ export default function Cenarios() {
       return
     }
 
-    // 1. Busca as seleções sem o join problemático em profiles
     const { data: rows, error } = await supabase
       .from('selecao_cenarios')
-      .select(`
-        id,
-        id_fonte,
-        selecionado,
-        criado_at,
-        id_usuario,
-        cenarios,
-        estrategias,
-        fonte_agua ( nome_fonte )
-      `)
+      .select(
+        `id, id_fonte, selecionado, criado_at, id_usuario, cenarios, estrategias, fonte_agua ( nome_fonte )`,
+      )
       .eq('id_usuario', user.id)
       .order('criado_at', { ascending: false })
 
@@ -426,18 +390,12 @@ export default function Cenarios() {
       return
     }
 
-    // 2. Adiciona o label do usuário atual (evita uma query extra para outros usuários)
     const userLabel = user.email ?? user.id.slice(0, 8) + '…'
-    const enriched: SelecaoCenario[] = (rows ?? []).map((r: any) => ({
-      ...r,
-      _userLabel: userLabel,
-    }))
-
-    setSelecoes(enriched)
+    setSelecoes((rows ?? []).map((r: any) => ({ ...r, _userLabel: userLabel })))
     setSelecaoLoading(false)
   }, [])
 
-  // ── Carregamento inicial ──────────────────────────────────────────────────
+  // ── Carregamento inicial ───────────────────────────────────────────────────
   useEffect(() => {
     fetchSelecoes()
     supabase
@@ -495,7 +453,7 @@ export default function Cenarios() {
       })
   }, [simObj])
 
-  // ── Selects filtrados pelo idFonte ativo no formulário ────────────────────
+  // ── Selects filtrados ──────────────────────────────────────────────────────
   const filteredTipos = refData.tiposCenario.filter((tc: any) =>
     refData.cenariosFonte.some(
       (cf: any) => cf.id_fonte === Number(idFonte) && cf.id_tc === tc.id_tc,
@@ -519,7 +477,7 @@ export default function Cenarios() {
     setDraftEstrategias([])
   }
 
-  // ── Confirma a configuração da fonte ativa ────────────────────────────────
+  // ── Confirma fonte ─────────────────────────────────────────────────────────
   const handleConfirmarFonte = async () => {
     if (!idFonte) return toast.error('Selecione uma fonte de água')
     if (draftCenarios.length === 0) return toast.error('Adicione ao menos um cenário')
@@ -530,20 +488,16 @@ export default function Cenarios() {
     } = await supabase.auth.getUser()
     if (!user) return toast.error('Usuário não autenticado')
 
-    const cenarioJsonb = buildCenarioJsonb(draftCenarios)
-    const estrategiaJsonb = buildEstrategiaJsonb(draftEstrategias)
-
     const { error } = await supabase.from('selecao_cenarios').insert({
       id_fonte: Number(idFonte),
-      cenarios: cenarioJsonb,
-      estrategias: estrategiaJsonb,
+      cenarios: buildCenarioJsonb(draftCenarios), // { tcChave: cChave }
+      estrategias: buildEstrategiaJsonb(draftEstrategias), // ["chave1", "chave2"]
       selecionado: true,
       id_usuario: user.id,
     })
 
-    if (error) {
-      toast.error(`Erro ao salvar seleção: ${error.message}`)
-    } else {
+    if (error) toast.error(`Erro ao salvar seleção: ${error.message}`)
+    else {
       toast.success('Configuração salva com sucesso')
       setIdFonte('')
       setDraftCenarios([])
@@ -570,7 +524,7 @@ export default function Cenarios() {
     else fetchSelecoes()
   }
 
-  // ── Gravação da simulação única ───────────────────────────────────────────
+  // ── Gravação da simulação ──────────────────────────────────────────────────
   const handleSaveSim = async () => {
     if (!simEdit || !simObj) return
     setSimSaving(true)
@@ -587,7 +541,7 @@ export default function Cenarios() {
     setSimSaving(false)
   }
 
-  // ── Cálculos modulares ────────────────────────────────────────────────────
+  // ── Cálculos modulares ─────────────────────────────────────────────────────
   const aplicarCalculosModulares = (data: any[], sim: any, cd: any, cc: any, cp: any) => {
     const tempos = Array.from(new Set(data.map((d) => d.tempo))).sort()
     const pop_inicial = sim?.pop_inicial || 0
@@ -596,14 +550,12 @@ export default function Cenarios() {
     const perc_inicial_perdas = sim?.perc_inicial_perdas || 0
     const inicio_perdas = sim?.inicio_perdas || ''
     const perc_final_perdas = cp?.percentual || 0
-
     const temposNorm = tempos.map((t: any) => (t ? t.replace(/\//g, '-') : ''))
     const inicio_perdas_norm = inicio_perdas ? inicio_perdas.replace(/\//g, '-') : ''
     const startPerdasIdx = temposNorm.findIndex((t: any) => t >= inicio_perdas_norm)
     const totalStepsPerdas = startPerdasIdx >= 0 ? tempos.length - 1 - startPerdasIdx : 0
     const perdasStep =
       totalStepsPerdas > 0 ? (perc_inicial_perdas - perc_final_perdas) / totalStepsPerdas : 0
-
     return data.map((row) => {
       let rowDemanda = row.demanda || 0
       let rowPerdas = row.perdas || 0
@@ -632,7 +584,24 @@ export default function Cenarios() {
     })
   }
 
-  // ── Query principal ───────────────────────────────────────────────────────
+  // ── Query principal ────────────────────────────────────────────────────────
+  /**
+   * COMPARAÇÃO DE JSONB:
+   *
+   * Tanto selecao_cenarios quanto dados_simulacao gravam cenários no formato:
+   *   { "tcChave": "cChave", ... }   ex: { "clima": "pessimista" }
+   * E estratégias no formato:
+   *   ["chave1", "chave2"]           ex: ["barraginhas"]
+   *
+   * Para garantir igualdade semântica de JSONB independente da ordem de chaves
+   * no PostgreSQL, usamos .contains() + .containedBy() em vez de .eq():
+   *   A = B  ↔  A @> B  AND  A <@ B
+   *
+   * Para arrays JSONB o mesmo vale: ["a","b"] @> ["b","a"] não é verdadeiro
+   * (arrays são ordenados em JSONB), portanto estratégias devem ser gravadas
+   * sempre na mesma ordem — o que já é garantido pelo formulário.
+   * Mantemos .eq() para estratégias pois a ordem é determinística.
+   */
   const applyFinancialMetrics = async () => {
     const activeSelecoes = selecoes.filter((s) => s.selecionado)
     if (activeSelecoes.length === 0) return []
@@ -640,15 +609,19 @@ export default function Cenarios() {
     let allRows: any[] = []
 
     for (const sel of activeSelecoes) {
-      const cenarioStr = stableJsonString(sel.cenarios as Record<string, string>)
-      const estrategiaStr = JSON.stringify(sel.estrategias)
+      // cenarios: usa contains + containedBy para igualdade JSONB real (ordem-independente)
+      const cenarioObj = sel.cenarios as Record<string, string>
+      const estrategiaArr = sel.estrategias as string[]
 
       let q = supabase
         .from('dados_simulacao')
         .select('*')
         .eq('id_fonte', sel.id_fonte)
-        .eq('cenarios', cenarioStr)
-        .eq('estrategias', estrategiaStr)
+        // Igualdade semântica de JSONB: A @> B e B @> A
+        .contains('cenarios', cenarioObj)
+        .containedBy('cenarios', cenarioObj)
+        // Estratégias: array JSONB — ordem é determinística, .eq() funciona
+        .eq('estrategias', JSON.stringify(estrategiaArr))
 
       if (filters.ano_inicio) q = q.gte('tempo', `${filters.ano_inicio}/01`)
       if (filters.ano_fim) q = q.lte('tempo', `${filters.ano_fim}/12`)
@@ -737,7 +710,7 @@ export default function Cenarios() {
     return dsUpdated
   }
 
-  // ── Executa simulação ─────────────────────────────────────────────────────
+  // ── Executa simulação ──────────────────────────────────────────────────────
   const handleSimulate = async () => {
     if (!simObj) return toast.error('Configuração de simulação não carregada')
     if (selecoes.length === 0) return toast.error('Configure ao menos uma fonte para simular')
@@ -1035,7 +1008,7 @@ export default function Cenarios() {
     </label>
   )
 
-  // ── Render ────────────────────────────────────────────────────────────────
+  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
       <div>
@@ -1047,7 +1020,7 @@ export default function Cenarios() {
       </div>
 
       <div className="space-y-6">
-        {/* ── QUADRO 1: Configurações salvas — exibido SEMPRE ao abrir ── */}
+        {/* ── QUADRO 1: Configurações para Simulação ── */}
         <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200 w-full">
           <div className="flex items-center justify-between border-b pb-3 mb-4">
             <h3 className="font-semibold text-primary text-sm uppercase tracking-wider">
@@ -1060,7 +1033,6 @@ export default function Cenarios() {
             )}
           </div>
 
-          {/* Estado de carregamento */}
           {selecaoLoading && (
             <div className="flex items-center gap-2 py-4 text-sm text-muted-foreground">
               <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
@@ -1078,7 +1050,6 @@ export default function Cenarios() {
             </div>
           )}
 
-          {/* Tabela sempre visível após carregamento */}
           {!selecaoLoading && selecoes.length === 0 && (
             <div className="text-center py-8 border border-dashed rounded-lg">
               <p className="text-sm text-muted-foreground font-medium">
@@ -1096,7 +1067,6 @@ export default function Cenarios() {
                 <table className="w-full text-xs">
                   <thead className="bg-slate-100 sticky top-0 z-10">
                     <tr>
-                      {/* Marcar todos */}
                       <th className="px-3 py-2.5 text-center font-semibold text-slate-600 w-10">
                         <Checkbox
                           checked={selecoes.length > 0 && selecoes.every((s) => s.selecionado)}
@@ -1130,15 +1100,12 @@ export default function Cenarios() {
                         key={sel.id}
                         className={`hover:bg-slate-50 transition-colors ${sel.selecionado ? 'bg-blue-50/40' : ''}`}
                       >
-                        {/* Checkbox */}
                         <td className="px-3 py-2.5 text-center">
                           <Checkbox
                             checked={!!sel.selecionado}
                             onCheckedChange={(v) => handleToggleSelecao(sel.id, !!v)}
                           />
                         </td>
-
-                        {/* Data */}
                         <td className="px-3 py-2.5 text-slate-500 whitespace-nowrap">
                           {sel.criado_at
                             ? new Date(sel.criado_at).toLocaleString('pt-BR', {
@@ -1150,18 +1117,13 @@ export default function Cenarios() {
                               })
                             : '-'}
                         </td>
-
-                        {/* Usuário — vem de _userLabel (sem join problemático) */}
                         <td className="px-3 py-2.5 text-slate-600 whitespace-nowrap">
                           {sel._userLabel ?? sel.id_usuario?.slice(0, 8) + '…'}
                         </td>
-
-                        {/* Fonte */}
                         <td className="px-3 py-2.5 font-medium text-slate-700 whitespace-nowrap">
                           {sel.fonte_agua?.nome_fonte ?? `Fonte ${sel.id_fonte}`}
                         </td>
-
-                        {/* Cenários como badges chave: valor */}
+                        {/* Cenários: JSONB { tcChave: cChave } → badges */}
                         <td className="px-3 py-2.5 text-slate-600 max-w-[260px]">
                           {sel.cenarios &&
                           typeof sel.cenarios === 'object' &&
@@ -1181,8 +1143,7 @@ export default function Cenarios() {
                             <span className="text-slate-400">-</span>
                           )}
                         </td>
-
-                        {/* Estratégias como badges */}
+                        {/* Estratégias: array ["chave1"] → badges */}
                         <td className="px-3 py-2.5 text-slate-600 max-w-[260px]">
                           {Array.isArray(sel.estrategias) && sel.estrategias.length > 0 ? (
                             <div className="flex flex-wrap gap-1">
@@ -1199,13 +1160,11 @@ export default function Cenarios() {
                             <span className="text-slate-400">-</span>
                           )}
                         </td>
-
-                        {/* Remover */}
                         <td className="px-3 py-2.5 text-center">
                           <button
                             onClick={() => handleDeleteSelecao(sel.id)}
                             className="text-destructive hover:text-red-700 transition-colors"
-                            title="Remover configuração"
+                            title="Remover"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -1218,13 +1177,11 @@ export default function Cenarios() {
             </div>
           )}
 
-          {/* ── Formulário de adição de nova fonte ── */}
+          {/* Formulário de adição */}
           <div className="mt-6 space-y-4 border border-slate-200 rounded-lg p-4 bg-slate-50">
             <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               Adicionar nova fonte à simulação
             </h4>
-
-            {/* Fonte */}
             <div className="max-w-xs space-y-1">
               <label className="text-xs font-semibold text-muted-foreground">Fonte de Água</label>
               <Select value={idFonte} onValueChange={handleFonteChange}>
@@ -1243,7 +1200,7 @@ export default function Cenarios() {
 
             {idFonte && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Montagem de cenários */}
+                {/* Cenários */}
                 <div className="border p-4 rounded-lg bg-white space-y-3">
                   <h4 className="font-semibold text-sm">Cenários</h4>
                   <Select value={idTc} onValueChange={setIdTc}>
@@ -1280,11 +1237,10 @@ export default function Cenarios() {
                         (x: any) => x.id_cenarios.toString() === idC,
                       )
                       if (t && c) {
-                        if (draftCenarios.some((d) => d.id_tc === t.id_tc)) {
+                        if (draftCenarios.some((d) => d.id_tc === t.id_tc))
                           return toast.error(
-                            'Este tipo de cenário já foi adicionado. Remova-o antes de substituir.',
+                            'Este tipo já foi adicionado. Remova-o antes de substituir.',
                           )
-                        }
                         setDraftCenarios((p) => [
                           ...p,
                           {
@@ -1302,6 +1258,12 @@ export default function Cenarios() {
                   >
                     <Plus className="w-3.5 h-3.5 mr-1" /> Adicionar Cenário
                   </Button>
+                  {/* Preview JSONB */}
+                  {draftCenarios.length > 0 && (
+                    <div className="bg-slate-50 border rounded p-2 text-[10px] font-mono text-slate-500 break-all">
+                      {JSON.stringify(buildCenarioJsonb(draftCenarios))}
+                    </div>
+                  )}
                   <ul className="space-y-1.5">
                     {draftCenarios.map((c, i) => (
                       <li
@@ -1320,7 +1282,7 @@ export default function Cenarios() {
                   </ul>
                 </div>
 
-                {/* Montagem de estratégias */}
+                {/* Estratégias */}
                 <div className="border p-4 rounded-lg bg-white space-y-3">
                   <h4 className="font-semibold text-sm">Estratégias</h4>
                   <Select value={idAcao} onValueChange={setIdAcao}>
@@ -1343,9 +1305,8 @@ export default function Cenarios() {
                       const a = refData.acoesBd.find((x: any) => x.id_acao.toString() === idAcao)
                       if (a) {
                         const chave = a.chave ?? a.descricao.toLowerCase().replace(/\s+/g, '_')
-                        if (draftEstrategias.some((d) => d.chave === chave)) {
+                        if (draftEstrategias.some((d) => d.chave === chave))
                           return toast.error('Esta ação já foi adicionada.')
-                        }
                         setDraftEstrategias((p) => [
                           ...p,
                           { label: a.descricao, chave, id_acao: a.id_acao },
@@ -1356,6 +1317,12 @@ export default function Cenarios() {
                   >
                     <Plus className="w-3.5 h-3.5 mr-1" /> Adicionar Ação
                   </Button>
+                  {/* Preview array */}
+                  {draftEstrategias.length > 0 && (
+                    <div className="bg-slate-50 border rounded p-2 text-[10px] font-mono text-slate-500 break-all">
+                      {JSON.stringify(buildEstrategiaJsonb(draftEstrategias))}
+                    </div>
+                  )}
                   <ul className="space-y-1.5">
                     {draftEstrategias.map((e, i) => (
                       <li
@@ -1623,7 +1590,7 @@ export default function Cenarios() {
         </div>
       )}
 
-      {/* ── BLOCO 1: Card segurança hídrica ── */}
+      {/* ── Índice de Segurança Hídrica ── */}
       {segurancaHidrica && segCard && (
         <div>
           <h2 className="text-lg font-semibold text-primary mb-3">Índice de Segurança Hídrica</h2>
@@ -1677,7 +1644,7 @@ export default function Cenarios() {
         </div>
       )}
 
-      {/* ── BLOCO 2: Gráfico segurança hídrica ── */}
+      {/* ── Gráfico segurança hídrica ── */}
       {segurancaHidrica && segurancaHidrica.chartData.length > 0 && (
         <div>
           <div className="flex flex-wrap gap-6 text-xs text-slate-500 mb-2 px-1">
@@ -1713,7 +1680,7 @@ export default function Cenarios() {
         </div>
       )}
 
-      {/* ── BLOCO 3: Cronograma de períodos críticos ── */}
+      {/* ── Cronograma de períodos críticos ── */}
       {segurancaHidrica &&
         segurancaHidrica.criticos.length > 0 &&
         (() => {
@@ -1907,10 +1874,8 @@ export default function Cenarios() {
           )
         })()}
 
-      {/* ── CenariosDashboard ── */}
       {data.length > 0 && <CenariosDashboard data={data} fontesMap={fontesMap} />}
 
-      {/* ── Gráficos de Indicadores ── */}
       {indicadoresCharts.length > 0 && (
         <div className="space-y-6">
           {indicadoresCharts.map(({ unidade, chartData, linhas, titulo }) => (
