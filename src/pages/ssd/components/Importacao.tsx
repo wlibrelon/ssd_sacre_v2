@@ -147,6 +147,13 @@ function FileSelectDialog({
 }
 
 // ── Tipos ──────────────────────────────────────────────────────────────────────
+/**
+ * arq_indicador: JSONB no banco.
+ * Estrutura: { "<id_indicador>": "<path_arquivo>", ... }
+ * Ex: { "3": "pasta/turbidez.csv", "7": "pasta/ph.csv" }
+ */
+type ArqIndicadorMap = Record<string, string> // chave = id_indicador (string), valor = path
+
 type ModeloRow = {
   id_mod: number
   id_fonte: number
@@ -158,8 +165,15 @@ type ModeloRow = {
   arq_capex_estrategias: string | null
   arq_capex_perdas: string | null
   arq_opex: string | null
-  arq_indicador: string | null
+  arq_indicador: ArqIndicadorMap | null // JSONB { id_indicador: path }
   fonte_agua?: { nome_fonte: string }
+}
+
+/** Draft de um indicador sendo montado no formulário */
+type IndicadorDraft = {
+  id_indicador: number
+  descricao: string
+  arq: string // path do arquivo no storage
 }
 
 type EditingModelo = {
@@ -170,7 +184,8 @@ type EditingModelo = {
   arq_capex_estrategias: string
   arq_capex_perdas: string
   arq_opex: string
-  arq_indicador: string
+  /** Cópia editável do JSONB de indicadores, serializado como string JSON para o Input */
+  arq_indicador_raw: string
 }
 
 // ── Componente principal ───────────────────────────────────────────────────────
@@ -179,9 +194,13 @@ export function Importacao() {
   const [selectedModels, setSelectedModels] = useState<Record<number, boolean>>({})
   const [importStatus, setImportStatus] = useState<Record<number, string>>({})
 
-  // Indicadores
+  // Lista completa de indicadores disponíveis (tabela indicadores)
   const [indicadores, setIndicadores] = useState<{ id_indicador: number; descricao: string }[]>([])
-  const [selectedIndicador, setSelectedIndicador] = useState('')
+
+  // Draft de montagem de indicadores no formulário
+  const [indicadorSelecionado, setIndicadorSelecionado] = useState('') // id_indicador selecionado no Select
+  const [indicadorArq, setIndicadorArq] = useState('') // arquivo escolhido para esse indicador
+  const [indicadoresDraft, setIndicadoresDraft] = useState<IndicadorDraft[]>([])
 
   const [refData, setRefData] = useState<any>({
     fontes: [],
@@ -206,7 +225,6 @@ export function Importacao() {
     arq_capex_estrategias: '',
     arq_capex_perdas: '',
     arq_opex: '',
-    arq_indicador: '',
   })
 
   // Edição inline da tabela modelos
@@ -216,7 +234,6 @@ export function Importacao() {
   // ── Fetch inicial ────────────────────────────────────────────────────────────
   useEffect(() => {
     let mounted = true
-
     const fetchData = async () => {
       try {
         const [modRes, indRes, refRes] = await Promise.all([
@@ -232,7 +249,6 @@ export function Importacao() {
             supabase.from('acoes_fonte').select('*'),
           ]),
         ])
-
         if (mounted) {
           setModelos((modRes.data as ModeloRow[]) || [])
           setIndicadores(indRes.data || [])
@@ -250,7 +266,6 @@ export function Importacao() {
         console.error('Failed to fetch data:', error)
       }
     }
-
     fetchData()
     return () => {
       mounted = false
@@ -272,9 +287,37 @@ export function Importacao() {
     ),
   )
 
+  // Indicadores ainda não adicionados ao draft
+  const indicadoresDisponiveis = indicadores.filter(
+    (ind) => !indicadoresDraft.some((d) => d.id_indicador === ind.id_indicador),
+  )
+
+  // ── Adicionar indicador ao draft ─────────────────────────────────────────────
+  const handleAdicionarIndicador = () => {
+    if (!indicadorSelecionado) return toast.error('Selecione um indicador')
+    if (!indicadorArq) return toast.error('Selecione o arquivo do indicador')
+    const ind = indicadores.find((i) => i.id_indicador.toString() === indicadorSelecionado)
+    if (!ind) return
+    setIndicadoresDraft((p) => [
+      ...p,
+      { id_indicador: ind.id_indicador, descricao: ind.descricao, arq: indicadorArq },
+    ])
+    setIndicadorSelecionado('')
+    setIndicadorArq('')
+  }
+
   // ── Salvar modelo ────────────────────────────────────────────────────────────
   const handleSaveModel = async () => {
     if (!idFonte) return toast.error('Selecione uma fonte de água')
+
+    // Monta o JSONB de indicadores: { "id_indicador": "path_arquivo" }
+    const arqIndicadorJsonb: ArqIndicadorMap | null =
+      indicadoresDraft.length > 0
+        ? indicadoresDraft.reduce<ArqIndicadorMap>((acc, d) => {
+            acc[d.id_indicador.toString()] = d.arq
+            return acc
+          }, {})
+        : null
 
     const { data, error } = await supabase
       .from('modelos')
@@ -288,7 +331,7 @@ export function Importacao() {
         arq_capex_estrategias: files.arq_capex_estrategias || null,
         arq_capex_perdas: files.arq_capex_perdas || null,
         arq_opex: files.arq_opex || null,
-        arq_indicador: files.arq_indicador || null,
+        arq_indicador: arqIndicadorJsonb,
       })
       .select('*, fonte_agua(nome_fonte)')
       .single()
@@ -300,6 +343,7 @@ export function Importacao() {
     setIdFonte('')
     setCenariosList([])
     setEstrategiasList([])
+    setIndicadoresDraft([])
     setFiles({
       arq_mod: '',
       arq_perdas: '',
@@ -307,7 +351,6 @@ export function Importacao() {
       arq_capex_estrategias: '',
       arq_capex_perdas: '',
       arq_opex: '',
-      arq_indicador: '',
     })
   }
 
@@ -321,7 +364,8 @@ export function Importacao() {
       arq_capex_estrategias: m.arq_capex_estrategias || '',
       arq_capex_perdas: m.arq_capex_perdas || '',
       arq_opex: m.arq_opex || '',
-      arq_indicador: m.arq_indicador || '',
+      // Exibe o JSONB serializado para edição direta
+      arq_indicador_raw: m.arq_indicador ? JSON.stringify(m.arq_indicador, null, 2) : '',
     })
   }
 
@@ -330,10 +374,25 @@ export function Importacao() {
   const saveEdit = async () => {
     if (!editingModelo) return
     setSavingEdit(true)
-    const { id_mod, ...fields } = editingModelo
-    const mapped = Object.fromEntries(
-      Object.entries(fields).map(([k, v]) => [k, v === '' ? null : v]),
-    )
+    const { id_mod, arq_indicador_raw, ...strFields } = editingModelo
+
+    // Parse do JSONB editado manualmente
+    let arq_indicador: ArqIndicadorMap | null = null
+    if (arq_indicador_raw.trim()) {
+      try {
+        arq_indicador = JSON.parse(arq_indicador_raw)
+      } catch {
+        toast.error('JSON de indicadores inválido. Corrija antes de salvar.')
+        setSavingEdit(false)
+        return
+      }
+    }
+
+    const mapped = {
+      ...Object.fromEntries(Object.entries(strFields).map(([k, v]) => [k, v === '' ? null : v])),
+      arq_indicador,
+    }
+
     const { error } = await supabase.from('modelos').update(mapped).eq('id_mod', id_mod)
     if (error) {
       toast.error(`Erro ao salvar: ${error.message}`)
@@ -390,63 +449,98 @@ export function Importacao() {
 
   // ── Importar arquivo de indicadores ─────────────────────────────────────────
   /**
-   * Baixa o arquivo de indicadores (CSV ou JSON) do bucket 'dados_brutos'
-   * e faz upsert na tabela 'indicadores_aplicado'.
+   * Baixa um arquivo CSV/JSON do bucket 'dados_brutos' e faz upsert em
+   * 'indicadores_aplicado'. O campo 'valores_extras' (JSONB) em dados_simulacao
+   * é preenchido separadamente pela lógica de simulação com base nos registros
+   * gravados aqui.
    *
-   * Formato CSV esperado:
-   *   id_indicador;campo_extra;descricao;unidade;tempo;id_fonte;valor
+   * Cada arquivo de indicador tem como chave o id_indicador ao qual pertence,
+   * permitindo múltiplos indicadores por fonte (arq_indicador é JSONB no banco).
    *
-   * Formato JSON esperado: array de objetos com as mesmas chaves.
+   * Formato CSV esperado (separador ; ou ,):
+   *   id_indicador;campo_extra;tempo;id_fonte;valor;[outros campos opcionais]
+   *
+   * Formato JSON: array de objetos com as mesmas chaves.
    */
-  const importarIndicadores = async (arqPath: string): Promise<{ ok: boolean; count: number }> => {
+  const importarIndicador = async (
+    arqPath: string,
+    id_indicador: number,
+  ): Promise<{ ok: boolean; count: number; errorMsg?: string }> => {
     const cleanPath = arqPath.trim().replace(/\\/g, '/').replace(/\/+/g, '/').replace(/^\//, '')
     const { data: fileData, error: dlError } = await supabase.storage
       .from('dados_brutos')
       .download(cleanPath)
 
     if (dlError || !fileData) {
-      toast.error(`Erro ao baixar arquivo de indicadores: ${dlError?.message ?? 'não encontrado'}`)
-      return { ok: false, count: 0 }
+      const msg = `Erro ao baixar indicador (id=${id_indicador}, path=${cleanPath}): ${dlError?.message ?? 'não encontrado'}`
+      console.error(msg)
+      return { ok: false, count: 0, errorMsg: msg }
     }
 
     const text = await fileData.text()
+    if (!text.trim()) return { ok: false, count: 0, errorMsg: 'Arquivo vazio' }
+
     let rows: any[] = []
 
-    const isJson = arqPath.toLowerCase().endsWith('.json') || text.trimStart().startsWith('[')
+    const isJson =
+      arqPath.toLowerCase().endsWith('.json') ||
+      text.trimStart().startsWith('[') ||
+      text.trimStart().startsWith('{')
+
     if (isJson) {
       try {
-        rows = JSON.parse(text)
-        if (!Array.isArray(rows)) rows = [rows]
-      } catch {
-        toast.error('Arquivo de indicadores com formato JSON inválido')
-        return { ok: false, count: 0 }
+        const parsed = JSON.parse(text)
+        rows = Array.isArray(parsed) ? parsed : [parsed]
+      } catch (e: any) {
+        return { ok: false, count: 0, errorMsg: `JSON inválido: ${e?.message}` }
       }
     } else {
-      const sep = text.includes(';') ? ';' : ','
+      const firstLine = text.split('\n')[0]
+      const sep = firstLine.includes(';') ? ';' : ','
       const lines = text.split('\n').filter((l) => l.trim())
-      if (lines.length < 2) return { ok: false, count: 0 }
-      const headers = lines[0].split(sep).map((h) => h.trim().replace(/^"|"$/g, ''))
-      rows = lines.slice(1).map((line) => {
-        const vals = line.split(sep).map((v) => v.trim().replace(/^"|"$/g, ''))
-        return headers.reduce<Record<string, any>>((acc, h, i) => {
-          acc[h] = vals[i] ?? null
-          return acc
-        }, {})
-      })
+      if (lines.length < 2) return { ok: false, count: 0, errorMsg: 'CSV sem dados' }
+      const headers = lines[0].split(sep).map((h) => h.trim().replace(/^["'\s]+|["'\s]+$/g, ''))
+      rows = lines
+        .slice(1)
+        .filter((l) => l.trim())
+        .map((line) => {
+          const vals = line.split(sep).map((v) => v.trim().replace(/^["'\s]+|["'\s]+$/g, ''))
+          return headers.reduce<Record<string, any>>((acc, h, i) => {
+            if (!h) return acc
+            const raw = vals[i] ?? null
+            // Converte número onde possível
+            if (raw !== null && raw !== '' && !isNaN(Number(raw.replace(',', '.')))) {
+              acc[h] = Number(raw.replace(',', '.'))
+            } else {
+              acc[h] = raw === '' ? null : raw
+            }
+            return acc
+          }, {})
+        })
     }
 
-    if (rows.length === 0) return { ok: false, count: 0 }
+    if (rows.length === 0) return { ok: false, count: 0, errorMsg: 'Nenhuma linha de dados' }
+
+    // Garante que id_indicador está presente em todos os registros
+    rows = rows.map((r) => ({
+      ...r,
+      id_indicador: r.id_indicador ?? id_indicador,
+    }))
 
     let erros = 0
+    let errorMsg = ''
     for (let i = 0; i < rows.length; i += 500) {
-      const { error } = await supabase.from('indicadores_aplicado').upsert(rows.slice(i, i + 500))
+      const { error } = await supabase
+        .from('indicadores_aplicado')
+        .upsert(rows.slice(i, i + 500), { ignoreDuplicates: false })
       if (error) {
-        console.error('upsert indicadores:', error)
+        console.error(`Upsert indicadores_aplicado (lote ${i}):`, error)
+        errorMsg = error.message
         erros++
       }
     }
 
-    return { ok: erros === 0, count: rows.length }
+    return erros === 0 ? { ok: true, count: rows.length } : { ok: false, count: 0, errorMsg }
   }
 
   // ── Importar dados ───────────────────────────────────────────────────────────
@@ -462,7 +556,7 @@ export function Importacao() {
         const mod = modelos.find((m) => m.id_mod === id_mod)
         if (!mod) continue
 
-        // ── Dados principais (volume, perdas, demanda, capex, opex) ──────────
+        // ── Dados principais ────────────────────────────────────────────────
         const [mD, pD, dD, ceD, cpD, oD] = await Promise.all([
           fetchCSV(mod.arq_mod, 'volume_captado'),
           fetchCSV(mod.arq_perdas, 'perdas'),
@@ -475,7 +569,6 @@ export function Importacao() {
         const allTempos = new Set([...mD, ...pD, ...dD, ...ceD, ...cpD, ...oD].map((d) => d.tempo))
         if (allTempos.size === 0) throw new Error('Sem dados nos arquivos principais')
 
-        // Usa o id_s da simulacao_ssd (único registro existente)
         const { data: simRow } = await supabase
           .from('simulacao_ssd')
           .select('id_s')
@@ -505,18 +598,33 @@ export function Importacao() {
           if (error) throw error
         }
 
-        // ── Arquivo de indicadores (se configurado no modelo) ─────────────────
-        if (mod.arq_indicador) {
-          setImportStatus((prev) => ({ ...prev, [id_mod]: 'Importando indicadores...' }))
-          const { ok, count } = await importarIndicadores(mod.arq_indicador)
-          if (!ok) {
-            setImportStatus((prev) => ({ ...prev, [id_mod]: 'Erro nos indicadores' }))
-            continue
+        // ── Indicadores: itera cada par { id_indicador: path } ───────────────
+        const arqIndMap = mod.arq_indicador // ArqIndicadorMap | null
+        if (arqIndMap && typeof arqIndMap === 'object' && Object.keys(arqIndMap).length > 0) {
+          const pares = Object.entries(arqIndMap) // [["3", "pasta/turb.csv"], ...]
+          let totalIndicadores = 0
+          let errosIndicadores = 0
+
+          for (const [idIndStr, arqPath] of pares) {
+            const idInd = Number(idIndStr)
+            setImportStatus((prev) => ({
+              ...prev,
+              [id_mod]: `Importando indicador ${idIndStr}...`,
+            }))
+            const { ok, count, errorMsg } = await importarIndicador(arqPath, idInd)
+            if (!ok) {
+              errosIndicadores++
+              toast.error(`Indicador ${idIndStr}: ${errorMsg ?? 'erro desconhecido'}`)
+            } else {
+              totalIndicadores += count
+            }
           }
-          setImportStatus((prev) => ({
-            ...prev,
-            [id_mod]: `Concluído (${rows.length} dados + ${count} indicadores)`,
-          }))
+
+          const resumo =
+            errosIndicadores > 0
+              ? `Concluído c/ erros (${rows.length} dados, ${errosIndicadores}/${pares.length} indicadores falharam)`
+              : `Concluído (${rows.length} dados + ${totalIndicadores} reg. indicadores em ${pares.length} arquivo(s))`
+          setImportStatus((prev) => ({ ...prev, [id_mod]: resumo }))
         } else {
           setImportStatus((prev) => ({ ...prev, [id_mod]: `Concluído (${rows.length} dados)` }))
         }
@@ -531,59 +639,32 @@ export function Importacao() {
     toast.success('Processo finalizado')
   }
 
-  // ── Colunas de arquivo editáveis na tabela ───────────────────────────────────
-  const FILE_COLS: { key: keyof EditingModelo; label: string }[] = [
+  // ── Colunas de arquivo simples na tabela (sem arq_indicador) ─────────────────
+  const FILE_COLS: {
+    key: keyof Omit<EditingModelo, 'id_mod' | 'arq_indicador_raw'>
+    label: string
+  }[] = [
     { key: 'arq_mod', label: 'Modelo' },
     { key: 'arq_perdas', label: 'Perdas' },
     { key: 'arq_demanda', label: 'Demanda' },
     { key: 'arq_capex_estrategias', label: 'CAPEX Est.' },
     { key: 'arq_capex_perdas', label: 'CAPEX Per.' },
     { key: 'arq_opex', label: 'OPEX' },
-    { key: 'arq_indicador', label: 'Indicador' },
   ]
 
   // ── Render ───────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-6 pb-20">
-      {/* ── QUADRO 1: Indicador ── */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm">Indicador</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-xs text-muted-foreground mb-3">
-            Selecione o indicador que será vinculado à importação. O arquivo correspondente deverá
-            ser informado no campo <strong>Arquivo de Indicador</strong> abaixo.
-          </p>
-          <div className="max-w-md">
-            <label className="text-xs font-semibold text-muted-foreground block mb-1">
-              Indicador
-            </label>
-            <Select value={selectedIndicador} onValueChange={setSelectedIndicador}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione um indicador..." />
-              </SelectTrigger>
-              <SelectContent>
-                {indicadores.map((ind) => (
-                  <SelectItem key={ind.id_indicador} value={ind.id_indicador.toString()}>
-                    {ind.descricao}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* ── QUADRO 2: Cenários e Estratégias ── */}
+      {/* ── QUADRO 1: Cenários, Estratégias e Indicadores ── */}
       <Card>
         <CardHeader>
           <CardTitle className="text-sm">
-            Configuração de cenários e estratégias para as fontes de água
+            Configuração de cenários, estratégias e indicadores para as fontes de água
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="max-w-md">
+          {/* Fonte */}
+          <div className="max-w-xs">
             <label className="text-xs font-semibold">Fonte de Água</label>
             <Select
               value={idFonte}
@@ -592,6 +673,9 @@ export function Importacao() {
                 setIdTc('')
                 setIdC('')
                 setIdAcao('')
+                setCenariosList([])
+                setEstrategiasList([])
+                setIndicadoresDraft([])
               }}
             >
               <SelectTrigger>
@@ -607,65 +691,64 @@ export function Importacao() {
             </Select>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Cenários */}
-            <div className="border p-4 rounded-lg bg-slate-50 space-y-4">
-              <h3 className="font-semibold text-sm">Montagem de cenários</h3>
-              <div className="space-y-2">
-                <Select value={idTc} onValueChange={setIdTc}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Tipo de cenário..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {filteredTipos.map((t: any) => (
-                      <SelectItem key={t.id_tc} value={t.id_tc.toString()}>
-                        {formatData(t.descricao)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Select value={idC} onValueChange={setIdC}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Cenário..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {filteredCenarios.map((c: any) => (
-                      <SelectItem key={c.id_cenarios} value={c.id_cenarios.toString()}>
-                        {formatData(c.cenarios)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button
-                  className="w-full"
-                  disabled={!idTc || !idC}
-                  onClick={() => {
-                    const t = refData.tiposCenario.find((x: any) => x.id_tc.toString() === idTc)
-                    const c = refData.cenarios.find((x: any) => x.id_cenarios.toString() === idC)
-                    if (t && c) {
-                      setCenariosList((p) => [...p, `${t.descricao}: ${c.cenarios}`])
-                      setIdTc('')
-                      setIdC('')
-                    }
-                  }}
-                >
-                  Adicionar Cenário
-                </Button>
-              </div>
-              <ul className="space-y-2">
+            <div className="border p-4 rounded-lg bg-slate-50 space-y-3">
+              <h3 className="font-semibold text-sm">Montagem de Cenários</h3>
+              <Select value={idTc} onValueChange={setIdTc}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Tipo de cenário..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {filteredTipos.map((t: any) => (
+                    <SelectItem key={t.id_tc} value={t.id_tc.toString()}>
+                      {formatData(t.descricao)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={idC} onValueChange={setIdC}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Cenário..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {filteredCenarios.map((c: any) => (
+                    <SelectItem key={c.id_cenarios} value={c.id_cenarios.toString()}>
+                      {formatData(c.cenarios)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                className="w-full"
+                size="sm"
+                disabled={!idTc || !idC}
+                onClick={() => {
+                  const t = refData.tiposCenario.find((x: any) => x.id_tc.toString() === idTc)
+                  const c = refData.cenarios.find((x: any) => x.id_cenarios.toString() === idC)
+                  if (t && c) {
+                    setCenariosList((p) => [...p, `${t.descricao}: ${c.cenarios}`])
+                    setIdTc('')
+                    setIdC('')
+                  }
+                }}
+              >
+                Adicionar Cenário
+              </Button>
+              <ul className="space-y-1.5">
                 {cenariosList.map((c, i) => (
                   <li
                     key={i}
-                    className="flex justify-between items-center bg-white p-2 rounded border text-sm"
+                    className="flex justify-between items-center bg-white px-2 py-1.5 rounded border text-xs"
                   >
-                    {formatData(c)}
+                    <span className="truncate flex-1 mr-2">{formatData(c)}</span>
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-6 w-6 text-destructive"
+                      className="h-5 w-5 text-destructive shrink-0"
                       onClick={() => setCenariosList((p) => p.filter((_, idx) => idx !== i))}
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <Trash2 className="w-3 h-3" />
                     </Button>
                   </li>
                 ))}
@@ -673,50 +756,134 @@ export function Importacao() {
             </div>
 
             {/* Estratégias */}
-            <div className="border p-4 rounded-lg bg-slate-50 space-y-4">
-              <h3 className="font-semibold text-sm">Montagem de Estratégia</h3>
-              <div className="space-y-2">
-                <Select value={idAcao} onValueChange={setIdAcao}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Escolha a ação..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {filteredAcoes.map((a: any) => (
-                      <SelectItem key={a.id_acao} value={a.id_acao.toString()}>
-                        {formatData(a.descricao)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button
-                  className="w-full"
-                  disabled={!idAcao}
-                  onClick={() => {
-                    const a = refData.acoes.find((x: any) => x.id_acao.toString() === idAcao)
-                    if (a) {
-                      setEstrategiasList((p) => [...p, a.descricao])
-                      setIdAcao('')
-                    }
-                  }}
-                >
-                  Adicionar Ação
-                </Button>
-              </div>
-              <ul className="space-y-2">
+            <div className="border p-4 rounded-lg bg-slate-50 space-y-3">
+              <h3 className="font-semibold text-sm">Montagem de Estratégias</h3>
+              <Select value={idAcao} onValueChange={setIdAcao}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Escolha a ação..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {filteredAcoes.map((a: any) => (
+                    <SelectItem key={a.id_acao} value={a.id_acao.toString()}>
+                      {formatData(a.descricao)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                className="w-full"
+                size="sm"
+                disabled={!idAcao}
+                onClick={() => {
+                  const a = refData.acoes.find((x: any) => x.id_acao.toString() === idAcao)
+                  if (a) {
+                    setEstrategiasList((p) => [...p, a.descricao])
+                    setIdAcao('')
+                  }
+                }}
+              >
+                Adicionar Ação
+              </Button>
+              <ul className="space-y-1.5">
                 {estrategiasList.map((e, i) => (
                   <li
                     key={i}
-                    className="flex justify-between items-center bg-white p-2 rounded border text-sm"
+                    className="flex justify-between items-center bg-white px-2 py-1.5 rounded border text-xs"
                   >
-                    {formatData(e)}
+                    <span className="truncate flex-1 mr-2">{formatData(e)}</span>
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-6 w-6 text-destructive"
+                      className="h-5 w-5 text-destructive shrink-0"
                       onClick={() => setEstrategiasList((p) => p.filter((_, idx) => idx !== i))}
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <Trash2 className="w-3 h-3" />
                     </Button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Indicadores */}
+            <div className="border p-4 rounded-lg bg-slate-50 space-y-3">
+              <h3 className="font-semibold text-sm">Montagem de Indicadores</h3>
+              <p className="text-[11px] text-muted-foreground">
+                Cada indicador tem seu próprio arquivo. Os dados são gravados em{' '}
+                <code className="bg-slate-100 px-1 rounded">indicadores_aplicado</code> e vinculados
+                ao campo <code className="bg-slate-100 px-1 rounded">valores_extras</code> (JSONB).
+              </p>
+
+              {/* Select do indicador */}
+              <Select value={indicadorSelecionado} onValueChange={setIndicadorSelecionado}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o indicador..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {indicadoresDisponiveis.map((ind) => (
+                    <SelectItem key={ind.id_indicador} value={ind.id_indicador.toString()}>
+                      {ind.descricao}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {/* FileSelectDialog para o arquivo deste indicador */}
+              {indicadorSelecionado && (
+                <FileSelectDialog
+                  label="Arquivo do indicador"
+                  value={indicadorArq}
+                  onChange={setIndicadorArq}
+                />
+              )}
+
+              <Button
+                className="w-full"
+                size="sm"
+                disabled={!indicadorSelecionado || !indicadorArq}
+                onClick={handleAdicionarIndicador}
+              >
+                Adicionar Indicador
+              </Button>
+
+              {/* Preview do JSONB que será gravado */}
+              {indicadoresDraft.length > 0 && (
+                <div className="bg-slate-100 border rounded p-2 text-[10px] font-mono text-slate-500 break-all">
+                  {JSON.stringify(
+                    indicadoresDraft.reduce<Record<string, string>>((acc, d) => {
+                      acc[d.id_indicador.toString()] = d.arq
+                      return acc
+                    }, {}),
+                    null,
+                    2,
+                  )}
+                </div>
+              )}
+
+              {/* Lista dos indicadores adicionados */}
+              <ul className="space-y-1.5">
+                {indicadoresDraft.map((d) => (
+                  <li
+                    key={d.id_indicador}
+                    className="bg-white border rounded px-2 py-1.5 text-xs space-y-0.5"
+                  >
+                    <div className="flex justify-between items-start gap-1">
+                      <span className="font-medium text-slate-700 leading-tight">
+                        {d.descricao}
+                      </span>
+                      <button
+                        onClick={() =>
+                          setIndicadoresDraft((p) =>
+                            p.filter((x) => x.id_indicador !== d.id_indicador),
+                          )
+                        }
+                        className="text-destructive hover:text-red-700 shrink-0 mt-0.5"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                    <div className="font-mono text-[10px] text-slate-400 truncate" title={d.arq}>
+                      {d.arq.split('/').pop()}
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -725,10 +892,10 @@ export function Importacao() {
         </CardContent>
       </Card>
 
-      {/* ── QUADRO 3: Seleção de arquivos ── */}
+      {/* ── QUADRO 2: Seleção de arquivos ── */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm">Seleção de arquivo para importação</CardTitle>
+          <CardTitle className="text-sm">Seleção de arquivos para importação</CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FileSelectDialog
@@ -761,19 +928,13 @@ export function Importacao() {
             value={files.arq_opex}
             onChange={(v) => setFiles((p) => ({ ...p, arq_opex: v }))}
           />
-          <FileSelectDialog
-            label="Arquivo de Indicador"
-            value={files.arq_indicador}
-            onChange={(v) => setFiles((p) => ({ ...p, arq_indicador: v }))}
-          />
-
           <div className="col-span-full mt-2">
             <Button onClick={handleSaveModel}>Salvar Configuração</Button>
           </div>
         </CardContent>
       </Card>
 
-      {/* ── QUADRO 4: Tabela de modelos com edição inline ── */}
+      {/* ── QUADRO 3: Tabela de modelos com edição inline ── */}
       <div className="bg-white border rounded-xl shadow-sm overflow-hidden">
         <div className="px-4 py-3 border-b bg-slate-50 flex items-center justify-between">
           <h3 className="text-sm font-semibold text-slate-700">Modelos cadastrados</h3>
@@ -782,7 +943,7 @@ export function Importacao() {
           </span>
         </div>
 
-        <div className="overflow-x-auto max-h-[480px] overflow-y-auto">
+        <div className="overflow-x-auto max-h-[520px] overflow-y-auto">
           <table className="w-full text-xs">
             <thead className="bg-slate-100 sticky top-0 z-10">
               <tr>
@@ -800,6 +961,11 @@ export function Importacao() {
                     {col.label}
                   </th>
                 ))}
+                {/* Coluna especial: indicadores JSONB */}
+                <th className="px-3 py-2.5 text-left font-semibold text-slate-600 whitespace-nowrap">
+                  Indicadores
+                  <span className="font-normal text-slate-400 ml-1">(JSONB)</span>
+                </th>
                 <th className="px-3 py-2.5 text-left font-semibold text-slate-600 whitespace-nowrap">
                   Status
                 </th>
@@ -810,7 +976,7 @@ export function Importacao() {
               {modelos.length === 0 && (
                 <tr>
                   <td
-                    colSpan={FILE_COLS.length + 5}
+                    colSpan={FILE_COLS.length + 6}
                     className="px-4 py-8 text-center text-slate-400"
                   >
                     Nenhum modelo cadastrado.
@@ -824,7 +990,7 @@ export function Importacao() {
                     key={m.id_mod}
                     className={`hover:bg-slate-50 transition-colors ${isEditing ? 'bg-amber-50/40' : ''}`}
                   >
-                    {/* Checkbox de importação */}
+                    {/* Checkbox */}
                     <td className="px-2 py-2 text-center">
                       <Checkbox
                         checked={!!selectedModels[m.id_mod]}
@@ -840,34 +1006,32 @@ export function Importacao() {
                     </td>
 
                     {/* Cenários */}
-                    <td className="px-3 py-2 text-slate-600 max-w-[180px]">
+                    <td className="px-3 py-2 text-slate-600 max-w-[160px]">
                       <span className="block truncate" title={formatData(m.cenario)}>
                         {formatData(m.cenario) || <span className="text-slate-300">—</span>}
                       </span>
                     </td>
 
                     {/* Estratégias */}
-                    <td className="px-3 py-2 text-slate-600 max-w-[180px]">
+                    <td className="px-3 py-2 text-slate-600 max-w-[160px]">
                       <span className="block truncate" title={formatData(m.estrategia)}>
                         {formatData(m.estrategia) || <span className="text-slate-300">—</span>}
                       </span>
                     </td>
 
-                    {/* Colunas de arquivo */}
+                    {/* Arquivos simples */}
                     {FILE_COLS.map((col) => (
-                      <td key={col.key} className="px-2 py-2 max-w-[160px]">
+                      <td key={col.key} className="px-2 py-2 max-w-[140px]">
                         {isEditing ? (
-                          <div className="flex gap-1 items-center min-w-[140px]">
-                            <Input
-                              className="h-6 text-[11px] px-1.5"
-                              value={editingModelo[col.key]}
-                              onChange={(e) =>
-                                setEditingModelo((p) =>
-                                  p ? { ...p, [col.key]: e.target.value } : null,
-                                )
-                              }
-                            />
-                          </div>
+                          <Input
+                            className="h-6 text-[11px] px-1.5 min-w-[120px]"
+                            value={editingModelo[col.key]}
+                            onChange={(e) =>
+                              setEditingModelo((p) =>
+                                p ? { ...p, [col.key]: e.target.value } : null,
+                              )
+                            }
+                          />
                         ) : (
                           <span
                             className="block truncate font-mono text-[10px] text-slate-500"
@@ -883,14 +1047,53 @@ export function Importacao() {
                       </td>
                     ))}
 
-                    {/* Status de importação */}
+                    {/* Indicadores JSONB */}
+                    <td className="px-2 py-2 max-w-[220px]">
+                      {isEditing ? (
+                        /* Edição manual do JSON inteiro */
+                        <textarea
+                          className="w-full min-w-[180px] h-20 text-[10px] font-mono border rounded px-1.5 py-1 resize-y focus:outline-none focus:ring-1 focus:ring-primary"
+                          value={editingModelo.arq_indicador_raw}
+                          placeholder='{"3": "pasta/arq.csv"}'
+                          onChange={(e) =>
+                            setEditingModelo((p) =>
+                              p ? { ...p, arq_indicador_raw: e.target.value } : null,
+                            )
+                          }
+                        />
+                      ) : m.arq_indicador && Object.keys(m.arq_indicador).length > 0 ? (
+                        <div className="space-y-0.5">
+                          {Object.entries(m.arq_indicador).map(([idInd, arq]) => {
+                            const ind = indicadores.find((i) => i.id_indicador.toString() === idInd)
+                            return (
+                              <div key={idInd} className="text-[10px] leading-tight">
+                                <span className="font-semibold text-slate-600">
+                                  {ind?.descricao ?? `Ind. ${idInd}`}
+                                </span>
+                                <span
+                                  className="block font-mono text-slate-400 truncate"
+                                  title={arq}
+                                >
+                                  {arq.split('/').pop()}
+                                </span>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      ) : (
+                        <span className="text-slate-300 text-[10px]">—</span>
+                      )}
+                    </td>
+
+                    {/* Status */}
                     <td className="px-3 py-2 whitespace-nowrap">
                       {importStatus[m.id_mod] ? (
                         <span
                           className={`text-[11px] font-semibold ${
                             importStatus[m.id_mod].startsWith('Concluído')
                               ? 'text-emerald-600'
-                              : importStatus[m.id_mod].startsWith('Erro')
+                              : importStatus[m.id_mod].startsWith('Erro') ||
+                                  importStatus[m.id_mod].includes('erros')
                                 ? 'text-red-500'
                                 : 'text-amber-500'
                           }`}
