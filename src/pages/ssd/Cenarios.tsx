@@ -590,15 +590,44 @@ export default function Cenarios() {
       const cenarioArr = sel.cenarios as string[]
       const estrategiaArr = sel.estrategias as string[]
 
+      // Serializa o array exatamente como o PostgreSQL armazena JSONB:
+      // elementos em ordem, sem espaços extras. Isso garante match com .eq().
+      // Importante: sort() antes de serializar pois o PostgreSQL pode reordenar
+      // elementos de array JSONB ao armazenar.
+      const cenarioJson = JSON.stringify([...cenarioArr].sort())
+      const estrategiaJson = JSON.stringify([...estrategiaArr].sort())
+
+      // Log para diagnóstico — remover após confirmar funcionamento
+      console.log('[simulação] buscando cenarios:', cenarioJson)
+      console.log('[simulação] buscando estrategias:', estrategiaJson)
+
+      // Busca também a amostra do banco para comparar na mesma ordem
+      const { data: amostra } = await supabase
+        .from('dados_simulacao')
+        .select('cenarios, estrategias')
+        .eq('id_fonte', sel.id_fonte)
+        .limit(1)
+
+      if (amostra && amostra.length > 0) {
+        const cenariosDb = amostra[0].cenarios
+        const cenariosDbJson = Array.isArray(cenariosDb)
+          ? JSON.stringify([...cenariosDb].sort())
+          : JSON.stringify(cenariosDb)
+        console.log('[simulação] cenarios no banco:', cenariosDbJson)
+        console.log('[simulação] match cenarios:', cenarioJson === cenariosDbJson)
+      }
+
       let q = supabase
         .from('dados_simulacao')
         .select('*')
         .eq('id_fonte', sel.id_fonte)
-        // Arrays JSONB: contains + containedBy = igualdade semântica
-        .contains('cenarios', cenarioArr)
-        .containedBy('cenarios', cenarioArr)
-        .contains('estrategias', estrategiaArr)
-        .containedBy('estrategias', estrategiaArr)
+        // Usa filter com operador cs (contains) para array JSONB:
+        // cs é o operador @> do PostgreSQL — "contém todos os elementos"
+        // Combinando cs em ambas as direções = igualdade de conteúdo
+        .filter('cenarios', 'cs', cenarioJson)
+        .filter('cenarios', 'cd', cenarioJson)
+        .filter('estrategias', 'cs', estrategiaJson)
+        .filter('estrategias', 'cd', estrategiaJson)
 
       if (filters.ano_inicio) q = q.gte('tempo', `${filters.ano_inicio}/01`)
       if (filters.ano_fim) q = q.lte('tempo', `${filters.ano_fim}/12`)
