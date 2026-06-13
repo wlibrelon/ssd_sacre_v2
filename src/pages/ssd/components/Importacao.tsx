@@ -27,34 +27,10 @@ export function Importacao() {
     setSelectedModels((prev) => ({ ...prev, [id_fonte]: id_mod }))
   }
 
-  // Normaliza o caminho removendo barras duplicadas e espaços
-  const normalizePath = (path: string): string => {
-    return path
-      .trim()
-      .replace(/\\/g, '/') // troca backslash por slash
-      .replace(/\/+/g, '/') // remove barras duplicadas
-      .replace(/^\//, '') // remove barra inicial se houver
-  }
-
-  const fetchCSV = async (
-    path: string | null | undefined,
-    label = '',
-  ): Promise<{ tempo: string; valor: number }[]> => {
-    // CORRIGIDO: checar null/undefined/string vazia explicitamente
-    if (path == null || path.trim() === '') return []
-
-    const cleanPath = normalizePath(path)
-
-    const { data, error } = await supabase.storage.from('dados_brutos').download(cleanPath)
-
-    // CORRIGIDO: logar o erro real em vez de engolir silenciosamente
-    if (error) {
-      console.error(`[fetchCSV] Erro ao baixar "${cleanPath}" (${label}):`, error.message)
-      toast.error(`Arquivo não encontrado no storage: ${cleanPath}`)
-      return []
-    }
-    if (!data) return []
-
+  const fetchCSV = async (path: string) => {
+    if (!path) return []
+    const { data, error } = await supabase.storage.from('dados_brutos').download(path)
+    if (error || !data) return []
     const text = await data.text()
     const lines = text
       .split('\n')
@@ -63,26 +39,26 @@ export function Importacao() {
     if (lines.length < 2) return []
 
     const header = lines[0].toLowerCase().split(/[,;]/)
-
-    // tIdx: coluna com 'tempo'; fallback para coluna 0
-    const tIdx = header.findIndex((h) => h.includes('tempo'))
-    const tIdxFinal = tIdx >= 0 ? tIdx : 0
-    // vIdx: primeiro índice diferente de tIdxFinal
-    const vIdx = header.findIndex((_, i) => i !== tIdxFinal)
-    const vIdxFinal = vIdx >= 0 ? vIdx : tIdxFinal === 0 ? 1 : 0
+    const tIdx = Math.max(
+      0,
+      header.findIndex((h) => h.includes('tempo')),
+    )
+    const vIdx =
+      header.findIndex((h) => !h.includes('tempo')) >= 0
+        ? header.findIndex((h) => !h.includes('tempo'))
+        : 1
 
     return lines
       .slice(1)
       .map((l) => {
         const parts = l.split(/[,;]/)
-        let tempo = parts[tIdxFinal] ? parts[tIdxFinal].trim() : ''
+        let tempo = parts[tIdx] ? parts[tIdx].trim() : ''
+        // Ensure tempo format AAAA/MM
         if (tempo.includes('-')) tempo = tempo.replace(/-/g, '/')
 
         let valor = 0
-        if (parts[vIdxFinal]) {
-          const raw = parts[vIdxFinal].trim()
-          // Detecta formato: vírgula = PT-BR (milhar=ponto, decimal=vírgula)
-          const vRaw = raw.includes(',') ? raw.replace(/\./g, '').replace(',', '.') : raw
+        if (parts[vIdx]) {
+          const vRaw = parts[vIdx].replace(/\./g, '').replace(',', '.')
           valor = parseFloat(vRaw)
         }
         return { tempo, valor: isNaN(valor) ? 0 : valor }
@@ -92,14 +68,7 @@ export function Importacao() {
 
   const handleImport = async () => {
     if (!selectedSim) return toast.error('Selecione uma simulação')
-
-    // BUG 7 CORRIGIDO: validar que selectedSim é um número válido antes de usar
-    const idSimulacao = parseInt(selectedSim, 10)
-    if (isNaN(idSimulacao)) return toast.error('ID de simulação inválido')
-
-    const modsToImport = Object.values(selectedModels).filter(
-      (v) => v != null && v !== 0,
-    ) as number[]
+    const modsToImport = Object.values(selectedModels).filter((v) => v)
     if (modsToImport.length === 0) return toast.error('Selecione ao menos um modelo')
 
     setLoading(true)
@@ -107,66 +76,40 @@ export function Importacao() {
     const { data: inds } = await supabase
       .from('indicadores_aplicado')
       .select('*, indicadores(*)')
-      .eq('id_s', idSimulacao)
+      .eq('id_s', selectedSim)
 
     for (const id_mod of modsToImport) {
       const mod = modelos.find((m) => m.id_mod === id_mod)
       if (!mod) continue
-      // Monta caminho completo: pasta fixa do bucket + nome do arquivo salvo no BD
-      const p = (folder: string, file: string | null | undefined) =>
-        file ? `${folder}/${file.trim()}` : null
-
-      // Monta caminho completo: pasta fixa no bucket + nome do arquivo salvo no BD
-      const p = (folder: string, file: string | null | undefined) =>
-        file ? `${folder}/${file.trim()}` : null
 
       const [modData, perdasData, demData, capexEData, capexPData, opexData] = await Promise.all([
-        fetchCSV(p('modelos', mod.arq_mod), `volume_captado [${mod.fonte_agua?.nome_fonte}]`),
-        fetchCSV(p('perdas', mod.arq_perdas), `perdas [${mod.fonte_agua?.nome_fonte}]`),
-        fetchCSV(p('demadas', mod.arq_demanda), `demanda [${mod.fonte_agua?.nome_fonte}]`),
-        fetchCSV(
-          p('capex_estrategias', mod.arq_capex_estrategias),
-          `capex_estrategia [${mod.fonte_agua?.nome_fonte}]`,
-        ),
-        fetchCSV(
-          p('capex_perdas', mod.arq_capex_perdas),
-          `capex_perdas [${mod.fonte_agua?.nome_fonte}]`,
-        ),
-        fetchCSV(p('opex', mod.arq_opex), `opex [${mod.fonte_agua?.nome_fonte}]`),
+        fetchCSV(mod.arq_mod),
+        fetchCSV(mod.arq_perdas),
+        fetchCSV(mod.arq_demanda),
+        fetchCSV(mod.arq_capex_estrategias),
+        fetchCSV(mod.arq_capex_perdas),
+        fetchCSV(mod.arq_opex),
       ])
 
-      // BUG 3 CORRIGIDO: incluir TODOS os arrays na união de tempos,
-      // garantindo que linhas de capex/opex também sejam consideradas
+      const mergedByTempo: Record<string, any> = {}
       const allTempos = new Set([
         ...modData.map((d) => d.tempo),
         ...perdasData.map((d) => d.tempo),
         ...demData.map((d) => d.tempo),
-        ...capexEData.map((d) => d.tempo),
-        ...capexPData.map((d) => d.tempo),
-        ...opexData.map((d) => d.tempo),
       ])
-
-      // BUG 6 CORRIGIDO: avisar quando nenhum tempo foi encontrado para o modelo
-      if (allTempos.size === 0) {
-        toast.error(`Nenhum dado encontrado nos arquivos do modelo: ${mod.fonte_agua?.nome_fonte}`)
-        continue
-      }
-
-      const mergedByTempo: Record<string, any> = {}
 
       allTempos.forEach((t) => {
         mergedByTempo[t] = {
-          // BUG 7 CORRIGIDO: usar idSimulacao já validado (número inteiro)
-          id_s: idSimulacao,
+          id_s: parseInt(selectedSim),
           id_mod: mod.id_mod,
           id_fonte: mod.id_fonte,
           tempo: t,
-          volume_captado: modData.find((d) => d.tempo === t)?.valor ?? 0,
-          perdas: perdasData.find((d) => d.tempo === t)?.valor ?? 0,
-          demanda: demData.find((d) => d.tempo === t)?.valor ?? 0,
-          capex_estrategia: capexEData.find((d) => d.tempo === t)?.valor ?? 0,
-          capex_perdas: capexPData.find((d) => d.tempo === t)?.valor ?? 0,
-          opex: opexData.find((d) => d.tempo === t)?.valor ?? 0,
+          volume_captado: modData.find((d) => d.tempo === t)?.valor || 0,
+          perdas: perdasData.find((d) => d.tempo === t)?.valor || 0,
+          demanda: demData.find((d) => d.tempo === t)?.valor || 0,
+          capex_estrategia: capexEData.find((d) => d.tempo === t)?.valor || 0,
+          capex_perdas: capexPData.find((d) => d.tempo === t)?.valor || 0,
+          opex: opexData.find((d) => d.tempo === t)?.valor || 0,
           valores_extras: {},
         }
       })
@@ -174,10 +117,7 @@ export function Importacao() {
       if (inds) {
         for (const ia of inds) {
           if (ia.indicadores?.id_fonte === mod.id_fonte) {
-            const indData = await fetchCSV(
-              `indicadores/${ia.arquivo}`,
-              `indicador [${ia.indicadores?.campo_extra}]`,
-            )
+            const indData = await fetchCSV(`indicadores/${ia.arquivo}`)
             indData.forEach((d) => {
               if (mergedByTempo[d.tempo]) {
                 mergedByTempo[d.tempo].valores_extras[ia.indicadores.campo_extra] = d.valor
@@ -191,12 +131,9 @@ export function Importacao() {
       if (rows.length > 0) {
         for (let i = 0; i < rows.length; i += 500) {
           const batch = rows.slice(i, i + 500)
-          // BUG 5 CORRIGIDO: ignoringDuplicates como fallback caso a constraint UNIQUE
-          // não esteja configurada; se o upsert continuar falhando, verificar se existe
-          // a constraint: UNIQUE(id_s, id_mod, id_fonte, tempo) na tabela dados_simulacao
           const { error } = await supabase
             .from('dados_simulacao')
-            .upsert(batch, { onConflict: 'id_s,id_mod,id_fonte,tempo', ignoreDuplicates: false })
+            .upsert(batch, { onConflict: 'id_s,id_mod,id_fonte,tempo' })
 
           if (error) {
             console.error('Upsert error:', error)
@@ -208,15 +145,11 @@ export function Importacao() {
       }
     }
 
-    // BUG 8 CORRIGIDO: filtrar também por id_mod para não misturar dados de outras simulações
-    // Buscamos apenas os modelos recém-importados
+    // Analytic updates for the simulation logic
     const { data: simData } = await supabase
       .from('dados_simulacao')
       .select('capex_estrategia, capex_perdas, perdas')
-      .eq('id_s', idSimulacao)
-      .in('id_mod', modsToImport)
-      .order('tempo', { ascending: true })
-
+      .eq('id_s', selectedSim)
     if (simData && simData.length > 0) {
       const totalCapex = simData.reduce(
         (s, r) => s + (r.capex_estrategia || 0) + (r.capex_perdas || 0),
@@ -228,7 +161,7 @@ export function Importacao() {
       await supabase
         .from('simulacao_ssd')
         .update({ total_capex: totalCapex, media_reducao_perdas: avgReduction })
-        .eq('id_s', idSimulacao)
+        .eq('id_s', selectedSim)
     }
 
     setLoading(false)
