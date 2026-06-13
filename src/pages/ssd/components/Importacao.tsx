@@ -1113,17 +1113,16 @@ export function Importacao() {
                       {formatData(m.fonte_agua?.nome_fonte) || `Fonte ${m.id_fonte}`}
                     </td>
 
-                    {/* Cenários — JSONB { tcChave: cChave } */}
+                    {/* Cenários — array de strings */}
                     <td className="px-3 py-2 text-slate-600 max-w-[180px]">
-                      {m.cenario && typeof m.cenario === 'object' && !Array.isArray(m.cenario) ? (
+                      {Array.isArray(m.cenario) && m.cenario.length > 0 ? (
                         <div className="flex flex-wrap gap-1">
-                          {Object.entries(m.cenario).map(([k, v]) => (
+                          {m.cenario.map((c: string) => (
                             <span
-                              key={k}
-                              className="inline-flex items-center gap-0.5 bg-blue-50 border border-blue-200 text-blue-700 rounded px-1 py-0.5 text-[10px] font-mono"
+                              key={c}
+                              className="inline-block bg-blue-50 border border-blue-200 text-blue-700 rounded px-1 py-0.5 text-[10px]"
                             >
-                              <span className="font-semibold">{k}:</span>
-                              {String(v)}
+                              {c}
                             </span>
                           ))}
                         </div>
@@ -1132,14 +1131,14 @@ export function Importacao() {
                       )}
                     </td>
 
-                    {/* Estratégias — array ["chave1", "chave2"] */}
+                    {/* Estratégias — array de strings */}
                     <td className="px-3 py-2 text-slate-600 max-w-[180px]">
                       {Array.isArray(m.estrategia) && m.estrategia.length > 0 ? (
                         <div className="flex flex-wrap gap-1">
                           {m.estrategia.map((e: string) => (
                             <span
                               key={e}
-                              className="inline-block bg-emerald-50 border border-emerald-200 text-emerald-700 rounded px-1 py-0.5 text-[10px] font-mono"
+                              className="inline-block bg-emerald-50 border border-emerald-200 text-emerald-700 rounded px-1 py-0.5 text-[10px]"
                             >
                               {e}
                             </span>
