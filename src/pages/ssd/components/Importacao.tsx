@@ -173,6 +173,7 @@ type ModeloRow = {
 type IndicadorDraft = {
   id_indicador: number
   descricao: string
+  campo_extra: string // nome da coluna no CSV e chave no JSONB valores_extras
   arq: string // path do arquivo no storage
 }
 
@@ -195,7 +196,9 @@ export function Importacao() {
   const [importStatus, setImportStatus] = useState<Record<number, string>>({})
 
   // Lista completa de indicadores disponíveis (tabela indicadores)
-  const [indicadores, setIndicadores] = useState<{ id_indicador: number; descricao: string }[]>([])
+  const [indicadores, setIndicadores] = useState<
+    { id_indicador: number; descricao: string; campo_extra: string }[]
+  >([])
 
   // Draft de montagem de indicadores no formulário
   const [indicadorSelecionado, setIndicadorSelecionado] = useState('') // id_indicador selecionado no Select
@@ -238,7 +241,10 @@ export function Importacao() {
       try {
         const [modRes, indRes, refRes] = await Promise.all([
           supabase.from('modelos').select('*, fonte_agua(nome_fonte)'),
-          supabase.from('indicadores').select('id_indicador, descricao').order('descricao'),
+          supabase
+            .from('indicadores')
+            .select('id_indicador, descricao, campo_extra')
+            .order('descricao'),
           Promise.all([
             supabase.from('fonte_agua').select('*'),
             supabase.from('tipos_cenarios').select('*'),
@@ -300,7 +306,12 @@ export function Importacao() {
     if (!ind) return
     setIndicadoresDraft((p) => [
       ...p,
-      { id_indicador: ind.id_indicador, descricao: ind.descricao, arq: indicadorArq },
+      {
+        id_indicador: ind.id_indicador,
+        descricao: ind.descricao,
+        campo_extra: ind.campo_extra,
+        arq: indicadorArq,
+      },
     ])
     setIndicadorSelecionado('')
     setIndicadorArq('')
@@ -447,100 +458,133 @@ export function Importacao() {
       .filter((d) => d.tempo)
   }
 
-  // ── Importar arquivo de indicadores ─────────────────────────────────────────
   /**
-   * Baixa um arquivo CSV/JSON do bucket 'dados_brutos' e faz upsert em
-   * 'indicadores_aplicado'. O campo 'valores_extras' (JSONB) em dados_simulacao
-   * é preenchido separadamente pela lógica de simulação com base nos registros
-   * gravados aqui.
+   * Lê o CSV do indicador (colunas: tempo + campo_extra) e faz upsert do
+   * campo_extra em dados_simulacao.valores_extras (JSONB) para cada tempo.
    *
-   * Cada arquivo de indicador tem como chave o id_indicador ao qual pertence,
-   * permitindo múltiplos indicadores por fonte (arq_indicador é JSONB no banco).
-   *
-   * Formato CSV esperado (separador ; ou ,):
-   *   id_indicador;campo_extra;tempo;id_fonte;valor;[outros campos opcionais]
-   *
-   * Formato JSON: array de objetos com as mesmas chaves.
+   * Exemplo: campo_extra = "turbidez", CSV tem colunas "tempo" e "turbidez".
+   * Resultado em dados_simulacao: valores_extras = { "turbidez": 12.5, ... }
    */
   const importarIndicador = async (
     arqPath: string,
-    id_indicador: number,
+    campoExtra: string,
+    id_mod: number,
+    id_fonte: number,
+    id_s: number,
   ): Promise<{ ok: boolean; count: number; errorMsg?: string }> => {
+    // ── 1. Normaliza path ──────────────────────────────────────────────────────
     const cleanPath = arqPath.trim().replace(/\\/g, '/').replace(/\/+/g, '/').replace(/^\//, '')
+
+    // ── 2. Download ────────────────────────────────────────────────────────────
     const { data: fileData, error: dlError } = await supabase.storage
       .from('dados_brutos')
       .download(cleanPath)
 
     if (dlError || !fileData) {
-      const msg = `Erro ao baixar indicador (id=${id_indicador}, path=${cleanPath}): ${dlError?.message ?? 'não encontrado'}`
-      console.error(msg)
-      return { ok: false, count: 0, errorMsg: msg }
+      return {
+        ok: false,
+        count: 0,
+        errorMsg: `Download falhou (${cleanPath}): ${dlError?.message ?? 'não encontrado'}`,
+      }
     }
 
+    // ── 3. Parse CSV ───────────────────────────────────────────────────────────
     const text = await fileData.text()
     if (!text.trim()) return { ok: false, count: 0, errorMsg: 'Arquivo vazio' }
 
-    let rows: any[] = []
+    const firstLine = text.split('\n')[0].replace(/^\uFEFF/, '')
+    const countSemi = (firstLine.match(/;/g) || []).length
+    const countComma = (firstLine.match(/,/g) || []).length
+    const sep = countSemi >= countComma ? ';' : ','
 
-    const isJson =
-      arqPath.toLowerCase().endsWith('.json') ||
-      text.trimStart().startsWith('[') ||
-      text.trimStart().startsWith('{')
+    const lines = text.split('\n').filter((l) => l.trim())
+    if (lines.length < 2) return { ok: false, count: 0, errorMsg: 'CSV sem dados' }
 
-    if (isJson) {
-      try {
-        const parsed = JSON.parse(text)
-        rows = Array.isArray(parsed) ? parsed : [parsed]
-      } catch (e: any) {
-        return { ok: false, count: 0, errorMsg: `JSON inválido: ${e?.message}` }
+    const headers = lines[0]
+      .replace(/^\uFEFF/, '')
+      .split(sep)
+      .map((h) =>
+        h
+          .trim()
+          .replace(/^["'\r]+|["'\r]+$/g, '')
+          .toLowerCase(),
+      )
+
+    // Localiza coluna de tempo e coluna do campo_extra
+    const tIdx = headers.findIndex((h) => h === 'tempo' || h.includes('tempo'))
+    const vIdx = headers.findIndex((h) => h === campoExtra.toLowerCase())
+
+    if (tIdx < 0)
+      return {
+        ok: false,
+        count: 0,
+        errorMsg: `Coluna "tempo" não encontrada. Headers: [${headers.join(', ')}]`,
       }
-    } else {
-      const firstLine = text.split('\n')[0]
-      const sep = firstLine.includes(';') ? ';' : ','
-      const lines = text.split('\n').filter((l) => l.trim())
-      if (lines.length < 2) return { ok: false, count: 0, errorMsg: 'CSV sem dados' }
-      const headers = lines[0].split(sep).map((h) => h.trim().replace(/^["'\s]+|["'\s]+$/g, ''))
-      rows = lines
-        .slice(1)
-        .filter((l) => l.trim())
-        .map((line) => {
-          const vals = line.split(sep).map((v) => v.trim().replace(/^["'\s]+|["'\s]+$/g, ''))
-          return headers.reduce<Record<string, any>>((acc, h, i) => {
-            if (!h) return acc
-            const raw = vals[i] ?? null
-            // Converte número onde possível
-            if (raw !== null && raw !== '' && !isNaN(Number(raw.replace(',', '.')))) {
-              acc[h] = Number(raw.replace(',', '.'))
-            } else {
-              acc[h] = raw === '' ? null : raw
-            }
-            return acc
-          }, {})
-        })
+    if (vIdx < 0)
+      return {
+        ok: false,
+        count: 0,
+        errorMsg: `Coluna "${campoExtra}" não encontrada. Headers: [${headers.join(', ')}]`,
+      }
+
+    // Mapeia tempo → valor do campo_extra
+    const valoresPorTempo: Record<string, number | null> = {}
+    for (const line of lines.slice(1)) {
+      if (!line.trim()) continue
+      const vals = line.split(sep).map((v) => v.trim().replace(/^["'\r]+|["'\r]+$/g, ''))
+      const tempo = (vals[tIdx] || '').replace(/-/g, '/')
+      const raw = vals[vIdx] ?? ''
+      const num = parseFloat(raw.replace(',', '.'))
+      valoresPorTempo[tempo] = isNaN(num) ? null : num
     }
 
-    if (rows.length === 0) return { ok: false, count: 0, errorMsg: 'Nenhuma linha de dados' }
+    const tempos = Object.keys(valoresPorTempo)
+    if (tempos.length === 0) return { ok: false, count: 0, errorMsg: 'Nenhum dado de tempo válido' }
 
-    // Garante que id_indicador está presente em todos os registros
-    rows = rows.map((r) => ({
-      ...r,
-      id_indicador: r.id_indicador ?? id_indicador,
+    // ── 4. Busca os registros existentes em dados_simulacao para esses tempos ──
+    const { data: existentes, error: selErr } = await supabase
+      .from('dados_simulacao')
+      .select('id_ds, tempo, valores_extras')
+      .eq('id_s', id_s)
+      .eq('id_mod', id_mod)
+      .eq('id_fonte', id_fonte)
+      .in('tempo', tempos)
+
+    if (selErr) {
+      return { ok: false, count: 0, errorMsg: `Erro ao buscar dados_simulacao: ${selErr.message}` }
+    }
+
+    if (!existentes || existentes.length === 0) {
+      return {
+        ok: false,
+        count: 0,
+        errorMsg:
+          'Nenhum registro encontrado em dados_simulacao para esses tempos. Importe os dados principais primeiro.',
+      }
+    }
+
+    // ── 5. Atualiza valores_extras (merge JSONB) ───────────────────────────────
+    const updates = existentes.map((row: any) => ({
+      id_ds: row.id_ds,
+      valores_extras: {
+        ...(row.valores_extras ?? {}),
+        [campoExtra]: valoresPorTempo[row.tempo] ?? null,
+      },
     }))
 
     let erros = 0
     let errorMsg = ''
-    for (let i = 0; i < rows.length; i += 500) {
-      const { error } = await supabase
-        .from('indicadores_aplicado')
-        .upsert(rows.slice(i, i + 500), { ignoreDuplicates: false })
+    for (let i = 0; i < updates.length; i += 500) {
+      const lote = updates.slice(i, i + 500)
+      const { error } = await supabase.from('dados_simulacao').upsert(lote, { onConflict: 'id_ds' })
       if (error) {
-        console.error(`Upsert indicadores_aplicado (lote ${i}):`, error)
+        console.error(`[importarIndicador "${campoExtra}"] upsert valores_extras lote ${i}:`, error)
         errorMsg = error.message
         erros++
       }
     }
 
-    return erros === 0 ? { ok: true, count: rows.length } : { ok: false, count: 0, errorMsg }
+    return erros === 0 ? { ok: true, count: updates.length } : { ok: false, count: 0, errorMsg }
   }
 
   // ── Importar dados ───────────────────────────────────────────────────────────
@@ -598,23 +642,42 @@ export function Importacao() {
           if (error) throw error
         }
 
-        // ── Indicadores: itera cada par { id_indicador: path } ───────────────
-        const arqIndMap = mod.arq_indicador // ArqIndicadorMap | null
+        // ── Indicadores: lê cada CSV e merge em dados_simulacao.valores_extras ──
+        const arqIndMap = mod.arq_indicador // { "id_indicador": "path" } | null
         if (arqIndMap && typeof arqIndMap === 'object' && Object.keys(arqIndMap).length > 0) {
-          const pares = Object.entries(arqIndMap) // [["3", "pasta/turb.csv"], ...]
+          const pares = Object.entries(arqIndMap)
           let totalIndicadores = 0
           let errosIndicadores = 0
 
           for (const [idIndStr, arqPath] of pares) {
             const idInd = Number(idIndStr)
+            const indMeta = indicadores.find((x) => x.id_indicador === idInd)
+            const campoExtra = indMeta?.campo_extra ?? ''
+            const indNome = indMeta?.descricao ?? `id=${idIndStr}`
+
+            if (!campoExtra) {
+              errosIndicadores++
+              toast.error(`Indicador "${indNome}" não tem campo_extra definido`, { duration: 8000 })
+              continue
+            }
+
             setImportStatus((prev) => ({
               ...prev,
-              [id_mod]: `Importando indicador ${idIndStr}...`,
+              [id_mod]: `Importando indicador "${indNome}" (${campoExtra})...`,
             }))
-            const { ok, count, errorMsg } = await importarIndicador(arqPath, idInd)
+
+            const { ok, count, errorMsg } = await importarIndicador(
+              arqPath,
+              campoExtra,
+              mod.id_mod,
+              mod.id_fonte,
+              id_s,
+            )
+
             if (!ok) {
               errosIndicadores++
-              toast.error(`Indicador ${idIndStr}: ${errorMsg ?? 'erro desconhecido'}`)
+              const msgCompleta = `Indicador "${indNome}" (${campoExtra}): ${errorMsg ?? 'erro desconhecido'}`
+              toast.error(msgCompleta, { duration: 10000 })
             } else {
               totalIndicadores += count
             }
@@ -623,7 +686,7 @@ export function Importacao() {
           const resumo =
             errosIndicadores > 0
               ? `Concluído c/ erros (${rows.length} dados, ${errosIndicadores}/${pares.length} indicadores falharam)`
-              : `Concluído (${rows.length} dados + ${totalIndicadores} reg. indicadores em ${pares.length} arquivo(s))`
+              : `Concluído (${rows.length} dados + ${totalIndicadores} valores_extras em ${pares.length} indicador(es))`
           setImportStatus((prev) => ({ ...prev, [id_mod]: resumo }))
         } else {
           setImportStatus((prev) => ({ ...prev, [id_mod]: `Concluído (${rows.length} dados)` }))
@@ -807,12 +870,6 @@ export function Importacao() {
             {/* Indicadores */}
             <div className="border p-4 rounded-lg bg-slate-50 space-y-3">
               <h3 className="font-semibold text-sm">Montagem de Indicadores</h3>
-              <p className="text-[11px] text-muted-foreground">
-                Cada indicador tem seu próprio arquivo. Os dados são gravados em{' '}
-                <code className="bg-slate-100 px-1 rounded">indicadores_aplicado</code> e vinculados
-                ao campo <code className="bg-slate-100 px-1 rounded">valores_extras</code> (JSONB).
-              </p>
-
               {/* Select do indicador */}
               <Select value={indicadorSelecionado} onValueChange={setIndicadorSelecionado}>
                 <SelectTrigger>
