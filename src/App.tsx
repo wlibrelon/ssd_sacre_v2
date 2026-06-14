@@ -3,7 +3,6 @@ import { Toaster } from '@/components/ui/toaster'
 import { Toaster as Sonner } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { AuthProvider } from '@/hooks/use-auth'
-
 import Layout from './components/Layout'
 import Index from './pages/Index'
 import AuthPage from './pages/auth/AuthPage'
@@ -21,6 +20,7 @@ import Congressos from './pages/divulgacao/Congressos'
 import NotFound from './pages/NotFound'
 import Placeholder from './pages/Placeholder'
 import Contexto from './pages/area-estudo/Contexto'
+import { GestaoProjetos } from '@/components/gestao-projetos/GestaoProjetos'
 
 const App = () => (
   <BrowserRouter future={{ v7_startTransition: false, v7_relativeSplatPath: false }}>
@@ -33,7 +33,6 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/auth/reset-password" element={<ResetPassword />} />
-
             <Route path="/institucional/projeto" element={<Projeto />} />
             <Route
               path="/institucional/objetivos"
@@ -41,12 +40,10 @@ const App = () => (
             />
             <Route path="/institucional/parceiros" element={<Placeholder title="Parceiros" />} />
             <Route path="/institucional/equipe" element={<Equipe />} />
-
             <Route path="/area-estudo/contexto" element={<Contexto />} />
             <Route path="/area-estudo/objetivos" element={<AreaEstudoObjetivos />} />
             <Route path="/area-estudo/documentos" element={<AreaEstudoDocumentos />} />
             <Route path="/area-estudo/camadas" element={<Placeholder title="Camadas (Mapas)" />} />
-
             <Route
               path="/projetos/objetivos"
               element={<Placeholder title="Objetivos dos Projetos" />}
@@ -55,10 +52,8 @@ const App = () => (
               path="/projetos/resultados"
               element={<Placeholder title="Resultados dos Projetos" />}
             />
-
             <Route path="/ssd/cenarios" element={<Cenarios />} />
             <Route path="/ssd/configuracoes" element={<Configuracoes />} />
-
             <Route path="/divulgacao/publicacoes" element={<Publicacoes />} />
             <Route path="/divulgacao/midia" element={<Midia />} />
             <Route path="/divulgacao/congressos" element={<Congressos />} />
@@ -66,8 +61,8 @@ const App = () => (
               path="/divulgacao/atividades-sociais"
               element={<Placeholder title="Atividades Sociais" />}
             />
-
             <Route path="/restrito" element={<Dashboard />} />
+            <Route path="/restrito/projetos" element={<GestaoProjetos />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>
