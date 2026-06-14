@@ -23,7 +23,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Textarea } from '@/components/ui/textarea'
-import { GestaoProjetos } from './components/GestaoProjetos'
+import { GestaoProjetos } from '@/components/restrito/GestaoProjetos'
 export default function Dashboard() {
   const { user, profile, isAuthenticated } = useAuth()
   const { toast } = useToast()

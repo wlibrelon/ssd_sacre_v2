@@ -60,6 +60,119 @@ export type Database = {
           },
         ]
       }
+      arq_resultados: {
+        Row: {
+          descricao: string | null
+          id_arq_res: number
+          id_projeto: number | null
+          nome_arq: string | null
+        }
+        Insert: {
+          descricao?: string | null
+          id_arq_res?: number
+          id_projeto?: number | null
+          nome_arq?: string | null
+        }
+        Update: {
+          descricao?: string | null
+          id_arq_res?: number
+          id_projeto?: number | null
+          nome_arq?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'arq_resultados_id_projeto_fkey'
+            columns: ['id_projeto']
+            isOneToOne: false
+            referencedRelation: 'projetos_wps'
+            referencedColumns: ['id_projeto']
+          },
+        ]
+      }
+      artigos: {
+        Row: {
+          abstract: string | null
+          arquivo: string | null
+          doi: string | null
+          id_artigo: number
+          id_projeto: number | null
+          id_tipo_artigo: number | null
+          resumo: string | null
+          titulo: string | null
+        }
+        Insert: {
+          abstract?: string | null
+          arquivo?: string | null
+          doi?: string | null
+          id_artigo?: number
+          id_projeto?: number | null
+          id_tipo_artigo?: number | null
+          resumo?: string | null
+          titulo?: string | null
+        }
+        Update: {
+          abstract?: string | null
+          arquivo?: string | null
+          doi?: string | null
+          id_artigo?: number
+          id_projeto?: number | null
+          id_tipo_artigo?: number | null
+          resumo?: string | null
+          titulo?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'artigos_id_projeto_fkey'
+            columns: ['id_projeto']
+            isOneToOne: false
+            referencedRelation: 'projetos_wps'
+            referencedColumns: ['id_projeto']
+          },
+          {
+            foreignKeyName: 'artigos_id_tipo_artigo_fkey'
+            columns: ['id_tipo_artigo']
+            isOneToOne: false
+            referencedRelation: 'tipo_artigo'
+            referencedColumns: ['id_tipo']
+          },
+        ]
+      }
+      artigos_autores: {
+        Row: {
+          id_artigo: number | null
+          id_artigo_autor: number
+          id_autor: number | null
+          is_principal: boolean | null
+        }
+        Insert: {
+          id_artigo?: number | null
+          id_artigo_autor?: number
+          id_autor?: number | null
+          is_principal?: boolean | null
+        }
+        Update: {
+          id_artigo?: number | null
+          id_artigo_autor?: number
+          id_autor?: number | null
+          is_principal?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'artigos_autores_id_artigo_fkey'
+            columns: ['id_artigo']
+            isOneToOne: false
+            referencedRelation: 'artigos'
+            referencedColumns: ['id_artigo']
+          },
+          {
+            foreignKeyName: 'artigos_autores_id_autor_fkey'
+            columns: ['id_autor']
+            isOneToOne: false
+            referencedRelation: 'colaboradores'
+            referencedColumns: ['id_colaborador']
+          },
+        ]
+      }
       capex_acao: {
         Row: {
           capex: number | null
@@ -280,6 +393,27 @@ export type Database = {
             referencedColumns: ['id_tc']
           },
         ]
+      }
+      colaboradores: {
+        Row: {
+          formacao: string | null
+          id_colaborador: number
+          link_internet: string | null
+          nome: string
+        }
+        Insert: {
+          formacao?: string | null
+          id_colaborador?: number
+          link_internet?: string | null
+          nome: string
+        }
+        Update: {
+          formacao?: string | null
+          id_colaborador?: number
+          link_internet?: string | null
+          nome?: string
+        }
+        Relationships: []
       }
       conteudo_estudo: {
         Row: {
@@ -513,6 +647,39 @@ export type Database = {
           },
         ]
       }
+      lista_colab: {
+        Row: {
+          id_colaborador: number | null
+          id_lista_colab: number
+          id_wp: number | null
+        }
+        Insert: {
+          id_colaborador?: number | null
+          id_lista_colab?: number
+          id_wp?: number | null
+        }
+        Update: {
+          id_colaborador?: number | null
+          id_lista_colab?: number
+          id_wp?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'lista_colab_id_colaborador_fkey'
+            columns: ['id_colaborador']
+            isOneToOne: false
+            referencedRelation: 'colaboradores'
+            referencedColumns: ['id_colaborador']
+          },
+          {
+            foreignKeyName: 'lista_colab_id_wp_fkey'
+            columns: ['id_wp']
+            isOneToOne: false
+            referencedRelation: 'wps'
+            referencedColumns: ['id_wp']
+          },
+        ]
+      }
       modelos: {
         Row: {
           arq_capex_estrategias: string | null
@@ -622,6 +789,41 @@ export type Database = {
             isOneToOne: false
             referencedRelation: 'grupo_acesso'
             referencedColumns: ['id_ga']
+          },
+        ]
+      }
+      projetos_wps: {
+        Row: {
+          id_autor: number | null
+          id_projeto: number
+          id_wp: number | null
+          objetivos: string | null
+          resumo: string | null
+          titulo: string | null
+        }
+        Insert: {
+          id_autor?: number | null
+          id_projeto?: number
+          id_wp?: number | null
+          objetivos?: string | null
+          resumo?: string | null
+          titulo?: string | null
+        }
+        Update: {
+          id_autor?: number | null
+          id_projeto?: number
+          id_wp?: number | null
+          objetivos?: string | null
+          resumo?: string | null
+          titulo?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'projetos_wps_id_wp_fkey'
+            columns: ['id_wp']
+            isOneToOne: false
+            referencedRelation: 'wps'
+            referencedColumns: ['id_wp']
           },
         ]
       }
@@ -764,6 +966,21 @@ export type Database = {
         }
         Relationships: []
       }
+      tipo_artigo: {
+        Row: {
+          descricao: string | null
+          id_tipo: number
+        }
+        Insert: {
+          descricao?: string | null
+          id_tipo?: number
+        }
+        Update: {
+          descricao?: string | null
+          id_tipo?: number
+        }
+        Relationships: []
+      }
       tipo_cenario_cenario: {
         Row: {
           id_c: number | null
@@ -814,6 +1031,41 @@ export type Database = {
           obs_tipo_cenario?: string | null
         }
         Relationships: []
+      }
+      wps: {
+        Row: {
+          descricao: string | null
+          id_gerente: number | null
+          id_wp: number
+          menu: string | null
+          titulo: string | null
+          wp: number | null
+        }
+        Insert: {
+          descricao?: string | null
+          id_gerente?: number | null
+          id_wp?: number
+          menu?: string | null
+          titulo?: string | null
+          wp?: number | null
+        }
+        Update: {
+          descricao?: string | null
+          id_gerente?: number | null
+          id_wp?: number
+          menu?: string | null
+          titulo?: string | null
+          wp?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'wps_id_gerente_fkey'
+            columns: ['id_gerente']
+            isOneToOne: false
+            referencedRelation: 'colaboradores'
+            referencedColumns: ['id_colaborador']
+          },
+        ]
       }
     }
     Views: {
@@ -970,6 +1222,25 @@ export const Constants = {
 //   id_ef: integer (not null)
 //   id_fonte: integer (nullable)
 //   id_acao: integer (nullable)
+// Table: arq_resultados
+//   id_arq_res: integer (not null, default: nextval('arq_resultados_id_arq_res_seq'::regclass))
+//   id_projeto: integer (nullable)
+//   descricao: text (nullable)
+//   nome_arq: character varying (nullable)
+// Table: artigos
+//   id_artigo: integer (not null, default: nextval('artigos_id_artigo_seq'::regclass))
+//   id_projeto: integer (nullable)
+//   titulo: character varying (nullable)
+//   resumo: text (nullable)
+//   abstract: text (nullable)
+//   doi: text (nullable)
+//   arquivo: text (nullable)
+//   id_tipo_artigo: integer (nullable)
+// Table: artigos_autores
+//   id_artigo_autor: integer (not null, default: nextval('artigos_autores_id_artigo_autor_seq'::regclass))
+//   id_artigo: integer (nullable)
+//   id_autor: integer (nullable)
+//   is_principal: boolean (nullable, default: false)
 // Table: capex_acao
 //   id_ca: integer (not null, default: nextval('capex_acao_id_ca_seq'::regclass))
 //   id_acao: integer (nullable)
@@ -1008,6 +1279,11 @@ export const Constants = {
 //   id_cf: integer (not null)
 //   id_fonte: integer (nullable)
 //   id_tc: integer (nullable)
+// Table: colaboradores
+//   id_colaborador: integer (not null, default: nextval('colaboradores_id_colaborador_seq'::regclass))
+//   nome: character varying (not null)
+//   link_internet: character varying (nullable)
+//   formacao: character varying (nullable)
 // Table: conteudo_estudo
 //   id: integer (not null, default: nextval('conteudo_estudo_id_seq'::regclass))
 //   secao: text (not null)
@@ -1054,6 +1330,10 @@ export const Constants = {
 //   id_s: integer (nullable)
 //   id_indicador: integer (nullable)
 //   arquivo: character varying (nullable)
+// Table: lista_colab
+//   id_lista_colab: integer (not null, default: nextval('lista_colab_id_lista_colab_seq'::regclass))
+//   id_colaborador: integer (nullable)
+//   id_wp: integer (nullable)
 // Table: modelos
 //   id_mod: integer (not null, default: nextval('modelos_id_mod_seq'::regclass))
 //   id_fonte: integer (nullable)
@@ -1080,6 +1360,13 @@ export const Constants = {
 //   id_ga: integer (nullable)
 //   status: text (nullable, default: 'pendente'::text)
 //   created_at: timestamp with time zone (nullable, default: now())
+// Table: projetos_wps
+//   id_projeto: integer (not null, default: nextval('projetos_wps_id_projeto_seq'::regclass))
+//   id_wp: integer (nullable)
+//   titulo: text (nullable)
+//   id_autor: integer (nullable)
+//   resumo: text (nullable)
+//   objetivos: text (nullable)
 // Table: recursos_app
 //   id_rapp: integer (not null, default: nextval('recursos_app_id_rapp_seq'::regclass))
 //   nome_recurso: character varying (not null)
@@ -1108,6 +1395,9 @@ export const Constants = {
 //   limiar_alerta: double precision (nullable)
 //   limiar_crise: double precision (nullable)
 //   limiar_colapso: double precision (nullable)
+// Table: tipo_artigo
+//   id_tipo: integer (not null, default: nextval('tipo_artigo_id_tipo_seq'::regclass))
+//   descricao: character varying (nullable)
 // Table: tipo_cenario_cenario
 //   id_tcc: integer (not null)
 //   id_tc: integer (nullable)
@@ -1116,6 +1406,13 @@ export const Constants = {
 //   id_tc: integer (not null)
 //   descricao: character varying (nullable)
 //   obs_tipo_cenario: character varying (nullable)
+// Table: wps
+//   id_wp: integer (not null, default: nextval('wps_id_wp_seq'::regclass))
+//   wp: integer (nullable)
+//   titulo: text (nullable)
+//   descricao: text (nullable)
+//   menu: character varying (nullable)
+//   id_gerente: integer (nullable)
 
 // --- CONSTRAINTS ---
 // Table: acoes
@@ -1124,6 +1421,17 @@ export const Constants = {
 //   FOREIGN KEY acoes_fonte_id_acao_fkey: FOREIGN KEY (id_acao) REFERENCES acoes(id_acao) ON DELETE CASCADE
 //   FOREIGN KEY estrategias_fonte_id_fonte_fkey: FOREIGN KEY (id_fonte) REFERENCES fonte_agua(id_fonte) ON DELETE CASCADE
 //   PRIMARY KEY estrategias_fonte_pkey: PRIMARY KEY (id_ef)
+// Table: arq_resultados
+//   FOREIGN KEY arq_resultados_id_projeto_fkey: FOREIGN KEY (id_projeto) REFERENCES projetos_wps(id_projeto) ON DELETE CASCADE
+//   PRIMARY KEY arq_resultados_pkey: PRIMARY KEY (id_arq_res)
+// Table: artigos
+//   FOREIGN KEY artigos_id_projeto_fkey: FOREIGN KEY (id_projeto) REFERENCES projetos_wps(id_projeto) ON DELETE CASCADE
+//   FOREIGN KEY artigos_id_tipo_artigo_fkey: FOREIGN KEY (id_tipo_artigo) REFERENCES tipo_artigo(id_tipo) ON DELETE CASCADE
+//   PRIMARY KEY artigos_pkey: PRIMARY KEY (id_artigo)
+// Table: artigos_autores
+//   FOREIGN KEY artigos_autores_id_artigo_fkey: FOREIGN KEY (id_artigo) REFERENCES artigos(id_artigo) ON DELETE CASCADE
+//   FOREIGN KEY artigos_autores_id_autor_fkey: FOREIGN KEY (id_autor) REFERENCES colaboradores(id_colaborador) ON DELETE CASCADE
+//   PRIMARY KEY artigos_autores_pkey: PRIMARY KEY (id_artigo_autor)
 // Table: capex_acao
 //   FOREIGN KEY capex_acao_id_acao_fkey: FOREIGN KEY (id_acao) REFERENCES acoes(id_acao) ON DELETE CASCADE
 //   PRIMARY KEY capex_acao_pkey: PRIMARY KEY (id_ca)
@@ -1148,6 +1456,8 @@ export const Constants = {
 //   FOREIGN KEY cenarios_fonte_id_fonte_fkey: FOREIGN KEY (id_fonte) REFERENCES fonte_agua(id_fonte) ON DELETE CASCADE
 //   FOREIGN KEY cenarios_fonte_id_tc_fkey: FOREIGN KEY (id_tc) REFERENCES tipos_cenarios(id_tc) ON DELETE CASCADE
 //   PRIMARY KEY cenarios_fonte_pkey: PRIMARY KEY (id_cf)
+// Table: colaboradores
+//   PRIMARY KEY colaboradores_pkey: PRIMARY KEY (id_colaborador)
 // Table: conteudo_estudo
 //   PRIMARY KEY conteudo_estudo_pkey: PRIMARY KEY (id)
 // Table: dados_simulacao
@@ -1171,6 +1481,10 @@ export const Constants = {
 //   FOREIGN KEY indicadores_aplicado_id_indicador_fkey: FOREIGN KEY (id_indicador) REFERENCES indicadores(id_indicador) ON DELETE CASCADE
 //   FOREIGN KEY indicadores_aplicado_id_s_fkey: FOREIGN KEY (id_s) REFERENCES simulacao_ssd(id_s) ON DELETE CASCADE
 //   PRIMARY KEY indicadores_aplicado_pkey: PRIMARY KEY (id_ia)
+// Table: lista_colab
+//   FOREIGN KEY lista_colab_id_colaborador_fkey: FOREIGN KEY (id_colaborador) REFERENCES colaboradores(id_colaborador) ON DELETE CASCADE
+//   FOREIGN KEY lista_colab_id_wp_fkey: FOREIGN KEY (id_wp) REFERENCES wps(id_wp) ON DELETE CASCADE
+//   PRIMARY KEY lista_colab_pkey: PRIMARY KEY (id_lista_colab)
 // Table: modelos
 //   FOREIGN KEY modelos_id_fonte_fkey: FOREIGN KEY (id_fonte) REFERENCES fonte_agua(id_fonte) ON DELETE CASCADE
 //   PRIMARY KEY modelos_pkey: PRIMARY KEY (id_mod)
@@ -1180,6 +1494,9 @@ export const Constants = {
 //   FOREIGN KEY perfis_usuarios_id_fkey: FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE
 //   FOREIGN KEY perfis_usuarios_id_ga_fkey: FOREIGN KEY (id_ga) REFERENCES grupo_acesso(id_ga)
 //   PRIMARY KEY perfis_usuarios_pkey: PRIMARY KEY (id)
+// Table: projetos_wps
+//   FOREIGN KEY projetos_wps_id_wp_fkey: FOREIGN KEY (id_wp) REFERENCES wps(id_wp) ON DELETE CASCADE
+//   PRIMARY KEY projetos_wps_pkey: PRIMARY KEY (id_projeto)
 // Table: recursos_app
 //   FOREIGN KEY recursos_app_id_ga_fkey: FOREIGN KEY (id_ga) REFERENCES grupo_acesso(id_ga) ON DELETE CASCADE
 //   PRIMARY KEY recursos_app_pkey: PRIMARY KEY (id_rapp)
@@ -1192,12 +1509,17 @@ export const Constants = {
 //   PRIMARY KEY selecao_cenarios_pkey: PRIMARY KEY (id)
 // Table: simulacao_ssd
 //   PRIMARY KEY simulacao_ssd_pkey: PRIMARY KEY (id_s)
+// Table: tipo_artigo
+//   PRIMARY KEY tipo_artigo_pkey: PRIMARY KEY (id_tipo)
 // Table: tipo_cenario_cenario
 //   FOREIGN KEY tipo_cenario_cenario_id_c_fkey: FOREIGN KEY (id_c) REFERENCES cenarios(id_cenarios) ON DELETE CASCADE
 //   FOREIGN KEY tipo_cenario_cenario_id_tc_fkey: FOREIGN KEY (id_tc) REFERENCES tipos_cenarios(id_tc) ON DELETE CASCADE
 //   PRIMARY KEY tipo_cenario_cenario_pkey: PRIMARY KEY (id_tcc)
 // Table: tipos_cenarios
 //   PRIMARY KEY tipos_cenarios_pkey: PRIMARY KEY (id_tc)
+// Table: wps
+//   FOREIGN KEY wps_id_gerente_fkey: FOREIGN KEY (id_gerente) REFERENCES colaboradores(id_colaborador) ON DELETE CASCADE
+//   PRIMARY KEY wps_pkey: PRIMARY KEY (id_wp)
 
 // --- ROW LEVEL SECURITY POLICIES ---
 // Table: acoes
@@ -1210,6 +1532,24 @@ export const Constants = {
 //   Policy "anon_read" (SELECT, PERMISSIVE) roles={anon}
 //     USING: true
 //   Policy "authenticated_all" (ALL, PERMISSIVE) roles={authenticated}
+//     USING: true
+//     WITH CHECK: true
+// Table: arq_resultados
+//   Policy "anon_read" (SELECT, PERMISSIVE) roles={anon}
+//     USING: true
+//   Policy "auth_all" (ALL, PERMISSIVE) roles={authenticated}
+//     USING: true
+//     WITH CHECK: true
+// Table: artigos
+//   Policy "anon_read" (SELECT, PERMISSIVE) roles={anon}
+//     USING: true
+//   Policy "auth_all" (ALL, PERMISSIVE) roles={authenticated}
+//     USING: true
+//     WITH CHECK: true
+// Table: artigos_autores
+//   Policy "anon_read" (SELECT, PERMISSIVE) roles={anon}
+//     USING: true
+//   Policy "auth_all" (ALL, PERMISSIVE) roles={authenticated}
 //     USING: true
 //     WITH CHECK: true
 // Table: capex_acao
@@ -1274,6 +1614,12 @@ export const Constants = {
 //   Policy "authenticated_all" (ALL, PERMISSIVE) roles={authenticated}
 //     USING: true
 //     WITH CHECK: true
+// Table: colaboradores
+//   Policy "anon_read" (SELECT, PERMISSIVE) roles={anon}
+//     USING: true
+//   Policy "auth_all" (ALL, PERMISSIVE) roles={authenticated}
+//     USING: true
+//     WITH CHECK: true
 // Table: conteudo_estudo
 //   Policy "ce_admin" (ALL, PERMISSIVE) roles={public}
 //     USING: is_admin()
@@ -1309,6 +1655,12 @@ export const Constants = {
 //   Policy "indicadores_aplicado_all" (ALL, PERMISSIVE) roles={authenticated}
 //     USING: true
 //     WITH CHECK: true
+// Table: lista_colab
+//   Policy "anon_read" (SELECT, PERMISSIVE) roles={anon}
+//     USING: true
+//   Policy "auth_all" (ALL, PERMISSIVE) roles={authenticated}
+//     USING: true
+//     WITH CHECK: true
 // Table: modelos
 //   Policy "modelos_all" (ALL, PERMISSIVE) roles={authenticated}
 //     USING: true
@@ -1332,6 +1684,12 @@ export const Constants = {
 //     USING: is_admin()
 //   Policy "pu_select" (SELECT, PERMISSIVE) roles={public}
 //     USING: ((auth.uid() = id) OR is_admin())
+// Table: projetos_wps
+//   Policy "anon_read" (SELECT, PERMISSIVE) roles={anon}
+//     USING: true
+//   Policy "auth_all" (ALL, PERMISSIVE) roles={authenticated}
+//     USING: true
+//     WITH CHECK: true
 // Table: recursos_app
 //   Policy "rapp_admin" (ALL, PERMISSIVE) roles={public}
 //     USING: is_admin()
@@ -1353,6 +1711,12 @@ export const Constants = {
 //   Policy "authenticated_all" (ALL, PERMISSIVE) roles={authenticated}
 //     USING: true
 //     WITH CHECK: true
+// Table: tipo_artigo
+//   Policy "anon_read" (SELECT, PERMISSIVE) roles={anon}
+//     USING: true
+//   Policy "auth_all" (ALL, PERMISSIVE) roles={authenticated}
+//     USING: true
+//     WITH CHECK: true
 // Table: tipo_cenario_cenario
 //   Policy "anon_read" (SELECT, PERMISSIVE) roles={anon}
 //     USING: true
@@ -1363,6 +1727,12 @@ export const Constants = {
 //   Policy "anon_read" (SELECT, PERMISSIVE) roles={anon}
 //     USING: true
 //   Policy "authenticated_all" (ALL, PERMISSIVE) roles={authenticated}
+//     USING: true
+//     WITH CHECK: true
+// Table: wps
+//   Policy "anon_read" (SELECT, PERMISSIVE) roles={anon}
+//     USING: true
+//   Policy "auth_all" (ALL, PERMISSIVE) roles={authenticated}
 //     USING: true
 //     WITH CHECK: true
 
