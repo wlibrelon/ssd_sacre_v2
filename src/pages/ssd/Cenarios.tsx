@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { supabase } from '@/lib/supabase/client'
 import { CenariosDashboard } from './components/CenariosDashboard'
+import { MatrizEficacia } from '@/components/ssd/MatrizEficacia'
 import { Checkbox } from '@/components/ui/checkbox'
 import { toast } from 'sonner'
 import { Trash2, Plus } from 'lucide-react'
@@ -1852,7 +1853,17 @@ export default function Cenarios() {
           )
         })()}
 
-      {data.length > 0 && <CenariosDashboard data={data} fontesMap={fontesMap} />}
+      {data.length > 0 && (
+        <>
+          <CenariosDashboard data={data} fontesMap={fontesMap} />
+          <MatrizEficacia
+            data={data}
+            limiarAlerta={limiarAlerta}
+            limiarCrise={limiarCrise}
+            limiarColapso={limiarColapso}
+          />
+        </>
+      )}
 
       {indicadoresCharts.length > 0 && (
         <div className="space-y-6">

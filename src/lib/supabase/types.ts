@@ -1397,7 +1397,7 @@ export const Constants = {
 //   limiar_colapso: double precision (nullable)
 // Table: tipo_artigo
 //   id_tipo: integer (not null, default: nextval('tipo_artigo_id_tipo_seq'::regclass))
-//   descricao: character varying (nullable)
+//   descricao: text (nullable)
 // Table: tipo_cenario_cenario
 //   id_tcc: integer (not null)
 //   id_tc: integer (nullable)
