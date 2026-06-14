@@ -44,7 +44,7 @@ CREATE TABLE IF NOT EXISTS public.arq_resultados (
 -- Create table tipo_artigo
 CREATE TABLE IF NOT EXISTS public.tipo_artigo (
   id_tipo SERIAL PRIMARY KEY,
-  descricao VARCHAR(15)
+  descricao VARCHAR(50)
 );
 
 -- Create table artigos
