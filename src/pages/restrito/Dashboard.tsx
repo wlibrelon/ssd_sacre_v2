@@ -23,6 +23,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Textarea } from '@/components/ui/textarea'
+import { GestaoProjetos } from './components/GestaoProjetos'
 export default function Dashboard() {
   const { user, profile, isAuthenticated } = useAuth()
   const { toast } = useToast()
@@ -118,6 +119,7 @@ export default function Dashboard() {
           {isAdmin && <TabsTrigger value="usuarios">Aprovação de Usuários</TabsTrigger>}
           {isAdmin && <TabsTrigger value="conteudo">Gestão de Conteúdo</TabsTrigger>}
           {isAdmin && <TabsTrigger value="documentos">Documentos Públicos</TabsTrigger>}
+          {isAdmin && <TabsTrigger value="projetos">Gestão de Projetos</TabsTrigger>}
         </TabsList>
         <TabsContent value="geral">
           <Card>
@@ -290,6 +292,19 @@ export default function Dashboard() {
                       </TableBody>
                     </Table>
                   </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+            <TabsContent value="projetos">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Gestão de Projetos</CardTitle>
+                  <CardDescription>
+                    Gerencie Work Packages, Projetos, Colaboradores e Artigos.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <GestaoProjetos />
                 </CardContent>
               </Card>
             </TabsContent>

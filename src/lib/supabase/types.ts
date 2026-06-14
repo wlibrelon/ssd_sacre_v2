@@ -518,7 +518,7 @@ export type Database = {
           arq_capex_estrategias: string | null
           arq_capex_perdas: string | null
           arq_demanda: string | null
-          arq_indicador: string | null
+          arq_indicador: Json | null
           arq_mod: string | null
           arq_opex: string | null
           arq_perdas: string | null
@@ -531,7 +531,7 @@ export type Database = {
           arq_capex_estrategias?: string | null
           arq_capex_perdas?: string | null
           arq_demanda?: string | null
-          arq_indicador?: string | null
+          arq_indicador?: Json | null
           arq_mod?: string | null
           arq_opex?: string | null
           arq_perdas?: string | null
@@ -544,7 +544,7 @@ export type Database = {
           arq_capex_estrategias?: string | null
           arq_capex_perdas?: string | null
           arq_demanda?: string | null
-          arq_indicador?: string | null
+          arq_indicador?: Json | null
           arq_mod?: string | null
           arq_opex?: string | null
           arq_perdas?: string | null
@@ -1065,7 +1065,7 @@ export const Constants = {
 //   arq_capex_estrategias: text (nullable)
 //   arq_capex_perdas: text (nullable)
 //   arq_opex: text (nullable)
-//   arq_indicador: character varying (nullable)
+//   arq_indicador: jsonb (nullable)
 // Table: opex
 //   id_oa: integer (not null, default: nextval('opex_id_oa_seq'::regclass))
 //   tempo: character varying (nullable)
