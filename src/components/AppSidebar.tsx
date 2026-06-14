@@ -77,7 +77,6 @@ export const AppSidebar = ({ onOpenSobre }: { onOpenSobre: () => void }) => {
       items: [
         { title: 'Objetivos', url: '/projetos/objetivos' },
         { title: 'Resultados', url: '/projetos/resultados' },
-        { title: 'Gestão de Projetos', url: '/projetos/gestao' },
       ],
     },
     {
@@ -101,7 +100,10 @@ export const AppSidebar = ({ onOpenSobre }: { onOpenSobre: () => void }) => {
     {
       title: 'Acesso Restrito',
       icon: Lock,
-      items: [{ title: 'Painel Administrativo', url: '/restrito' }],
+      items: [
+        { title: 'Painel Administrativo', url: '/restrito' },
+        { title: 'Gestão de Projetos', url: '/restrito/projetos' },
+      ],
     },
   ]
 
