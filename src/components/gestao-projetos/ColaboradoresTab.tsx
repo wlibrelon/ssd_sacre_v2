@@ -3,188 +3,174 @@ import { supabase } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { useToast } from '@/hooks/use-toast'
 import {
   Table,
-  TableHeader,
-  TableRow,
-  TableHead,
   TableBody,
   TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from '@/components/ui/table'
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
+  DialogTrigger,
 } from '@/components/ui/dialog'
-import { Pencil, Trash, Plus } from 'lucide-react'
+import { useToast } from '@/hooks/use-toast'
+import { Pencil, Trash2, Plus } from 'lucide-react'
 
 export function ColaboradoresTab() {
-  const [colaboradores, setColaboradores] = useState<any[]>([])
-  const [isOpen, setIsOpen] = useState(false)
-  const [form, setForm] = useState({ id_colaborador: 0, nome: '', link_internet: '', formacao: '' })
+  const [items, setItems] = useState<any[]>([])
+  const [open, setOpen] = useState(false)
+  const [formData, setFormData] = useState<any>({})
   const { toast } = useToast()
-
-  const loadData = async () => {
-    const { data } = await supabase.from('colaboradores').select('*').order('nome')
-    if (data) setColaboradores(data)
-  }
 
   useEffect(() => {
     loadData()
   }, [])
 
+  const loadData = async () => {
+    const { data } = await supabase.from('colaboradores').select('*').order('nome')
+    if (data) setItems(data)
+  }
+
   const handleSave = async () => {
-    if (!form.nome) return toast({ title: 'Nome obrigatório', variant: 'destructive' })
-    if (form.id_colaborador) {
-      const { error } = await supabase
+    if (!formData.nome) return toast({ title: 'Nome é obrigatório', variant: 'destructive' })
+
+    const payload = {
+      nome: formData.nome,
+      formacao: formData.formacao,
+      link_internet: formData.link_internet,
+    }
+
+    if (formData.id_colaborador) {
+      await supabase
         .from('colaboradores')
-        .update({
-          nome: form.nome,
-          link_internet: form.link_internet,
-          formacao: form.formacao,
-        })
-        .eq('id_colaborador', form.id_colaborador)
-      if (error) return toast({ title: 'Erro', description: error.message, variant: 'destructive' })
+        .update(payload)
+        .eq('id_colaborador', formData.id_colaborador)
       toast({ title: 'Colaborador atualizado' })
     } else {
-      const { error } = await supabase.from('colaboradores').insert({
-        nome: form.nome,
-        link_internet: form.link_internet,
-        formacao: form.formacao,
-      })
-      if (error) return toast({ title: 'Erro', description: error.message, variant: 'destructive' })
-      toast({ title: 'Colaborador criado' })
+      await supabase.from('colaboradores').insert(payload)
+      toast({ title: 'Colaborador adicionado' })
     }
-    setIsOpen(false)
+    setOpen(false)
+    setFormData({})
     loadData()
   }
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Deseja realmente remover este colaborador?')) return
-    const { error } = await supabase.from('colaboradores').delete().eq('id_colaborador', id)
-    if (error) return toast({ title: 'Erro', description: error.message, variant: 'destructive' })
-    toast({ title: 'Colaborador removido' })
+    if (!confirm('Excluir este colaborador?')) return
+    await supabase.from('colaboradores').delete().eq('id_colaborador', id)
+    toast({ title: 'Colaborador excluído' })
     loadData()
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h3 className="text-lg font-medium text-muted-foreground">Diretório de Colaboradores</h3>
-        <Button
-          onClick={() => {
-            setForm({ id_colaborador: 0, nome: '', link_internet: '', formacao: '' })
-            setIsOpen(true)
-          }}
-        >
-          <Plus className="w-4 h-4 mr-2" /> Novo Colaborador
-        </Button>
+    <div className="space-y-4 animate-fade-in-up">
+      <div className="flex justify-end">
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger asChild>
+            <Button onClick={() => setFormData({})}>
+              <Plus className="w-4 h-4 mr-2" /> Novo Colaborador
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{formData.id_colaborador ? 'Editar' : 'Novo'} Colaborador</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>Nome</Label>
+                <Input
+                  value={formData.nome || ''}
+                  onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Formação</Label>
+                <Input
+                  value={formData.formacao || ''}
+                  onChange={(e) => setFormData({ ...formData, formacao: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Link/Lattes</Label>
+                <Input
+                  value={formData.link_internet || ''}
+                  onChange={(e) => setFormData({ ...formData, link_internet: e.target.value })}
+                />
+              </div>
+            </div>
+            <Button onClick={handleSave} className="w-full">
+              Salvar
+            </Button>
+          </DialogContent>
+        </Dialog>
       </div>
+
       <div className="border rounded-md">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Nome</TableHead>
               <TableHead>Formação</TableHead>
-              <TableHead>Link Web</TableHead>
-              <TableHead className="text-right">Ações</TableHead>
+              <TableHead>Link</TableHead>
+              <TableHead className="w-[100px]">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {colaboradores.map((c) => (
-              <TableRow key={c.id_colaborador}>
-                <TableCell className="font-medium">{c.nome}</TableCell>
-                <TableCell>{c.formacao}</TableCell>
+            {items.map((item) => (
+              <TableRow key={item.id_colaborador}>
+                <TableCell className="font-medium">{item.nome}</TableCell>
+                <TableCell>{item.formacao}</TableCell>
                 <TableCell>
-                  {c.link_internet && (
+                  {item.link_internet && (
                     <a
-                      href={c.link_internet}
+                      href={item.link_internet}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-blue-500 hover:underline"
+                      className="text-primary hover:underline"
                     >
-                      Acessar Perfil
+                      Link
                     </a>
                   )}
                 </TableCell>
-                <TableCell className="text-right">
-                  <div className="flex justify-end gap-2">
+                <TableCell>
+                  <div className="flex gap-2">
                     <Button
                       variant="ghost"
                       size="icon"
                       onClick={() => {
-                        setForm(c)
-                        setIsOpen(true)
+                        setFormData(item)
+                        setOpen(true)
                       }}
                     >
-                      <Pencil className="h-4 w-4 text-muted-foreground" />
+                      <Pencil className="w-4 h-4" />
                     </Button>
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => handleDelete(c.id_colaborador)}
+                      className="text-destructive"
+                      onClick={() => handleDelete(item.id_colaborador)}
                     >
-                      <Trash className="h-4 w-4 text-red-500" />
+                      <Trash2 className="w-4 h-4" />
                     </Button>
                   </div>
                 </TableCell>
               </TableRow>
             ))}
-            {colaboradores.length === 0 && (
+            {items.length === 0 && (
               <TableRow>
-                <TableCell colSpan={4} className="text-center text-muted-foreground py-6">
-                  Nenhum colaborador cadastrado.
+                <TableCell colSpan={4} className="text-center py-4">
+                  Nenhum colaborador encontrado.
                 </TableCell>
               </TableRow>
             )}
           </TableBody>
         </Table>
       </div>
-
-      <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {form.id_colaborador ? 'Editar Colaborador' : 'Novo Colaborador'}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Nome Completo</Label>
-              <Input
-                value={form.nome}
-                onChange={(e) => setForm({ ...form, nome: e.target.value })}
-                placeholder="Ex: João da Silva"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Formação</Label>
-              <Input
-                value={form.formacao}
-                onChange={(e) => setForm({ ...form, formacao: e.target.value })}
-                placeholder="Ex: Engenheiro Civil"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Link (Lattes, LinkedIn, etc.)</Label>
-              <Input
-                value={form.link_internet}
-                onChange={(e) => setForm({ ...form, link_internet: e.target.value })}
-                placeholder="https://"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsOpen(false)}>
-              Cancelar
-            </Button>
-            <Button onClick={handleSave}>Salvar</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

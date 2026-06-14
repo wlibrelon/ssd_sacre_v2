@@ -1,9 +1,4 @@
-import {
-  Accordion,
-  AccordionItem,
-  AccordionTrigger,
-  AccordionContent,
-} from '@/components/ui/accordion'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { WPsTab } from './WPsTab'
 import { ProjetosTab } from './ProjetosTab'
 import { ColaboradoresTab } from './ColaboradoresTab'
@@ -11,49 +6,51 @@ import { ArtigosTab } from './ArtigosTab'
 
 export function GestaoProjetos() {
   return (
-    <div className="space-y-6">
-      <Accordion
-        type="single"
-        collapsible
-        className="w-full bg-card rounded-lg shadow-sm border"
-        defaultValue="wps"
-      >
-        <AccordionItem value="wps" className="px-6 border-b">
-          <AccordionTrigger className="text-lg font-semibold hover:no-underline py-6">
-            Gestão de Work Packages (WPs)
-          </AccordionTrigger>
-          <AccordionContent className="pb-6 pt-2">
-            <WPsTab />
-          </AccordionContent>
-        </AccordionItem>
+    <div className="w-full">
+      <Tabs defaultValue="wps" className="w-full">
+        <TabsList className="mb-6 flex flex-wrap h-auto gap-2 bg-secondary/20 p-1">
+          <TabsTrigger
+            value="wps"
+            className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+          >
+            Work Packages
+          </TabsTrigger>
+          <TabsTrigger
+            value="projetos"
+            className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+          >
+            Projetos
+          </TabsTrigger>
+          <TabsTrigger
+            value="colaboradores"
+            className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+          >
+            Colaboradores
+          </TabsTrigger>
+          <TabsTrigger
+            value="artigos"
+            className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+          >
+            Artigos / Relatórios
+          </TabsTrigger>
+        </TabsList>
 
-        <AccordionItem value="projetos" className="px-6 border-b">
-          <AccordionTrigger className="text-lg font-semibold hover:no-underline py-6">
-            Gestão de Projetos e Resultados
-          </AccordionTrigger>
-          <AccordionContent className="pb-6 pt-2">
-            <ProjetosTab />
-          </AccordionContent>
-        </AccordionItem>
+        <TabsContent value="wps" className="mt-0">
+          <WPsTab />
+        </TabsContent>
 
-        <AccordionItem value="colaboradores" className="px-6 border-b">
-          <AccordionTrigger className="text-lg font-semibold hover:no-underline py-6">
-            Diretório de Colaboradores
-          </AccordionTrigger>
-          <AccordionContent className="pb-6 pt-2">
-            <ColaboradoresTab />
-          </AccordionContent>
-        </AccordionItem>
+        <TabsContent value="projetos" className="mt-0">
+          <ProjetosTab />
+        </TabsContent>
 
-        <AccordionItem value="artigos" className="px-6 border-b-0">
-          <AccordionTrigger className="text-lg font-semibold hover:no-underline py-6">
-            Gestão de Artigos e Publicações
-          </AccordionTrigger>
-          <AccordionContent className="pb-6 pt-2">
-            <ArtigosTab />
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>
+        <TabsContent value="colaboradores" className="mt-0">
+          <ColaboradoresTab />
+        </TabsContent>
+
+        <TabsContent value="artigos" className="mt-0">
+          <ArtigosTab />
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }
