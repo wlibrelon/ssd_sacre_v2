@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { supabase } from '@/lib/supabase/client'
 import { CenariosDashboard } from './components/CenariosDashboard'
 import { MatrizEficacia } from '@/components/ssd/MatrizEficacia'
+import { ProjecaoPopulacional } from './ProjecaoPopulacional'
 import { Checkbox } from '@/components/ui/checkbox'
 import { toast } from 'sonner'
 import { Trash2, Plus } from 'lucide-react'
@@ -1862,6 +1863,24 @@ export default function Cenarios() {
             limiarCrise={limiarCrise}
             limiarColapso={limiarColapso}
           />
+          {(() => {
+            const cdObj = cenario_demanda?.find(
+              (c: any) => c.id_cd === parseInt(filters.id_cd_auto),
+            )
+            const ccObj = cenario_consumo?.find(
+              (c: any) => c.id_cc === parseInt(filters.id_cc_auto),
+            )
+            return (
+              <ProjecaoPopulacional
+                data={data}
+                simObj={simObj}
+                cenarioDemanda={cdObj}
+                cenarioConsumo={ccObj}
+                nomeCenarioDemanda={cdObj?.nome_cenario_demanda}
+                nomeCenarioConsumo={ccObj?.nome_cenario_consumo}
+              />
+            )
+          })()}
         </>
       )}
 
