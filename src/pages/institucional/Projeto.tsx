@@ -31,12 +31,7 @@ export default function Projeto() {
             }}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-gray-900/80 via-gray-900/20 to-transparent" />
-          <div className="absolute bottom-0 left-0 p-8 md:p-12 w-full">
-            <p className="text-white text-lg md:text-2xl font-medium max-w-3xl leading-relaxed text-balance">
-              Integração de métodos clássicos e inovadores de engenharia, gestão e técnicas baseadas
-              na natureza (NE&MS).
-            </p>
-          </div>
+          <div className="absolute bottom-0 left-0 p-8 md:p-12 w-full"></div>
         </div>
       </section>
 
