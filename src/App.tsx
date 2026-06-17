@@ -12,6 +12,8 @@ import AreaEstudoObjetivos from './pages/area-estudo/Objetivos'
 import AreaEstudoDocumentos from './pages/area-estudo/Documentos'
 import Projeto from './pages/institucional/Projeto'
 import Equipe from './pages/institucional/Equipe'
+import Parceiros from './pages/institucional/Parceiros'
+import ObjetivosInstitucionais from './pages/institucional/Objetivos'
 import Cenarios from './pages/ssd/Cenarios'
 import Configuracoes from './pages/ssd/Configuracoes'
 import Publicacoes from './pages/divulgacao/Publicacoes'
@@ -34,11 +36,8 @@ const App = () => (
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/auth/reset-password" element={<ResetPassword />} />
             <Route path="/institucional/projeto" element={<Projeto />} />
-            <Route
-              path="/institucional/objetivos"
-              element={<Placeholder title="Objetivos Institucionais" />}
-            />
-            <Route path="/institucional/parceiros" element={<Placeholder title="Parceiros" />} />
+            <Route path="/institucional/objetivos" element={<ObjetivosInstitucionais />} />
+            <Route path="/institucional/parceiros" element={<Parceiros />} />
             <Route path="/institucional/equipe" element={<Equipe />} />
             <Route path="/area-estudo/contexto" element={<Contexto />} />
             <Route path="/area-estudo/objetivos" element={<AreaEstudoObjetivos />} />
