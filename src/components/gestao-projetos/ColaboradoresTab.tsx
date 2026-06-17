@@ -56,12 +56,20 @@ export function ColaboradoresTab() {
     if (grupRes.data) setGrupos(grupRes.data)
   }
 
-  const handleUpload = async (file: File) => {
+  // Faz upload da foto no bucket 'fotos_colaboradores' e remove a foto antiga se existir
+  const handleUpload = async (file: File, fotoAntigaPath?: string) => {
+    // Remove a foto antiga do storage antes de subir a nova
+    if (fotoAntigaPath) {
+      await supabase.storage.from('fotos_colaboradores').remove([fotoAntigaPath])
+    }
+
     const ext = file.name.split('.').pop()
     const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${ext}`
+
     const { data, error } = await supabase.storage
       .from('fotos_colaboradores')
       .upload(fileName, file)
+
     if (error) throw error
     return data.path
   }
@@ -71,8 +79,10 @@ export function ColaboradoresTab() {
 
     try {
       let fotoPath = formData.foto
+
+      // Passa o path da foto antiga para ser removida do storage ao trocar
       if (fotoFile) {
-        fotoPath = await handleUpload(fotoFile)
+        fotoPath = await handleUpload(fotoFile, formData.foto || undefined)
       }
 
       const payload = {
@@ -94,6 +104,7 @@ export function ColaboradoresTab() {
         await supabase.from('colaboradores').insert(payload)
         toast({ title: 'Colaborador adicionado' })
       }
+
       setOpenColab(false)
       setFormData({})
       setFotoFile(null)
@@ -105,6 +116,13 @@ export function ColaboradoresTab() {
 
   const handleDeleteColaborador = async (id: number) => {
     if (!confirm('Excluir este colaborador?')) return
+
+    // Remove a foto do storage antes de excluir o registro
+    const colaborador = colaboradores.find((c) => c.id_colaborador === id)
+    if (colaborador?.foto) {
+      await supabase.storage.from('fotos_colaboradores').remove([colaborador.foto])
+    }
+
     await supabase.from('colaboradores').delete().eq('id_colaborador', id)
     toast({ title: 'Colaborador excluído' })
     loadData()
@@ -135,6 +153,11 @@ export function ColaboradoresTab() {
     await supabase.from('grupo_colaboradores').delete().eq('id_grupo', id)
     toast({ title: 'Grupo excluído' })
     loadData()
+  }
+
+  // Retorna a URL pública da foto a partir do bucket 'fotos_colaboradores'
+  const getFotoUrl = (fotoPath: string) => {
+    return supabase.storage.from('fotos_colaboradores').getPublicUrl(fotoPath).data.publicUrl
   }
 
   return (
@@ -250,13 +273,7 @@ export function ColaboradoresTab() {
                     {(fotoFile || formData.foto) && (
                       <div className="w-16 h-16 rounded-full overflow-hidden border bg-gray-100 flex-shrink-0">
                         <img
-                          src={
-                            fotoFile
-                              ? URL.createObjectURL(fotoFile)
-                              : supabase.storage
-                                  .from('fotos_colaboradores')
-                                  .getPublicUrl(formData.foto).data.publicUrl
-                          }
+                          src={fotoFile ? URL.createObjectURL(fotoFile) : getFotoUrl(formData.foto)}
                           alt="Preview"
                           className="w-full h-full object-cover"
                         />
@@ -349,6 +366,7 @@ export function ColaboradoresTab() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>Foto</TableHead>
                 <TableHead>Nome</TableHead>
                 <TableHead>Grupo</TableHead>
                 <TableHead>Status</TableHead>
@@ -358,6 +376,21 @@ export function ColaboradoresTab() {
             <TableBody>
               {colaboradores.map((item) => (
                 <TableRow key={item.id_colaborador}>
+                  <TableCell>
+                    <div className="w-10 h-10 rounded-full overflow-hidden border bg-gray-100">
+                      {item.foto ? (
+                        <img
+                          src={getFotoUrl(item.foto)}
+                          alt={item.nome}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-xs font-semibold text-gray-500 bg-gray-200">
+                          {item.nome?.substring(0, 2).toUpperCase()}
+                        </div>
+                      )}
+                    </div>
+                  </TableCell>
                   <TableCell className="font-medium">
                     <div className="flex flex-col">
                       <span>{item.nome}</span>
@@ -398,7 +431,7 @@ export function ColaboradoresTab() {
               ))}
               {colaboradores.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center py-4">
+                  <TableCell colSpan={5} className="text-center py-4">
                     Nenhum colaborador encontrado.
                   </TableCell>
                 </TableRow>
