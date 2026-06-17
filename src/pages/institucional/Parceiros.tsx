@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase/client'
-import { listFiles } from '@/services/storage'
 import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 
@@ -18,57 +17,39 @@ export default function Parceiros() {
     async function loadData() {
       setLoading(true)
       try {
-        const [instFiles, apoiFiles] = await Promise.all([
-          listFiles('parceiros', 'instituicoes'),
-          listFiles('parceiros', 'apoiadores'),
-        ])
-
-        const mapFile = (file: any, folder: string) => ({
-          name: file.name,
-          url: supabase.storage.from('parceiros').getPublicUrl(`${folder}/${file.name}`).data
-            .publicUrl,
+        // Lista todos os arquivos do bucket 'parceiros' (raiz)
+        const { data: files, error } = await supabase.storage.from('parceiros').list('', {
+          limit: 200,
+          sortBy: { column: 'name', order: 'asc' },
         })
 
-        const instData = instFiles
-          .map((f) => mapFile(f, 'instituicoes'))
-          .sort((a, b) => a.name.localeCompare(b.name))
-        const apoiData = apoiFiles
-          .map((f) => mapFile(f, 'apoiadores'))
-          .sort((a, b) => a.name.localeCompare(b.name))
+        if (error) throw error
 
-        // Mock data injection to avoid empty states
-        if (instData.length === 0) {
-          instData.push(
-            {
-              name: 'USP',
-              url: 'https://img.usecurling.com/i?q=university&shape=outline&color=blue',
-            },
-            {
-              name: 'UNESP',
-              url: 'https://img.usecurling.com/i?q=education&shape=outline&color=green',
-            },
-            {
-              name: 'UNICAMP',
-              url: 'https://img.usecurling.com/i?q=academy&shape=outline&color=red',
-            },
-          )
-        }
+        const allFiles = files ?? []
 
-        if (apoiData.length === 0) {
-          apoiData.push(
-            { name: 'FAPESP', url: 'https://img.usecurling.com/i?q=science&shape=fill&color=cyan' },
-            { name: 'CNPq', url: 'https://img.usecurling.com/i?q=research&shape=fill&color=blue' },
-          )
-        }
+        // Separa por prefixo e ordena pelo número no nome do arquivo
+        const instFiles = allFiles
+          .filter((f) => f.name.toLowerCase().startsWith('instituicao_'))
+          .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
 
-        setInstituicoes(instData)
-        setApoiadores(apoiData)
+        const apoiFiles = allFiles
+          .filter((f) => f.name.toLowerCase().startsWith('apoio_'))
+          .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
+
+        const toLogoUrl = (file: { name: string }): PartnerLogo => ({
+          name: file.name,
+          url: supabase.storage.from('parceiros').getPublicUrl(file.name).data.publicUrl,
+        })
+
+        setInstituicoes(instFiles.map(toLogoUrl))
+        setApoiadores(apoiFiles.map(toLogoUrl))
       } catch (error) {
-        console.error('Error loading partners', error)
+        console.error('[Parceiros] Erro ao carregar arquivos do storage:', error)
       } finally {
         setLoading(false)
       }
     }
+
     loadData()
   }, [])
 
@@ -86,21 +67,32 @@ export default function Parceiros() {
         <h2 className="text-3xl font-bold text-gray-900 mb-3">{title}</h2>
         <p className="text-muted-foreground">{desc}</p>
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 sm:gap-8">
-        {items.map((item, idx) => (
-          <Card
-            key={idx}
-            className="flex items-center justify-center p-6 h-32 hover:shadow-lg transition-all duration-300 border-gray-100 bg-white group cursor-pointer"
-          >
-            <img
-              src={item.url}
-              alt={item.name}
-              className="max-w-full max-h-full object-contain grayscale opacity-70 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-500 scale-95 group-hover:scale-105"
-              loading="lazy"
-            />
-          </Card>
-        ))}
-      </div>
+
+      {items.length === 0 ? (
+        <div className="text-center py-12 text-muted-foreground text-sm border border-dashed rounded-xl">
+          Nenhum parceiro cadastrado nesta categoria.
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 sm:gap-8">
+          {items.map((item) => (
+            <Card
+              key={item.name}
+              className="flex items-center justify-center p-6 h-32 hover:shadow-lg transition-all duration-300 border-gray-100 bg-white group cursor-pointer"
+            >
+              <img
+                src={item.url}
+                alt={item.name}
+                className="max-w-full max-h-full object-contain grayscale opacity-70 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-500 scale-95 group-hover:scale-105"
+                loading="lazy"
+                onError={(e) => {
+                  console.warn('[Parceiros] Falha ao carregar imagem:', item.name)
+                  ;(e.target as HTMLImageElement).style.display = 'none'
+                }}
+              />
+            </Card>
+          ))}
+        </div>
+      )}
     </section>
   )
 
