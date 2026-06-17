@@ -4,43 +4,53 @@ import { Target, Layers, Calculator, Droplets, BookOpen, ChevronRight } from 'lu
 const workPackages = [
   {
     id: 'WP1',
-    title: 'Coordenação e Gestão do Projeto',
+    title: 'Contaminação por nitrogênio e vulnerabilidade às mudanças climáticas',
     icon: <Target className="w-8 h-8 text-blue-500" />,
     color: 'border-l-blue-500',
     bg: 'bg-blue-50',
-    desc: 'Gestão administrativa, financeira e integração das equipes interdisciplinares para garantir o alcance das metas.',
+    desc: 'Nosso foco: Fontes, destino e transporte de nitrogênio (N) e de outros contaminantes das águas subterrâneas urbanas e rurais..',
   },
   {
     id: 'WP2',
-    title: 'Modelo Conceitual e Monitoramento',
+    title:
+      'Soluções baseadas na natureza para incrementar a qualidade e quantidade dos recursos hídricos',
     icon: <Layers className="w-8 h-8 text-green-500" />,
     color: 'border-l-green-500',
     bg: 'bg-green-50',
-    desc: 'Caracterização hidrogeológica, hidrológica e estruturação da rede de monitoramento quali-quantitativa.',
+    desc: 'Nosso foco: Análise de serviços ecossistêmicos hídricos em áreas urbanas verdes e avaliação da eficiência de tratamentos usando Soluções Baseadas na Natureza (Nature-based-Solutions: NbS).',
   },
   {
     id: 'WP3',
-    title: 'Ferramentas de Modelagem',
+    title: 'Sistema in situ e tratamento da contaminação das águas subterrâneas urbanas',
     icon: <Calculator className="w-8 h-8 text-purple-500" />,
     color: 'border-l-purple-500',
     bg: 'bg-purple-50',
-    desc: 'Desenvolvimento de modelos numéricos hidrológicos e hidroeconômicos para simulação de cenários futuros.',
+    desc: 'Nosso foco: Remediação da contaminação de aquíferos resultante de fontes não pontuais ou difusas, que representa hoje um dos maiores desafios na ciência ambiental. ',
   },
   {
     id: 'WP4',
-    title: 'Soluções Baseadas na Natureza, Engenharia e Gestão',
+    title: 'Uso conjuntivo de múltiplas fontes de água para abastecer a cidade e a agricultura',
     icon: <Droplets className="w-8 h-8 text-cyan-500" />,
     color: 'border-l-cyan-500',
     bg: 'bg-cyan-50',
-    desc: 'Proposição, teste e validação de intervenções técnicas (NE&MS) para mitigação e adaptação climática.',
+    desc: 'Nosso foco: Caracterização hidrodinâmica dos aquíferos e rios, buscando o seu melhor aproveitamento para o abastecimento público e privado e a redução das vulnerabilidades hidroclimáticas em cidades e no campo. ',
   },
   {
     id: 'WP5',
-    title: 'Políticas, Sociedade e Comunicação',
+    title:
+      'Métodos econômicos e políticos para incentivar a gestão sustentável das águas e melhorar a segurança hídrica',
     icon: <BookOpen className="w-8 h-8 text-orange-500" />,
     color: 'border-l-orange-500',
     bg: 'bg-orange-50',
-    desc: 'Engajamento de stakeholders, letramento científico e tradução dos resultados para formulação de políticas públicas.',
+    desc: 'Nosso foco: Conjunto de métodos, ferramentas e instrumentos políticos hidroeconômicos integrados, organizados em uma plataforma (HYMP), para apoiar e incentivar estratégias sustentáveis de uso e gerenciamento da água em um ambiente de incertezas climáticas. ',
+  },
+  {
+    id: 'WP6',
+    title: 'Investigação de processos do ciclo do nitrogênio em escala de poro',
+    icon: <BookOpen className="w-8 h-8 text-orange-500" />,
+    color: 'border-l-orange-500',
+    bg: 'bg-orange-50',
+    desc: 'Nosso foco: Processos hidrobiogeoquímicos que controlam a ocorrência das espécies nitrogenadas em escala de poro e, consequentemente, seu transporte e destino em escala de aquífero.',
   },
 ]
 
