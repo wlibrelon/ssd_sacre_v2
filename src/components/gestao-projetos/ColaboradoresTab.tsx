@@ -131,21 +131,29 @@ export function ColaboradoresTab() {
   const handleSaveGrupo = async () => {
     if (!grupoFormData.descricao)
       return toast({ title: 'Descrição é obrigatória', variant: 'destructive' })
-    const payload = { descricao: grupoFormData.descricao }
 
-    if (grupoFormData.id_grupo) {
-      await supabase
-        .from('grupo_colaboradores')
-        .update(payload)
-        .eq('id_grupo', grupoFormData.id_grupo)
-      toast({ title: 'Grupo atualizado' })
-    } else {
-      await supabase.from('grupo_colaboradores').insert(payload)
-      toast({ title: 'Grupo adicionado' })
+    try {
+      const payload = { descricao: grupoFormData.descricao }
+
+      if (grupoFormData.id_grupo) {
+        const { error } = await supabase
+          .from('grupo_colaboradores')
+          .update(payload)
+          .eq('id_grupo', grupoFormData.id_grupo)
+        if (error) throw error
+        toast({ title: 'Grupo atualizado' })
+      } else {
+        const { error } = await supabase.from('grupo_colaboradores').insert(payload)
+        if (error) throw error
+        toast({ title: 'Grupo adicionado' })
+      }
+
+      setOpenGrupo(false)
+      setGrupoFormData({})
+      loadData()
+    } catch (err: any) {
+      toast({ title: 'Erro ao salvar grupo', description: err.message, variant: 'destructive' })
     }
-    setOpenGrupo(false)
-    setGrupoFormData({})
-    loadData()
   }
 
   const handleDeleteGrupo = async (id: number) => {
