@@ -21,29 +21,49 @@ const wpDetails: Record<string, WpDetail> = {
     ],
   },
   WP2: {
-    subtitle: 'Em breve',
-    body: 'Conteúdo detalhado do WP2 será disponibilizado em breve.',
-    metas: [],
+    subtitle: 'Por que usar NbS?',
+    body: 'As NbS estão representadas por coberturas vegetais naturais usadas na remediação de água contaminada urbana (notadamente N e contaminantes emergentes). Elas induzem maior disponibilidade de água limpa em aquíferos por meio de Recarga Gerenciada de Aquíferos (Managed Aquifer Recharge: MAR).',
+    metas: [
+      'Construir um sistema de tratamento de água contaminada urbana de baixo custo utilizando NbS e MAR, que será testado em escala piloto em uma área verde urbana.',
+      'Avaliar a eficiência econômica e a viabilidade técnica da utilização do MAR associado às NbS para melhorar o abastecimento de água da cidade através de um estudo piloto em áreas existentes (parques e jardins públicos) ou construídas (áreas sem ocupação).',
+    ],
   },
   WP3: {
-    subtitle: 'Em breve',
-    body: 'Conteúdo detalhado do WP3 será disponibilizado em breve.',
-    metas: [],
+    subtitle: 'Como?',
+    body: 'Desenvolvendo novos materiais que serão usados em barreiras reativas permeáveis (PRB) projetadas para capturar e tratar plumas aquíferas.',
+    metas: [
+      'Criar e adaptar novos materiais reativos para tratamento passivo de aquíferos contaminados, em ensaios de bancada, avaliando a eficiência em diferentes condições geoquímicas e hidráulicas',
+      'Desenvolver e testar em escala piloto os novos materiais em barreiras reativas permeáveis (PRB), avaliando sua geoquímica e eficiência para remediar aquíferos degradados por nutrientes e contaminantes emergentes.',
+    ],
   },
   WP4: {
-    subtitle: 'Em breve',
-    body: 'Conteúdo detalhado do WP4 será disponibilizado em breve.',
-    metas: [],
+    subtitle: 'O que fazemos?',
+    body: 'Criamos e adaptamos técnicas como a Filtração de Margens de Rios (River Bank Filtration: RBF) e a MAR, bem como o uso planejado de um aquífero fóssil (Sistema Aquífero Guarani).Desenvolvemos uma estratégia de alocação dos recursos hídricos baseada no uso conjuntivo de águas superficiais e subterrâneas, incorporando produtores privados de água ao abastecimento público urbano e às áreas rurais.',
+    metas: [
+      'Demonstrar com experimentos de campo e simulações numéricas uma nova abordagem territorial e de gestão dos recursos hídricos, com base no uso conjuntivo de águas superficiais e subterrâneas em bacias hidrográficas. O objetivo é aumentar a segurança hídrica urbana e agrícola, traçar estratégias de alocação de água e integrar efetivamente diferentes produtores privados de água e mecanismos de compensação financeira.',
+      'Compreender e quantificar a disponibilidade hídrica e o papel do armazenamento aquífero na regulação das vazões e perenidade de rios e da disponibilidade de águas subterrâneas em bacias hidrográficas, através de modelos numéricos transientes acoplados de águas superficiais e subterrâneas, incorporando os problemas associados às alterações climáticas globais.',
+      'Buscar um novo arranjo institucional e social que envolva produtores privados de água como parte da solução de abastecimento público em um contexto de baixo investimento, com foco específico na saúde financeira e sustentabilidade do serviço público de água, considerando a presença de numerosos proprietários privados de poços.',
+      'Estabelecer um plano de manejo da água subterrânea não renovável (fóssil) para o abastecimento urbano que apresenta sinais de superexplotação.',
+    ],
   },
   WP5: {
-    subtitle: 'Em breve',
-    body: 'Conteúdo detalhado do WP5 será disponibilizado em breve.',
-    metas: [],
+    subtitle: 'Por que o  HYMP?',
+    body: 'Ele unifica de forma original todos os resultados do SACRE e leva em conta os usos e serviços múltiplos das águas em uma escala de bacia hidrográfica, os impactos do clima e da mudança no uso da terra no suprimento e na qualidade da água.',
+    metas: [
+      'Identificar a relação custo-benefício de medidas alternativas de proteção de bacias hidrográficas, incluindo NbS e alterações no uso da terra.',
+      'Quantificar o valor econômico dos serviços de bacias hidrográficas prestados a diferentes usuários, com o objetivo de conceber novos regimes de pagamentos por tais serviços.',
+      'Quantificar o valor e custos econômico de danos ambientais devidos à poluição para efeitos de recuperação dos recursos hídricos.',
+      'Identificar a estratégia e o modelo de longo prazo economicamente mais benéficos para melhorar a segurança hídrica, com base em seus custos e benefícios relativos.',
+      'Criar um sistema de divulgação de informação, que procure sensibilizar os usuários e gestores da importância dos recursos hídricos e dos seus serviços ambientais e criar uma relação de proximidade e confiança entre os pesquisadores e os usuários finais dos produtos gerados no SACRE.',
+    ],
   },
   WP6: {
-    subtitle: 'Em breve',
-    body: 'Conteúdo detalhado do WP6 será disponibilizado em breve.',
-    metas: [],
+    subtitle: 'Por que escala de poro?',
+    body: 'A caracterização dos microambientes responsáveis pela atenuação do nitrato a nitrogênio ou a suas fases intermediárias (N2O e NO) auxiliará na compreensão do papel efetivo de mecanismos antrópicos e hidrobiogeoquímicos no controle da extensão da contaminação dos recursos hídricos por essas espécies.',
+    metas: [
+      'Avaliação das unidades hidrogeológicas do Sistema Aquífero Bauru em escala de poros, para entender melhor o destino do nitrato em subsuperfície, fornecendo dados complementares a outros WPs sobre a caracterização de meios porosos e fluxo de água subterrânea.',
+      'Implementação metodológica em relação à investigação de aquíferos em alta resolução, possibilitada pela tecnologia síncrotron.',
+    ],
   },
 }
 
