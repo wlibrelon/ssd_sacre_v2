@@ -1,7 +1,51 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, X } from 'lucide-react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+
+type WpDetail = {
+  subtitle: string
+  body: string
+  metas: string[]
+}
+
+const wpDetails: Record<string, WpDetail> = {
+  WP1: {
+    subtitle: 'Por que o nitrogênio?',
+    body: 'Além de sua toxicidade, a contaminação por N fornece um indicador da extensão dos impactos humanos e, devido à sua ocorrência sob muitas formas químicas, também caracteriza as mudanças nas condições geoquímicas ao longo do ciclo hidrológico.',
+    metas: [
+      'Compreender e quantificar a dinâmica e o impacto do N em aquíferos urbanos e rurais através de estudos detalhados in loco, modelos numéricos de transporte químico-reativo e avaliação integrada de fonte-recarga-transporte-descarga.',
+      'Identificar e caracterizar a ocorrência de contaminantes emergentes em urbanizações, correlacionando potenciais ameaças à qualidade das águas subterrâneas com as infraestruturas urbanas e os hábitos culturais.',
+      'Desenvolver métodos analíticos e nova técnica de monitoramento de aquíferos para substâncias emergentes associadas a fontes de contaminantes dispersas e multipontuais.',
+    ],
+  },
+  WP2: {
+    subtitle: 'Em breve',
+    body: 'Conteúdo detalhado do WP2 será disponibilizado em breve.',
+    metas: [],
+  },
+  WP3: {
+    subtitle: 'Em breve',
+    body: 'Conteúdo detalhado do WP3 será disponibilizado em breve.',
+    metas: [],
+  },
+  WP4: {
+    subtitle: 'Em breve',
+    body: 'Conteúdo detalhado do WP4 será disponibilizado em breve.',
+    metas: [],
+  },
+  WP5: {
+    subtitle: 'Em breve',
+    body: 'Conteúdo detalhado do WP5 será disponibilizado em breve.',
+    metas: [],
+  },
+  WP6: {
+    subtitle: 'Em breve',
+    body: 'Conteúdo detalhado do WP6 será disponibilizado em breve.',
+    metas: [],
+  },
+}
 
 const workPackages = [
   {
@@ -51,8 +95,8 @@ const workPackages = [
 ]
 
 export default function Objetivos() {
-  // Mapa de WP id -> URL da imagem do storage
   const [wpLogos, setWpLogos] = useState<Record<string, string>>({})
+  const [selectedWp, setSelectedWp] = useState<(typeof workPackages)[0] | null>(null)
 
   useEffect(() => {
     async function loadLogos() {
@@ -66,12 +110,10 @@ export default function Objetivos() {
         return
       }
 
-      // Filtra apenas arquivos logo_wp* e monta o mapa { WP1: url, WP2: url, ... }
       const logos: Record<string, string> = {}
       ;(files ?? [])
         .filter((f) => f.name.toLowerCase().startsWith('logo_wp'))
         .forEach((f) => {
-          // Extrai o número: "logo_wp1.png" -> "1" -> chave "WP1"
           const match = f.name.match(/logo_wp(\d+)/i)
           if (match) {
             const key = `WP${match[1]}`
@@ -84,6 +126,8 @@ export default function Objetivos() {
 
     loadLogos()
   }, [])
+
+  const detail = selectedWp ? wpDetails[selectedWp.id] : null
 
   return (
     <div className="max-w-7xl mx-auto space-y-16 animate-fade-in-up py-12 px-4 sm:px-6">
@@ -143,7 +187,6 @@ export default function Objetivos() {
                         }}
                       />
                     ) : (
-                      // Placeholder enquanto carrega ou se não houver imagem
                       <div className="w-8 h-8 rounded bg-gray-200 animate-pulse" />
                     )}
                   </div>
@@ -152,15 +195,75 @@ export default function Objetivos() {
               </CardHeader>
               <CardContent className="pt-6">
                 <p className="text-gray-600 leading-relaxed">{wp.desc}</p>
-                <div className="mt-6 flex items-center text-sm font-medium text-primary/80 group-hover:text-primary transition-colors cursor-pointer">
+                <button
+                  onClick={() => setSelectedWp(wp)}
+                  className="mt-6 flex items-center text-sm font-medium text-primary/80 hover:text-primary transition-colors cursor-pointer group/btn"
+                >
                   Saiba mais{' '}
-                  <ChevronRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
-                </div>
+                  <ChevronRight className="w-4 h-4 ml-1 group-hover/btn:translate-x-1 transition-transform" />
+                </button>
               </CardContent>
             </Card>
           ))}
         </div>
       </section>
+
+      {/* Dialog Saiba Mais */}
+      <Dialog
+        open={!!selectedWp}
+        onOpenChange={(open) => {
+          if (!open) setSelectedWp(null)
+        }}
+      >
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          {selectedWp && detail && (
+            <>
+              <DialogHeader>
+                <div className="flex items-center gap-3 mb-1">
+                  <span
+                    className={`inline-flex items-center justify-center px-3 py-1 rounded-full text-sm font-bold bg-gray-100 text-gray-700`}
+                  >
+                    {selectedWp.id}
+                  </span>
+                  {wpLogos[selectedWp.id] && (
+                    <img
+                      src={wpLogos[selectedWp.id]}
+                      alt={`Logo ${selectedWp.id}`}
+                      className="w-8 h-8 object-contain"
+                    />
+                  )}
+                </div>
+                <DialogTitle className="text-xl leading-snug text-gray-900 pr-6">
+                  {selectedWp.title}
+                </DialogTitle>
+              </DialogHeader>
+
+              <div className="space-y-6 pt-2">
+                {/* Subtítulo + texto introdutório */}
+                <div className={`rounded-xl p-5 ${selectedWp.bg} border-l-4 ${selectedWp.color}`}>
+                  <h3 className="text-base font-semibold text-gray-800 mb-2">{detail.subtitle}</h3>
+                  <p className="text-gray-700 leading-relaxed text-sm">{detail.body}</p>
+                </div>
+
+                {/* Metas */}
+                {detail.metas.length > 0 && (
+                  <div className="space-y-3">
+                    <h3 className="text-base font-semibold text-gray-800">Nossas metas</h3>
+                    <ul className="space-y-3">
+                      {detail.metas.map((meta, i) => (
+                        <li key={i} className="flex gap-3 text-sm text-gray-700 leading-relaxed">
+                          <ChevronRight className="w-4 h-4 mt-0.5 flex-shrink-0 text-primary" />
+                          <span>{meta}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
