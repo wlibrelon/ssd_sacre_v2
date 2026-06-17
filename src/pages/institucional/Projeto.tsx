@@ -6,13 +6,10 @@ export default function Projeto() {
     <div className="w-full min-h-screen py-12 md:py-20 px-4 sm:px-6 lg:px-8 space-y-16 animate-fade-in bg-slate-50/50">
       {/* Header Section */}
       <section className="max-w-4xl mx-auto text-center space-y-6">
-        <div className="inline-flex items-center justify-center px-4 py-1.5 rounded-full bg-secondary/10 text-secondary font-semibold text-sm mb-4">
-          Sobre o Projeto
-        </div>
-        <p className="text-lg md:text-xl text-muted-foreground leading-relaxed">
+        <h2 className="text-lg md:text-xl text-muted-foreground leading-relaxed">
           Desenvolvendo estratégias híbridas hidroeconômicas para enfrentar crises hídricas e
           garantir o abastecimento sustentável.
-        </p>
+        </h2>
       </section>
 
       {/* Hero Image */}
