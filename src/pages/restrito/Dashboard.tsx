@@ -23,6 +23,15 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Textarea } from '@/components/ui/textarea'
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion'
+import { ArtigosTab } from '@/components/gestao-projetos/ArtigosTab'
+import { MidiaAdmin } from '@/components/admin/MidiaAdmin'
+import { CongressosAdmin } from '@/components/admin/CongressosAdmin'
 
 export default function Dashboard() {
   const { user, profile, isAuthenticated } = useAuth()
@@ -126,24 +135,49 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <Tabs defaultValue="geral" className="w-full">
+      <Tabs defaultValue="divulgacao" className="w-full">
         <TabsList className="flex flex-wrap h-auto gap-2 mb-6">
-          <TabsTrigger value="geral">Geral</TabsTrigger>
+          <TabsTrigger value="divulgacao">Divulgação</TabsTrigger>
           {isAdmin && <TabsTrigger value="usuarios">Aprovação de Usuários</TabsTrigger>}
           {isAdmin && <TabsTrigger value="conteudo">Gestão de Conteúdo</TabsTrigger>}
           {isAdmin && <TabsTrigger value="documentos">Documentos Públicos</TabsTrigger>}
         </TabsList>
 
-        <TabsContent value="geral">
+        <TabsContent value="divulgacao">
           <Card>
             <CardHeader>
-              <CardTitle>Bem-vindo</CardTitle>
+              <CardTitle>Gestão de Divulgação</CardTitle>
+              <CardDescription>Gerencie publicações, mídia e eventos do projeto.</CardDescription>
             </CardHeader>
             <CardContent>
-              <p>
-                Utilize o menu lateral para navegar nas ferramentas disponíveis para o seu nível de
-                acesso.
-              </p>
+              <Accordion type="single" collapsible className="w-full">
+                <AccordionItem value="publicacoes">
+                  <AccordionTrigger className="text-lg">Publicações Científicas</AccordionTrigger>
+                  <AccordionContent className="pt-4 border-t">
+                    <ArtigosTab />
+                  </AccordionContent>
+                </AccordionItem>
+                <AccordionItem value="midia">
+                  <AccordionTrigger className="text-lg">Mídia e Notícias</AccordionTrigger>
+                  <AccordionContent className="pt-4 border-t">
+                    <MidiaAdmin />
+                  </AccordionContent>
+                </AccordionItem>
+                <AccordionItem value="congressos">
+                  <AccordionTrigger className="text-lg">Congressos e Eventos</AccordionTrigger>
+                  <AccordionContent className="pt-4 border-t">
+                    <CongressosAdmin />
+                  </AccordionContent>
+                </AccordionItem>
+                <AccordionItem value="atividades">
+                  <AccordionTrigger className="text-lg">Atividades Sociais</AccordionTrigger>
+                  <AccordionContent className="pt-4 border-t">
+                    <p className="text-muted-foreground p-4 bg-muted/20 rounded-md text-center">
+                      Área reservada para gestão de atividades sociais. Em desenvolvimento.
+                    </p>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
             </CardContent>
           </Card>
         </TabsContent>

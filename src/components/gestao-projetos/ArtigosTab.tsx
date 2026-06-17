@@ -63,6 +63,7 @@ export function ArtigosTab() {
       resumo: formData.resumo,
       abstract: formData.abstract,
       doi: formData.doi,
+      revista: formData.revista,
       id_projeto: formData.id_projeto ? parseInt(formData.id_projeto) : null,
       id_tipo_artigo: formData.id_tipo_artigo ? parseInt(formData.id_tipo_artigo) : null,
     }
@@ -145,13 +146,23 @@ export function ArtigosTab() {
                   </Select>
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label>DOI</Label>
-                <Input
-                  value={formData.doi || ''}
-                  onChange={(e) => setFormData({ ...formData, doi: e.target.value })}
-                  placeholder="ex: 10.1000/xyz123"
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>DOI</Label>
+                  <Input
+                    value={formData.doi || ''}
+                    onChange={(e) => setFormData({ ...formData, doi: e.target.value })}
+                    placeholder="ex: 10.1000/xyz123"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Revista (Journal)</Label>
+                  <Input
+                    value={formData.revista || ''}
+                    onChange={(e) => setFormData({ ...formData, revista: e.target.value })}
+                    placeholder="Nome da revista ou periódico"
+                  />
+                </div>
               </div>
               <div className="space-y-2">
                 <Label>Resumo (PT)</Label>
