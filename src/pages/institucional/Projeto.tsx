@@ -9,12 +9,6 @@ export default function Projeto() {
         <div className="inline-flex items-center justify-center px-4 py-1.5 rounded-full bg-secondary/10 text-secondary font-semibold text-sm mb-4">
           Sobre o Projeto
         </div>
-        <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-gray-900 tracking-tight leading-tight">
-          Soluções de Água para a{' '}
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary">
-            Resiliência
-          </span>
-        </h1>
         <p className="text-lg md:text-xl text-muted-foreground leading-relaxed">
           Desenvolvendo estratégias híbridas hidroeconômicas para enfrentar crises hídricas e
           garantir o abastecimento sustentável.
