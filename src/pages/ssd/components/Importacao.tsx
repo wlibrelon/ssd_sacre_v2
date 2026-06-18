@@ -195,6 +195,11 @@ export function Importacao() {
   const [selectedModels, setSelectedModels] = useState<Record<number, boolean>>({})
   const [importStatus, setImportStatus] = useState<Record<number, string>>({})
 
+  // ── Progresso do botão Importar ──────────────────────────────────────────────
+  const [importing, setImporting] = useState(false)
+  const [importProgress, setImportProgress] = useState(0) // 0–100
+  const [importStep, setImportStep] = useState('') // label da etapa atual
+
   // Lista completa de indicadores disponíveis (tabela indicadores)
   const [indicadores, setIndicadores] = useState<
     { id_indicador: number; descricao: string; campo_extra: string; id_fonte: number }[]
@@ -604,13 +609,33 @@ export function Importacao() {
       .map(Number)
     if (selectedIds.length === 0) return toast.error('Selecione ao menos um modelo')
 
+    // Calcula o total de etapas para progresso:
+    // por modelo: 1 (leitura CSVs) + 1 (upsert dados) + N indicadores
+    const totalEtapas = selectedIds.reduce((acc, id_mod) => {
+      const mod = modelos.find((m) => m.id_mod === id_mod)
+      const nInd = mod?.arq_indicador ? Object.keys(mod.arq_indicador).length : 0
+      return acc + 2 + nInd
+    }, 0)
+    let etapaAtual = 0
+
+    const avancar = (step: string) => {
+      etapaAtual++
+      setImportStep(step)
+      setImportProgress(Math.round((etapaAtual / totalEtapas) * 100))
+    }
+
+    setImporting(true)
+    setImportProgress(0)
+    setImportStep('Iniciando...')
+
     for (const id_mod of selectedIds) {
       setImportStatus((prev) => ({ ...prev, [id_mod]: 'Importando...' }))
       try {
         const mod = modelos.find((m) => m.id_mod === id_mod)
         if (!mod) continue
 
-        // ── Dados principais ────────────────────────────────────────────────
+        // ── Etapa 1: Leitura dos CSVs principais ───────────────────────────
+        avancar(`Lendo arquivos do modelo ${mod.fonte_agua?.nome_fonte ?? id_mod}...`)
         const [mD, pD, dD, ceD, cpD, oD] = await Promise.all([
           fetchCSV(mod.arq_mod, 'volume_captado'),
           fetchCSV(mod.arq_perdas, 'perdas'),
@@ -645,6 +670,8 @@ export function Importacao() {
           estrategias: mod.estrategia,
         }))
 
+        // ── Etapa 2: Upsert dados principais ───────────────────────────────
+        avancar(`Gravando ${rows.length} registros...`)
         for (let i = 0; i < rows.length; i += 500) {
           const { error } = await supabase
             .from('dados_simulacao')
@@ -652,7 +679,7 @@ export function Importacao() {
           if (error) throw error
         }
 
-        // ── Indicadores: lê cada CSV e merge em dados_simulacao.valores_extras ──
+        // ── Etapas 3+: Indicadores ─────────────────────────────────────────
         const arqIndMap = mod.arq_indicador // { "id_indicador": "path" } | null
         if (arqIndMap && typeof arqIndMap === 'object' && Object.keys(arqIndMap).length > 0) {
           const pares = Object.entries(arqIndMap)
@@ -667,10 +694,12 @@ export function Importacao() {
 
             if (!campoExtra) {
               errosIndicadores++
+              avancar(`Indicador "${indNome}" sem campo_extra — pulando`)
               toast.error(`Indicador "${indNome}" não tem campo_extra definido`, { duration: 8000 })
               continue
             }
 
+            avancar(`Indicador: ${indNome}`)
             setImportStatus((prev) => ({
               ...prev,
               [id_mod]: `Importando indicador "${indNome}" (${campoExtra})...`,
@@ -709,7 +738,15 @@ export function Importacao() {
         }))
       }
     }
+
+    setImportProgress(100)
+    setImportStep('Concluído!')
     toast.success('Processo finalizado')
+    setTimeout(() => {
+      setImporting(false)
+      setImportProgress(0)
+      setImportStep('')
+    }, 2000)
   }
 
   // ── Colunas de arquivo simples na tabela (sem arq_indicador) ─────────────────
@@ -1262,11 +1299,30 @@ export function Importacao() {
         </div>
       </div>
 
-      {/* ── Botão Importar ── */}
+      {/* ── Botão Importar com barra de progresso ── */}
       <div className="flex justify-end">
-        <Button onClick={handleImport} className="w-52">
-          Importar dados
-        </Button>
+        <button
+          onClick={handleImport}
+          disabled={importing}
+          className="relative w-52 h-10 rounded-md overflow-hidden border border-primary bg-primary text-primary-foreground text-sm font-medium disabled:cursor-not-allowed transition-colors"
+        >
+          {/* Barra de progresso preenchendo o botão por baixo */}
+          <span
+            className="absolute inset-y-0 left-0 bg-primary/30 transition-all duration-300 ease-out"
+            style={{ width: `${importProgress}%` }}
+          />
+          {/* Texto do botão */}
+          <span className="relative z-10 flex flex-col items-center justify-center leading-tight px-2">
+            {importing ? (
+              <>
+                <span className="text-xs font-semibold">{importProgress}%</span>
+                <span className="text-[10px] truncate max-w-[180px] opacity-90">{importStep}</span>
+              </>
+            ) : (
+              <span>Importar dados</span>
+            )}
+          </span>
+        </button>
       </div>
     </div>
   )
