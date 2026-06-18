@@ -93,7 +93,7 @@ export default function Objetivos() {
               variant="outline"
               role="combobox"
               aria-expanded={open}
-              className="w-full sm:w-[400px] justify-between"
+              className="w-full justify-between"
             >
               {selectedWpId
                 ? wps.find((wp) => wp.id_wp === selectedWpId)?.titulo || `WP selecionado`
@@ -101,9 +101,7 @@ export default function Objetivos() {
               <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
             </Button>
           </PopoverTrigger>
-//          <PopoverContent className="w-[calc(100vw-2rem)] sm:w-[400px] p-0"> 
-          <PopoverContent className="w-full justify-between"> 
-          
+          <PopoverContent className="w-full p-0">
             <Command>
               <CommandInput placeholder="Buscar WP..." />
               <CommandList>
