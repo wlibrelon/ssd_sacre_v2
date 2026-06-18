@@ -219,14 +219,10 @@ export function Importacao() {
   const [idTc, setIdTc] = useState('')
   const [idC, setIdC] = useState('')
   const [idAcao, setIdAcao] = useState('')
-  // Cada item guarda label (exibição) + chave do tipo + chave do cenário
-  // Formato final gravado: { tcChave: cChave, ... } — igual ao selecao_cenarios
-  const [cenariosList, setCenariosList] = useState<
-    { label: string; tcChave: string; cChave: string }[]
-  >([])
-  // Cada item guarda label (exibição) + chave da ação
-  // Formato final gravado: ["chave1", "chave2"] — igual ao selecao_cenarios
-  const [estrategiasList, setEstrategiasList] = useState<{ label: string; chave: string }[]>([])
+  // Cada item guarda label (exibição) — formato final gravado: ["label1", "label2"]
+  const [cenariosList, setCenariosList] = useState<{ label: string; tcDescricao: string }[]>([])
+  // Cada item guarda label (exibição) — formato final gravado: ["label1", "label2"]
+  const [estrategiasList, setEstrategiasList] = useState<{ label: string }[]>([])
   const [files, setFiles] = useState({
     arq_mod: '',
     arq_perdas: '',
@@ -338,20 +334,17 @@ export function Importacao() {
           }, {})
         : null
 
-    // Monta JSONB de cenários igual ao selecao_cenarios: { tcChave: cChave }
-    const cenarioJsonb = cenariosList.reduce<Record<string, string>>((acc, item) => {
-      acc[item.tcChave] = item.cChave
-      return acc
-    }, {})
+    // Monta array de cenários com labels legíveis: ["Tipo: Cenario", ...]
+    const cenarioArray = cenariosList.map((item) => item.label)
 
-    // Monta array de estratégias igual ao selecao_cenarios: ["chave1", "chave2"]
-    const estrategiaArray = estrategiasList.map((e) => e.chave)
+    // Monta array de estratégias com labels legíveis: ["Acao1", "Acao2"]
+    const estrategiaArray = estrategiasList.map((e) => e.label)
 
     const { data, error } = await supabase
       .from('modelos')
       .insert({
         id_fonte: Number(idFonte),
-        cenario: cenarioJsonb,
+        cenario: cenarioArray,
         estrategia: estrategiaArray,
         arq_mod: files.arq_mod || null,
         arq_perdas: files.arq_perdas || null,
@@ -807,20 +800,12 @@ export function Importacao() {
                   const t = refData.tiposCenario.find((x: any) => x.id_tc.toString() === idTc)
                   const c = refData.cenarios.find((x: any) => x.id_cenarios.toString() === idC)
                   if (t && c) {
-                    const tcChave: string = t.chave ?? t.id_tc.toString()
-                    const cChave: string = c.chave ?? c.cenarios.toLowerCase().replace(/\s+/g, '_')
-                    // Impede duplicata de tipo
-                    if (cenariosList.some((d) => d.tcChave === tcChave)) {
+                    const label = `${t.descricao}: ${c.cenarios}`
+                    // Impede duplicata de tipo de cenário
+                    if (cenariosList.some((d) => d.tcDescricao === t.descricao)) {
                       return toast.error('Este tipo de cenário já foi adicionado')
                     }
-                    setCenariosList((p) => [
-                      ...p,
-                      {
-                        label: `${t.descricao}: ${c.cenarios}`,
-                        tcChave,
-                        cChave,
-                      },
-                    ])
+                    setCenariosList((p) => [...p, { label, tcDescricao: t.descricao }])
                     setIdTc('')
                     setIdC('')
                   }
@@ -828,15 +813,10 @@ export function Importacao() {
               >
                 Adicionar Cenário
               </Button>
-              {/* Preview do JSONB que será gravado */}
+              {/* Preview do array que será gravado */}
               {cenariosList.length > 0 && (
                 <div className="bg-slate-100 border rounded p-2 text-[10px] font-mono text-slate-500 break-all">
-                  {JSON.stringify(
-                    cenariosList.reduce<Record<string, string>>((a, d) => {
-                      a[d.tcChave] = d.cChave
-                      return a
-                    }, {}),
-                  )}
+                  {JSON.stringify(cenariosList.map((c) => c.label))}
                 </div>
               )}
               <ul className="space-y-1.5">
@@ -881,11 +861,11 @@ export function Importacao() {
                 onClick={() => {
                   const a = refData.acoes.find((x: any) => x.id_acao.toString() === idAcao)
                   if (a) {
-                    const chave: string = a.chave ?? a.descricao.toLowerCase().replace(/\s+/g, '_')
-                    if (estrategiasList.some((d) => d.chave === chave)) {
+                    const label: string = a.descricao
+                    if (estrategiasList.some((d) => d.label === label)) {
                       return toast.error('Esta ação já foi adicionada')
                     }
-                    setEstrategiasList((p) => [...p, { label: a.descricao, chave }])
+                    setEstrategiasList((p) => [...p, { label }])
                     setIdAcao('')
                   }
                 }}
@@ -895,7 +875,7 @@ export function Importacao() {
               {/* Preview do array que será gravado */}
               {estrategiasList.length > 0 && (
                 <div className="bg-slate-100 border rounded p-2 text-[10px] font-mono text-slate-500 break-all">
-                  {JSON.stringify(estrategiasList.map((e) => e.chave))}
+                  {JSON.stringify(estrategiasList.map((e) => e.label))}
                 </div>
               )}
               <ul className="space-y-1.5">
