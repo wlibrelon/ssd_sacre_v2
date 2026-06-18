@@ -14,6 +14,8 @@ import Projeto from './pages/institucional/Projeto'
 import Equipe from './pages/institucional/Equipe'
 import Parceiros from './pages/institucional/Parceiros'
 import ObjetivosInstitucionais from './pages/institucional/Objetivos'
+import ObjetivosProjetos from './pages/projetos/Objetivos'
+import ResultadosProjetos from './pages/projetos/Resultados'
 import Cenarios from './pages/ssd/Cenarios'
 import Configuracoes from './pages/ssd/Configuracoes'
 import Publicacoes from './pages/divulgacao/Publicacoes'
@@ -43,14 +45,8 @@ const App = () => (
             <Route path="/area-estudo/objetivos" element={<AreaEstudoObjetivos />} />
             <Route path="/area-estudo/documentos" element={<AreaEstudoDocumentos />} />
             <Route path="/area-estudo/camadas" element={<Placeholder title="Camadas (Mapas)" />} />
-            <Route
-              path="/projetos/objetivos"
-              element={<Placeholder title="Objetivos dos Projetos" />}
-            />
-            <Route
-              path="/projetos/resultados"
-              element={<Placeholder title="Resultados dos Projetos" />}
-            />
+            <Route path="/projetos/objetivos" element={<ObjetivosProjetos />} />
+            <Route path="/projetos/resultados" element={<ResultadosProjetos />} />
             <Route path="/ssd/cenarios" element={<Cenarios />} />
             <Route path="/ssd/configuracoes" element={<Configuracoes />} />
             <Route path="/divulgacao/publicacoes" element={<Publicacoes />} />

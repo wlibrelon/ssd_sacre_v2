@@ -98,6 +98,7 @@ export type Database = {
           id_projeto: number | null
           id_tipo_artigo: number | null
           resumo: string | null
+          revista: string | null
           titulo: string | null
         }
         Insert: {
@@ -108,6 +109,7 @@ export type Database = {
           id_projeto?: number | null
           id_tipo_artigo?: number | null
           resumo?: string | null
+          revista?: string | null
           titulo?: string | null
         }
         Update: {
@@ -118,6 +120,7 @@ export type Database = {
           id_projeto?: number | null
           id_tipo_artigo?: number | null
           resumo?: string | null
+          revista?: string | null
           titulo?: string | null
         }
         Relationships: [
@@ -397,21 +400,71 @@ export type Database = {
       colaboradores: {
         Row: {
           formacao: string | null
+          foto: string | null
           id_colaborador: number
+          id_grupo: number | null
           link_internet: string | null
           nome: string
+          status: string | null
         }
         Insert: {
           formacao?: string | null
+          foto?: string | null
           id_colaborador?: number
+          id_grupo?: number | null
           link_internet?: string | null
           nome: string
+          status?: string | null
         }
         Update: {
           formacao?: string | null
+          foto?: string | null
           id_colaborador?: number
+          id_grupo?: number | null
           link_internet?: string | null
           nome?: string
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'fk_colaboradores_grupo'
+            columns: ['id_grupo']
+            isOneToOne: false
+            referencedRelation: 'grupo_colaboradores'
+            referencedColumns: ['id_grupo']
+          },
+        ]
+      }
+      congressos: {
+        Row: {
+          data: string | null
+          id_congresso: number
+          link: string | null
+          local: string | null
+          organizador: string | null
+          periodo: string | null
+          status: string | null
+          titulo: string
+        }
+        Insert: {
+          data?: string | null
+          id_congresso?: number
+          link?: string | null
+          local?: string | null
+          organizador?: string | null
+          periodo?: string | null
+          status?: string | null
+          titulo: string
+        }
+        Update: {
+          data?: string | null
+          id_congresso?: number
+          link?: string | null
+          local?: string | null
+          organizador?: string | null
+          periodo?: string | null
+          status?: string | null
+          titulo?: string
         }
         Relationships: []
       }
@@ -579,6 +632,21 @@ export type Database = {
         }
         Relationships: []
       }
+      grupo_colaboradores: {
+        Row: {
+          descricao: string
+          id_grupo: number
+        }
+        Insert: {
+          descricao: string
+          id_grupo?: number
+        }
+        Update: {
+          descricao?: string
+          id_grupo?: number
+        }
+        Relationships: []
+      }
       indicadores: {
         Row: {
           campo_extra: string | null
@@ -679,6 +747,36 @@ export type Database = {
             referencedColumns: ['id_wp']
           },
         ]
+      }
+      midia: {
+        Row: {
+          arq_imagem: string | null
+          arq_video: string | null
+          descricao: string | null
+          id_midia: number
+          link: string | null
+          tipo: string | null
+          titulo: string
+        }
+        Insert: {
+          arq_imagem?: string | null
+          arq_video?: string | null
+          descricao?: string | null
+          id_midia?: number
+          link?: string | null
+          tipo?: string | null
+          titulo: string
+        }
+        Update: {
+          arq_imagem?: string | null
+          arq_video?: string | null
+          descricao?: string | null
+          id_midia?: number
+          link?: string | null
+          tipo?: string | null
+          titulo?: string
+        }
+        Relationships: []
       }
       modelos: {
         Row: {
@@ -1203,581 +1301,3 @@ export const Constants = {
     Enums: {},
   },
 } as const
-
-// ====== DATABASE EXTENDED CONTEXT (auto-generated) ======
-// This section contains actual PostgreSQL column types, constraints, RLS policies,
-// functions, triggers, indexes and materialized views not present in the type definitions above.
-// IMPORTANT: The TypeScript types above map UUID, TEXT, VARCHAR all to "string".
-// Use the COLUMN TYPES section below to know the real PostgreSQL type for each column.
-// Always use the correct PostgreSQL type when writing SQL migrations.
-
-// --- COLUMN TYPES (actual PostgreSQL types) ---
-// Use this to know the real database type when writing migrations.
-// "string" in TypeScript types above may be uuid, text, varchar, timestamptz, etc.
-// Table: acoes
-//   id_acao: integer (not null)
-//   descricao: character varying (nullable)
-//   obs: character varying (nullable)
-// Table: acoes_fonte
-//   id_ef: integer (not null)
-//   id_fonte: integer (nullable)
-//   id_acao: integer (nullable)
-// Table: arq_resultados
-//   id_arq_res: integer (not null, default: nextval('arq_resultados_id_arq_res_seq'::regclass))
-//   id_projeto: integer (nullable)
-//   descricao: text (nullable)
-//   nome_arq: character varying (nullable)
-// Table: artigos
-//   id_artigo: integer (not null, default: nextval('artigos_id_artigo_seq'::regclass))
-//   id_projeto: integer (nullable)
-//   titulo: character varying (nullable)
-//   resumo: text (nullable)
-//   abstract: text (nullable)
-//   doi: text (nullable)
-//   arquivo: text (nullable)
-//   id_tipo_artigo: integer (nullable)
-// Table: artigos_autores
-//   id_artigo_autor: integer (not null, default: nextval('artigos_autores_id_artigo_autor_seq'::regclass))
-//   id_artigo: integer (nullable)
-//   id_autor: integer (nullable)
-//   is_principal: boolean (nullable, default: false)
-// Table: capex_acao
-//   id_ca: integer (not null, default: nextval('capex_acao_id_ca_seq'::regclass))
-//   id_acao: integer (nullable)
-//   tempo: character varying (nullable)
-//   capex: double precision (nullable)
-// Table: capex_perdas
-//   id_cp: integer (not null, default: nextval('capex_perdas_id_cp_seq'::regclass))
-//   tempo: character varying (nullable)
-//   capex: double precision (nullable)
-// Table: cenario_consumo
-//   id_cc: integer (not null)
-//   nome_cenario_consumo: character varying (nullable)
-//   descricao: character varying (nullable)
-//   vol_hab: double precision (nullable)
-// Table: cenario_demanda
-//   id_cd: integer (not null)
-//   nome_cenario_demanda: character varying (nullable)
-//   descricao: character varying (nullable)
-//   percentual: double precision (nullable)
-// Table: cenario_perdas
-//   id_cp: integer (not null)
-//   nome_cenario_perdas: character varying (nullable)
-//   percentual: double precision (nullable)
-// Table: cenario_simulacao
-//   id_cs: integer (not null)
-//   id_s: integer (nullable)
-//   id_fonte: integer (nullable)
-//   id_tc: integer (nullable)
-//   id_c: integer (nullable)
-//   id_acao: integer (nullable)
-// Table: cenarios
-//   id_cenarios: integer (not null)
-//   cenarios: character varying (nullable)
-//   obs_cenario: character varying (nullable)
-// Table: cenarios_fonte
-//   id_cf: integer (not null)
-//   id_fonte: integer (nullable)
-//   id_tc: integer (nullable)
-// Table: colaboradores
-//   id_colaborador: integer (not null, default: nextval('colaboradores_id_colaborador_seq'::regclass))
-//   nome: character varying (not null)
-//   link_internet: character varying (nullable)
-//   formacao: character varying (nullable)
-// Table: conteudo_estudo
-//   id: integer (not null, default: nextval('conteudo_estudo_id_seq'::regclass))
-//   secao: text (not null)
-//   conteudo_html: text (nullable)
-//   ordem: integer (nullable, default: 0)
-// Table: dados_simulacao
-//   id_ds: integer (not null)
-//   id_s: integer (nullable)
-//   tempo: character varying (nullable)
-//   id_fonte: integer (nullable)
-//   id_acao: integer (nullable)
-//   volume_captado: double precision (nullable)
-//   capex_estrategia: double precision (nullable)
-//   opex: double precision (nullable)
-//   rebaixamento: double precision (nullable)
-//   demanda: double precision (nullable)
-//   perdas: double precision (nullable)
-//   id_mod: integer (nullable)
-//   capex_perdas: double precision (nullable)
-//   valores_extras: jsonb (nullable, default: '{}'::jsonb)
-//   cenarios: jsonb (nullable)
-//   estrategias: jsonb (nullable)
-// Table: documentos_publicos
-//   id: integer (not null, default: nextval('documentos_publicos_id_seq'::regclass))
-//   nome: text (not null)
-//   descricao: text (nullable)
-//   url_arquivo: text (nullable)
-//   criado_em: timestamp with time zone (nullable, default: now())
-// Table: fonte_agua
-//   id_fonte: integer (not null)
-//   nome_fonte: character varying (nullable)
-//   sujeito_perdas: boolean (nullable, default: true)
-// Table: grupo_acesso
-//   id_ga: integer (not null, default: nextval('grupo_acesso_id_ga_seq'::regclass))
-//   nome_grupo: character varying (not null)
-// Table: indicadores
-//   id_indicador: integer (not null, default: nextval('indicadores_id_indicador_seq'::regclass))
-//   id_fonte: integer (nullable)
-//   descricao: character varying (nullable)
-//   unidade: character varying (nullable)
-//   campo_extra: character varying (nullable)
-// Table: indicadores_aplicado
-//   id_ia: integer (not null, default: nextval('indicadores_aplicado_id_ia_seq'::regclass))
-//   id_s: integer (nullable)
-//   id_indicador: integer (nullable)
-//   arquivo: character varying (nullable)
-// Table: lista_colab
-//   id_lista_colab: integer (not null, default: nextval('lista_colab_id_lista_colab_seq'::regclass))
-//   id_colaborador: integer (nullable)
-//   id_wp: integer (nullable)
-// Table: modelos
-//   id_mod: integer (not null, default: nextval('modelos_id_mod_seq'::regclass))
-//   id_fonte: integer (nullable)
-//   cenario: jsonb (nullable)
-//   estrategia: jsonb (nullable)
-//   arq_mod: text (nullable)
-//   arq_perdas: text (nullable)
-//   arq_demanda: text (nullable)
-//   arq_capex_estrategias: text (nullable)
-//   arq_capex_perdas: text (nullable)
-//   arq_opex: text (nullable)
-//   arq_indicador: jsonb (nullable)
-// Table: opex
-//   id_oa: integer (not null, default: nextval('opex_id_oa_seq'::regclass))
-//   tempo: character varying (nullable)
-//   opex: double precision (nullable)
-// Table: perfis_usuarios
-//   id: uuid (not null)
-//   nome: text (not null)
-//   email: text (not null)
-//   organizacao: text (nullable)
-//   nivel_acesso: text (nullable)
-//   objetivo_acesso: text (nullable)
-//   id_ga: integer (nullable)
-//   status: text (nullable, default: 'pendente'::text)
-//   created_at: timestamp with time zone (nullable, default: now())
-// Table: projetos_wps
-//   id_projeto: integer (not null, default: nextval('projetos_wps_id_projeto_seq'::regclass))
-//   id_wp: integer (nullable)
-//   titulo: text (nullable)
-//   id_autor: integer (nullable)
-//   resumo: text (nullable)
-//   objetivos: text (nullable)
-// Table: recursos_app
-//   id_rapp: integer (not null, default: nextval('recursos_app_id_rapp_seq'::regclass))
-//   nome_recurso: character varying (not null)
-//   id_ga: integer (nullable)
-// Table: selecao_cenarios
-//   id: uuid (not null, default: gen_random_uuid())
-//   id_fonte: integer (nullable)
-//   id_tc: integer (nullable)
-//   id_c: integer (nullable)
-//   id_acao: integer (nullable)
-//   selecionado: boolean (nullable, default: true)
-//   id_usuario: uuid (not null)
-//   criado_at: timestamp with time zone (nullable, default: now())
-//   cenarios: jsonb (nullable, default: '{}'::jsonb)
-//   estrategias: jsonb (nullable, default: '[]'::jsonb)
-// Table: simulacao_ssd
-//   id_s: integer (not null)
-//   descricao: character varying (nullable)
-//   demanda_auto: boolean (nullable, default: false)
-//   perdas_auto: boolean (nullable, default: false)
-//   pop_inicial: double precision (nullable)
-//   inicio_perdas: character varying (nullable)
-//   perc_inicial_perdas: double precision (nullable)
-//   total_capex: double precision (nullable)
-//   media_reducao_perdas: double precision (nullable)
-//   limiar_alerta: double precision (nullable)
-//   limiar_crise: double precision (nullable)
-//   limiar_colapso: double precision (nullable)
-// Table: tipo_artigo
-//   id_tipo: integer (not null, default: nextval('tipo_artigo_id_tipo_seq'::regclass))
-//   descricao: text (nullable)
-// Table: tipo_cenario_cenario
-//   id_tcc: integer (not null)
-//   id_tc: integer (nullable)
-//   id_c: integer (nullable)
-// Table: tipos_cenarios
-//   id_tc: integer (not null)
-//   descricao: character varying (nullable)
-//   obs_tipo_cenario: character varying (nullable)
-// Table: wps
-//   id_wp: integer (not null, default: nextval('wps_id_wp_seq'::regclass))
-//   wp: integer (nullable)
-//   titulo: text (nullable)
-//   descricao: text (nullable)
-//   menu: character varying (nullable)
-//   id_gerente: integer (nullable)
-
-// --- CONSTRAINTS ---
-// Table: acoes
-//   PRIMARY KEY estrategias_pkey: PRIMARY KEY (id_acao)
-// Table: acoes_fonte
-//   FOREIGN KEY acoes_fonte_id_acao_fkey: FOREIGN KEY (id_acao) REFERENCES acoes(id_acao) ON DELETE CASCADE
-//   FOREIGN KEY estrategias_fonte_id_fonte_fkey: FOREIGN KEY (id_fonte) REFERENCES fonte_agua(id_fonte) ON DELETE CASCADE
-//   PRIMARY KEY estrategias_fonte_pkey: PRIMARY KEY (id_ef)
-// Table: arq_resultados
-//   FOREIGN KEY arq_resultados_id_projeto_fkey: FOREIGN KEY (id_projeto) REFERENCES projetos_wps(id_projeto) ON DELETE CASCADE
-//   PRIMARY KEY arq_resultados_pkey: PRIMARY KEY (id_arq_res)
-// Table: artigos
-//   FOREIGN KEY artigos_id_projeto_fkey: FOREIGN KEY (id_projeto) REFERENCES projetos_wps(id_projeto) ON DELETE CASCADE
-//   FOREIGN KEY artigos_id_tipo_artigo_fkey: FOREIGN KEY (id_tipo_artigo) REFERENCES tipo_artigo(id_tipo) ON DELETE CASCADE
-//   PRIMARY KEY artigos_pkey: PRIMARY KEY (id_artigo)
-// Table: artigos_autores
-//   FOREIGN KEY artigos_autores_id_artigo_fkey: FOREIGN KEY (id_artigo) REFERENCES artigos(id_artigo) ON DELETE CASCADE
-//   FOREIGN KEY artigos_autores_id_autor_fkey: FOREIGN KEY (id_autor) REFERENCES colaboradores(id_colaborador) ON DELETE CASCADE
-//   PRIMARY KEY artigos_autores_pkey: PRIMARY KEY (id_artigo_autor)
-// Table: capex_acao
-//   FOREIGN KEY capex_acao_id_acao_fkey: FOREIGN KEY (id_acao) REFERENCES acoes(id_acao) ON DELETE CASCADE
-//   PRIMARY KEY capex_acao_pkey: PRIMARY KEY (id_ca)
-// Table: capex_perdas
-//   PRIMARY KEY capex_perdas_pkey: PRIMARY KEY (id_cp)
-// Table: cenario_consumo
-//   PRIMARY KEY cenario_consumo_pkey: PRIMARY KEY (id_cc)
-// Table: cenario_demanda
-//   PRIMARY KEY cenario_demanda_pkey: PRIMARY KEY (id_cd)
-// Table: cenario_perdas
-//   PRIMARY KEY cenario_perdas_pkey: PRIMARY KEY (id_cp)
-// Table: cenario_simulacao
-//   FOREIGN KEY cenario_simulacao_id_acao_fkey: FOREIGN KEY (id_acao) REFERENCES acoes(id_acao) ON DELETE CASCADE
-//   FOREIGN KEY cenario_simulacao_id_c_fkey: FOREIGN KEY (id_c) REFERENCES cenarios(id_cenarios) ON DELETE CASCADE
-//   FOREIGN KEY cenario_simulacao_id_fonte_fkey: FOREIGN KEY (id_fonte) REFERENCES fonte_agua(id_fonte) ON DELETE CASCADE
-//   FOREIGN KEY cenario_simulacao_id_s_fkey: FOREIGN KEY (id_s) REFERENCES simulacao_ssd(id_s) ON DELETE CASCADE
-//   FOREIGN KEY cenario_simulacao_id_tc_fkey: FOREIGN KEY (id_tc) REFERENCES tipos_cenarios(id_tc) ON DELETE CASCADE
-//   PRIMARY KEY cenario_simulacao_pkey: PRIMARY KEY (id_cs)
-// Table: cenarios
-//   PRIMARY KEY cenarios_pkey: PRIMARY KEY (id_cenarios)
-// Table: cenarios_fonte
-//   FOREIGN KEY cenarios_fonte_id_fonte_fkey: FOREIGN KEY (id_fonte) REFERENCES fonte_agua(id_fonte) ON DELETE CASCADE
-//   FOREIGN KEY cenarios_fonte_id_tc_fkey: FOREIGN KEY (id_tc) REFERENCES tipos_cenarios(id_tc) ON DELETE CASCADE
-//   PRIMARY KEY cenarios_fonte_pkey: PRIMARY KEY (id_cf)
-// Table: colaboradores
-//   PRIMARY KEY colaboradores_pkey: PRIMARY KEY (id_colaborador)
-// Table: conteudo_estudo
-//   PRIMARY KEY conteudo_estudo_pkey: PRIMARY KEY (id)
-// Table: dados_simulacao
-//   FOREIGN KEY dados_simulacao_id_acao_fkey: FOREIGN KEY (id_acao) REFERENCES acoes(id_acao) ON DELETE CASCADE
-//   FOREIGN KEY dados_simulacao_id_fonte_fkey: FOREIGN KEY (id_fonte) REFERENCES fonte_agua(id_fonte) ON DELETE CASCADE
-//   FOREIGN KEY dados_simulacao_id_mod_fkey: FOREIGN KEY (id_mod) REFERENCES modelos(id_mod) ON DELETE CASCADE
-//   FOREIGN KEY dados_simulacao_id_s_fkey: FOREIGN KEY (id_s) REFERENCES simulacao_ssd(id_s) ON DELETE CASCADE
-//   UNIQUE dados_simulacao_mod_fonte_tempo_key: UNIQUE (id_mod, id_fonte, tempo)
-//   PRIMARY KEY dados_simulacao_pkey: PRIMARY KEY (id_ds)
-//   UNIQUE dados_simulacao_ukey: UNIQUE (id_s, id_mod, id_fonte, tempo)
-// Table: documentos_publicos
-//   PRIMARY KEY documentos_publicos_pkey: PRIMARY KEY (id)
-// Table: fonte_agua
-//   PRIMARY KEY fonte_agua_pkey: PRIMARY KEY (id_fonte)
-// Table: grupo_acesso
-//   PRIMARY KEY grupo_acesso_pkey: PRIMARY KEY (id_ga)
-// Table: indicadores
-//   FOREIGN KEY indicadores_id_fonte_fkey: FOREIGN KEY (id_fonte) REFERENCES fonte_agua(id_fonte) ON DELETE CASCADE
-//   PRIMARY KEY indicadores_pkey: PRIMARY KEY (id_indicador)
-// Table: indicadores_aplicado
-//   FOREIGN KEY indicadores_aplicado_id_indicador_fkey: FOREIGN KEY (id_indicador) REFERENCES indicadores(id_indicador) ON DELETE CASCADE
-//   FOREIGN KEY indicadores_aplicado_id_s_fkey: FOREIGN KEY (id_s) REFERENCES simulacao_ssd(id_s) ON DELETE CASCADE
-//   PRIMARY KEY indicadores_aplicado_pkey: PRIMARY KEY (id_ia)
-// Table: lista_colab
-//   FOREIGN KEY lista_colab_id_colaborador_fkey: FOREIGN KEY (id_colaborador) REFERENCES colaboradores(id_colaborador) ON DELETE CASCADE
-//   FOREIGN KEY lista_colab_id_wp_fkey: FOREIGN KEY (id_wp) REFERENCES wps(id_wp) ON DELETE CASCADE
-//   PRIMARY KEY lista_colab_pkey: PRIMARY KEY (id_lista_colab)
-// Table: modelos
-//   FOREIGN KEY modelos_id_fonte_fkey: FOREIGN KEY (id_fonte) REFERENCES fonte_agua(id_fonte) ON DELETE CASCADE
-//   PRIMARY KEY modelos_pkey: PRIMARY KEY (id_mod)
-// Table: opex
-//   PRIMARY KEY opex_pkey: PRIMARY KEY (id_oa)
-// Table: perfis_usuarios
-//   FOREIGN KEY perfis_usuarios_id_fkey: FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE
-//   FOREIGN KEY perfis_usuarios_id_ga_fkey: FOREIGN KEY (id_ga) REFERENCES grupo_acesso(id_ga)
-//   PRIMARY KEY perfis_usuarios_pkey: PRIMARY KEY (id)
-// Table: projetos_wps
-//   FOREIGN KEY projetos_wps_id_wp_fkey: FOREIGN KEY (id_wp) REFERENCES wps(id_wp) ON DELETE CASCADE
-//   PRIMARY KEY projetos_wps_pkey: PRIMARY KEY (id_projeto)
-// Table: recursos_app
-//   FOREIGN KEY recursos_app_id_ga_fkey: FOREIGN KEY (id_ga) REFERENCES grupo_acesso(id_ga) ON DELETE CASCADE
-//   PRIMARY KEY recursos_app_pkey: PRIMARY KEY (id_rapp)
-// Table: selecao_cenarios
-//   FOREIGN KEY selecao_cenarios_id_acao_fkey: FOREIGN KEY (id_acao) REFERENCES acoes(id_acao) ON DELETE CASCADE
-//   FOREIGN KEY selecao_cenarios_id_c_fkey: FOREIGN KEY (id_c) REFERENCES cenarios(id_cenarios) ON DELETE CASCADE
-//   FOREIGN KEY selecao_cenarios_id_fonte_fkey: FOREIGN KEY (id_fonte) REFERENCES fonte_agua(id_fonte) ON DELETE CASCADE
-//   FOREIGN KEY selecao_cenarios_id_tc_fkey: FOREIGN KEY (id_tc) REFERENCES tipos_cenarios(id_tc) ON DELETE CASCADE
-//   FOREIGN KEY selecao_cenarios_id_usuario_fkey: FOREIGN KEY (id_usuario) REFERENCES auth.users(id) ON DELETE CASCADE
-//   PRIMARY KEY selecao_cenarios_pkey: PRIMARY KEY (id)
-// Table: simulacao_ssd
-//   PRIMARY KEY simulacao_ssd_pkey: PRIMARY KEY (id_s)
-// Table: tipo_artigo
-//   PRIMARY KEY tipo_artigo_pkey: PRIMARY KEY (id_tipo)
-// Table: tipo_cenario_cenario
-//   FOREIGN KEY tipo_cenario_cenario_id_c_fkey: FOREIGN KEY (id_c) REFERENCES cenarios(id_cenarios) ON DELETE CASCADE
-//   FOREIGN KEY tipo_cenario_cenario_id_tc_fkey: FOREIGN KEY (id_tc) REFERENCES tipos_cenarios(id_tc) ON DELETE CASCADE
-//   PRIMARY KEY tipo_cenario_cenario_pkey: PRIMARY KEY (id_tcc)
-// Table: tipos_cenarios
-//   PRIMARY KEY tipos_cenarios_pkey: PRIMARY KEY (id_tc)
-// Table: wps
-//   FOREIGN KEY wps_id_gerente_fkey: FOREIGN KEY (id_gerente) REFERENCES colaboradores(id_colaborador) ON DELETE CASCADE
-//   PRIMARY KEY wps_pkey: PRIMARY KEY (id_wp)
-
-// --- ROW LEVEL SECURITY POLICIES ---
-// Table: acoes
-//   Policy "anon_read" (SELECT, PERMISSIVE) roles={anon}
-//     USING: true
-//   Policy "authenticated_all" (ALL, PERMISSIVE) roles={authenticated}
-//     USING: true
-//     WITH CHECK: true
-// Table: acoes_fonte
-//   Policy "anon_read" (SELECT, PERMISSIVE) roles={anon}
-//     USING: true
-//   Policy "authenticated_all" (ALL, PERMISSIVE) roles={authenticated}
-//     USING: true
-//     WITH CHECK: true
-// Table: arq_resultados
-//   Policy "anon_read" (SELECT, PERMISSIVE) roles={anon}
-//     USING: true
-//   Policy "auth_all" (ALL, PERMISSIVE) roles={authenticated}
-//     USING: true
-//     WITH CHECK: true
-// Table: artigos
-//   Policy "anon_read" (SELECT, PERMISSIVE) roles={anon}
-//     USING: true
-//   Policy "auth_all" (ALL, PERMISSIVE) roles={authenticated}
-//     USING: true
-//     WITH CHECK: true
-// Table: artigos_autores
-//   Policy "anon_read" (SELECT, PERMISSIVE) roles={anon}
-//     USING: true
-//   Policy "auth_all" (ALL, PERMISSIVE) roles={authenticated}
-//     USING: true
-//     WITH CHECK: true
-// Table: capex_acao
-//   Policy "All capex_acao anon" (ALL, PERMISSIVE) roles={anon}
-//     USING: true
-//     WITH CHECK: true
-//   Policy "All capex_acao auth" (ALL, PERMISSIVE) roles={authenticated}
-//     USING: true
-//     WITH CHECK: true
-//   Policy "anon_read" (SELECT, PERMISSIVE) roles={anon}
-//     USING: true
-//   Policy "authenticated_all" (ALL, PERMISSIVE) roles={authenticated}
-//     USING: true
-//     WITH CHECK: true
-// Table: capex_perdas
-//   Policy "All capex_perdas anon" (ALL, PERMISSIVE) roles={anon}
-//     USING: true
-//     WITH CHECK: true
-//   Policy "All capex_perdas auth" (ALL, PERMISSIVE) roles={authenticated}
-//     USING: true
-//     WITH CHECK: true
-//   Policy "Insert capex_acao anon" (INSERT, PERMISSIVE) roles={anon}
-//     WITH CHECK: true
-//   Policy "anon_read" (SELECT, PERMISSIVE) roles={anon}
-//     USING: true
-//   Policy "authenticated_all" (ALL, PERMISSIVE) roles={authenticated}
-//     USING: true
-//     WITH CHECK: true
-// Table: cenario_consumo
-//   Policy "anon_read" (SELECT, PERMISSIVE) roles={anon}
-//     USING: true
-//   Policy "authenticated_all" (ALL, PERMISSIVE) roles={authenticated}
-//     USING: true
-//     WITH CHECK: true
-// Table: cenario_demanda
-//   Policy "anon_read" (SELECT, PERMISSIVE) roles={anon}
-//     USING: true
-//   Policy "authenticated_all" (ALL, PERMISSIVE) roles={authenticated}
-//     USING: true
-//     WITH CHECK: true
-// Table: cenario_perdas
-//   Policy "anon_read" (SELECT, PERMISSIVE) roles={anon}
-//     USING: true
-//   Policy "authenticated_all" (ALL, PERMISSIVE) roles={authenticated}
-//     USING: true
-//     WITH CHECK: true
-// Table: cenario_simulacao
-//   Policy "anon_read" (SELECT, PERMISSIVE) roles={anon}
-//     USING: true
-//   Policy "authenticated_all" (ALL, PERMISSIVE) roles={authenticated}
-//     USING: true
-//     WITH CHECK: true
-// Table: cenarios
-//   Policy "anon_read" (SELECT, PERMISSIVE) roles={anon}
-//     USING: true
-//   Policy "authenticated_all" (ALL, PERMISSIVE) roles={authenticated}
-//     USING: true
-//     WITH CHECK: true
-// Table: cenarios_fonte
-//   Policy "anon_read" (SELECT, PERMISSIVE) roles={anon}
-//     USING: true
-//   Policy "authenticated_all" (ALL, PERMISSIVE) roles={authenticated}
-//     USING: true
-//     WITH CHECK: true
-// Table: colaboradores
-//   Policy "anon_read" (SELECT, PERMISSIVE) roles={anon}
-//     USING: true
-//   Policy "auth_all" (ALL, PERMISSIVE) roles={authenticated}
-//     USING: true
-//     WITH CHECK: true
-// Table: conteudo_estudo
-//   Policy "ce_admin" (ALL, PERMISSIVE) roles={public}
-//     USING: is_admin()
-//   Policy "ce_select" (SELECT, PERMISSIVE) roles={public}
-//     USING: true
-// Table: dados_simulacao
-//   Policy "anon_read" (SELECT, PERMISSIVE) roles={anon}
-//     USING: true
-//   Policy "authenticated_all" (ALL, PERMISSIVE) roles={authenticated}
-//     USING: true
-//     WITH CHECK: true
-// Table: documentos_publicos
-//   Policy "dp_admin" (ALL, PERMISSIVE) roles={public}
-//     USING: is_admin()
-//   Policy "dp_select" (SELECT, PERMISSIVE) roles={public}
-//     USING: true
-// Table: fonte_agua
-//   Policy "anon_read" (SELECT, PERMISSIVE) roles={anon}
-//     USING: true
-//   Policy "authenticated_all" (ALL, PERMISSIVE) roles={authenticated}
-//     USING: true
-//     WITH CHECK: true
-// Table: grupo_acesso
-//   Policy "ga_admin" (ALL, PERMISSIVE) roles={public}
-//     USING: is_admin()
-//   Policy "ga_select" (SELECT, PERMISSIVE) roles={public}
-//     USING: true
-// Table: indicadores
-//   Policy "indicadores_all" (ALL, PERMISSIVE) roles={authenticated}
-//     USING: true
-//     WITH CHECK: true
-// Table: indicadores_aplicado
-//   Policy "indicadores_aplicado_all" (ALL, PERMISSIVE) roles={authenticated}
-//     USING: true
-//     WITH CHECK: true
-// Table: lista_colab
-//   Policy "anon_read" (SELECT, PERMISSIVE) roles={anon}
-//     USING: true
-//   Policy "auth_all" (ALL, PERMISSIVE) roles={authenticated}
-//     USING: true
-//     WITH CHECK: true
-// Table: modelos
-//   Policy "modelos_all" (ALL, PERMISSIVE) roles={authenticated}
-//     USING: true
-//     WITH CHECK: true
-// Table: opex
-//   Policy "All opex anon" (ALL, PERMISSIVE) roles={anon}
-//     USING: true
-//     WITH CHECK: true
-//   Policy "All opex auth" (ALL, PERMISSIVE) roles={authenticated}
-//     USING: true
-//     WITH CHECK: true
-//   Policy "Insert capex_acao anon" (INSERT, PERMISSIVE) roles={anon}
-//     WITH CHECK: true
-//   Policy "anon_read" (SELECT, PERMISSIVE) roles={anon}
-//     USING: true
-//   Policy "authenticated_all" (ALL, PERMISSIVE) roles={authenticated}
-//     USING: true
-//     WITH CHECK: true
-// Table: perfis_usuarios
-//   Policy "pu_admin" (ALL, PERMISSIVE) roles={public}
-//     USING: is_admin()
-//   Policy "pu_select" (SELECT, PERMISSIVE) roles={public}
-//     USING: ((auth.uid() = id) OR is_admin())
-// Table: projetos_wps
-//   Policy "anon_read" (SELECT, PERMISSIVE) roles={anon}
-//     USING: true
-//   Policy "auth_all" (ALL, PERMISSIVE) roles={authenticated}
-//     USING: true
-//     WITH CHECK: true
-// Table: recursos_app
-//   Policy "rapp_admin" (ALL, PERMISSIVE) roles={public}
-//     USING: is_admin()
-//   Policy "rapp_select" (SELECT, PERMISSIVE) roles={public}
-//     USING: true
-// Table: selecao_cenarios
-//   Policy "selecao_cenarios_delete" (DELETE, PERMISSIVE) roles={authenticated}
-//     USING: (auth.uid() = id_usuario)
-//   Policy "selecao_cenarios_insert" (INSERT, PERMISSIVE) roles={authenticated}
-//     WITH CHECK: (auth.uid() = id_usuario)
-//   Policy "selecao_cenarios_select" (SELECT, PERMISSIVE) roles={authenticated}
-//     USING: (auth.uid() = id_usuario)
-//   Policy "selecao_cenarios_update" (UPDATE, PERMISSIVE) roles={authenticated}
-//     USING: (auth.uid() = id_usuario)
-//     WITH CHECK: (auth.uid() = id_usuario)
-// Table: simulacao_ssd
-//   Policy "anon_read" (SELECT, PERMISSIVE) roles={anon}
-//     USING: true
-//   Policy "authenticated_all" (ALL, PERMISSIVE) roles={authenticated}
-//     USING: true
-//     WITH CHECK: true
-// Table: tipo_artigo
-//   Policy "anon_read" (SELECT, PERMISSIVE) roles={anon}
-//     USING: true
-//   Policy "auth_all" (ALL, PERMISSIVE) roles={authenticated}
-//     USING: true
-//     WITH CHECK: true
-// Table: tipo_cenario_cenario
-//   Policy "anon_read" (SELECT, PERMISSIVE) roles={anon}
-//     USING: true
-//   Policy "authenticated_all" (ALL, PERMISSIVE) roles={authenticated}
-//     USING: true
-//     WITH CHECK: true
-// Table: tipos_cenarios
-//   Policy "anon_read" (SELECT, PERMISSIVE) roles={anon}
-//     USING: true
-//   Policy "authenticated_all" (ALL, PERMISSIVE) roles={authenticated}
-//     USING: true
-//     WITH CHECK: true
-// Table: wps
-//   Policy "anon_read" (SELECT, PERMISSIVE) roles={anon}
-//     USING: true
-//   Policy "auth_all" (ALL, PERMISSIVE) roles={authenticated}
-//     USING: true
-//     WITH CHECK: true
-
-// --- DATABASE FUNCTIONS ---
-// FUNCTION handle_new_user()
-//   CREATE OR REPLACE FUNCTION public.handle_new_user()
-//    RETURNS trigger
-//    LANGUAGE plpgsql
-//    SECURITY DEFINER
-//   AS $function$
-//   BEGIN
-//     INSERT INTO public.perfis_usuarios (id, nome, email, organizacao, nivel_acesso, objetivo_acesso, status)
-//     VALUES (
-//       NEW.id,
-//       COALESCE(NEW.raw_user_meta_data->>'nome', ''),
-//       NEW.email,
-//       NEW.raw_user_meta_data->>'organizacao',
-//       NEW.raw_user_meta_data->>'nivel_acesso',
-//       NEW.raw_user_meta_data->>'objetivo_acesso',
-//       'pendente'
-//     )
-//     ON CONFLICT (id) DO NOTHING;
-//     RETURN NEW;
-//   END;
-//   $function$
-//
-// FUNCTION is_admin()
-//   CREATE OR REPLACE FUNCTION public.is_admin()
-//    RETURNS boolean
-//    LANGUAGE plpgsql
-//    SECURITY DEFINER
-//    SET search_path TO 'public'
-//   AS $function$
-//   DECLARE
-//     v_id_ga integer;
-//   BEGIN
-//     SELECT id_ga INTO v_id_ga FROM public.perfis_usuarios WHERE id = auth.uid();
-//     RETURN (v_id_ga = 4);
-//   END;
-//   $function$
-//
-
-// --- INDEXES ---
-// Table: dados_simulacao
-//   CREATE UNIQUE INDEX dados_simulacao_mod_fonte_tempo_key ON public.dados_simulacao USING btree (id_mod, id_fonte, tempo)
-//   CREATE UNIQUE INDEX dados_simulacao_ukey ON public.dados_simulacao USING btree (id_s, id_mod, id_fonte, tempo)
-// Table: selecao_cenarios
-//   CREATE INDEX idx_selecao_cenarios_usuario ON public.selecao_cenarios USING btree (id_usuario)
