@@ -123,7 +123,7 @@ export default function Resultados() {
               variant="outline"
               role="combobox"
               aria-expanded={open}
-              className="w-full sm:w-[400px] justify-between"
+              className="w-full justify-between"
             >
               {selectedWpId
                 ? wps.find((wp) => wp.id_wp === selectedWpId)?.titulo || `WP selecionado`
