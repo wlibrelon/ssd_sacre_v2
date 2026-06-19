@@ -47,7 +47,6 @@ const MONTHS = [
 
 const LINE_COLORS = ['#2563eb', '#16a34a', '#dc2626', '#d97706', '#7c3aed', '#0891b2', '#be185d']
 
-// ── Tipos ──────────────────────────────────────────────────────────────────────
 type StatusSeg = 'seguro' | 'alerta' | 'crise' | 'colapso'
 
 type SelecaoCenario = {
@@ -56,13 +55,12 @@ type SelecaoCenario = {
   selecionado: boolean
   criado_at: string
   id_usuario: string
-  cenarios: string[] // array de strings: ["Clima: Pessimista", ...]
+  cenarios: string[]
   estrategias: string[]
   fonte_agua?: { nome_fonte: string }
   _userLabel?: string
 }
 
-// ── Helpers de segurança hídrica ───────────────────────────────────────────────
 function getStatus(
   indice: number,
   limiarAlerta: number,
@@ -96,7 +94,6 @@ const STATUS_BADGE: Record<StatusSeg, string> = {
   colapso: 'bg-rose-200 text-rose-900',
 }
 
-// ── ChartWrapper ───────────────────────────────────────────────────────────────
 interface ChartWrapperProps {
   title: string
   chartData: any[]
@@ -243,7 +240,6 @@ function ChartWrapper({ title, chartData, children, height = 340 }: ChartWrapper
   )
 }
 
-// ── Tooltip customizado ────────────────────────────────────────────────────────
 const TooltipSeguranca = ({
   active,
   payload,
@@ -305,7 +301,6 @@ const TooltipSeguranca = ({
   )
 }
 
-// ── Componente principal ───────────────────────────────────────────────────────
 export default function Cenarios() {
   const { cenario_demanda, cenario_consumo, cenario_perdas } = useSsdData()
 
@@ -349,7 +344,6 @@ export default function Cenarios() {
   const [indicadores, setIndicadores] = useState<any[]>([])
   const [selectedIndicadores, setSelectedIndicadores] = useState<number[]>([])
 
-  // ── Fetch seleções ─────────────────────────────────────────────────────────
   const fetchSelecoes = useCallback(async () => {
     setSelecaoLoading(true)
     const {
@@ -379,7 +373,6 @@ export default function Cenarios() {
     setSelecaoLoading(false)
   }, [])
 
-  // ── Carregamento inicial ───────────────────────────────────────────────────
   useEffect(() => {
     fetchSelecoes()
     supabase
@@ -437,7 +430,6 @@ export default function Cenarios() {
       })
   }, [simObj])
 
-  // ── Selects filtrados ──────────────────────────────────────────────────────
   const filteredTipos = refData.tiposCenario.filter((tc: any) =>
     refData.cenariosFonte.some(
       (cf: any) => cf.id_fonte === Number(idFonte) && cf.id_tc === tc.id_tc,
@@ -461,7 +453,6 @@ export default function Cenarios() {
     setDraftEstrategias([])
   }
 
-  // ── Confirma fonte ─────────────────────────────────────────────────────────
   const handleConfirmarFonte = async () => {
     if (!idFonte) return toast.error('Selecione uma fonte de água')
     if (draftCenarios.length === 0) return toast.error('Adicione ao menos um cenário')
@@ -474,8 +465,8 @@ export default function Cenarios() {
 
     const { error } = await supabase.from('selecao_cenarios').insert({
       id_fonte: Number(idFonte),
-      cenarios: draftCenarios, // ["Clima: Pessimista", ...]
-      estrategias: draftEstrategias, // ["Captação a montante: Uso moderado"]
+      cenarios: draftCenarios,
+      estrategias: draftEstrategias,
       selecionado: true,
       id_usuario: user.id,
     })
@@ -508,7 +499,6 @@ export default function Cenarios() {
     else fetchSelecoes()
   }
 
-  // ── Gravação da simulação ──────────────────────────────────────────────────
   const handleSaveSim = async () => {
     if (!simEdit || !simObj) return
     setSimSaving(true)
@@ -525,7 +515,6 @@ export default function Cenarios() {
     setSimSaving(false)
   }
 
-  // ── Cálculos modulares ─────────────────────────────────────────────────────
   const aplicarCalculosModulares = (data: any[], sim: any, cd: any, cc: any, cp: any) => {
     const tempos = Array.from(new Set(data.map((d) => d.tempo))).sort()
     const pop_inicial = sim?.pop_inicial || 0
@@ -568,19 +557,24 @@ export default function Cenarios() {
     })
   }
 
-  // ── Query principal ────────────────────────────────────────────────────────
   /**
    * Tanto selecao_cenarios quanto dados_simulacao gravam no formato array de strings:
    *   cenarios:    ["Clima: Pessimista", "Uso da Terra: Pessimista"]
    *   estrategias: ["Captação a montante: Uso moderado"]
    *
-   * Usamos .contains() + .containedBy() para igualdade semântica de array JSONB:
-   *   A = B  ↔  A @> B  AND  A <@ B
+   * CORREÇÃO: o PostgreSQL preserva a ordem de inserção em arrays JSONB —
+   * ele NÃO reordena elementos. Além disso, a ordem em que o usuário monta
+   * a seleção no formulário pode variar de uma fonte para outra. Por isso,
+   * NUNCA se deve comparar arrays por igualdade de string serializada
+   * (nem ordenada, nem na ordem original).
    *
-   * Para arrays JSONB o mesmo vale: ["a","b"] @> ["b","a"] não é verdadeiro
-   * (arrays são ordenados em JSONB), portanto estratégias devem ser gravadas
-   * sempre na mesma ordem — o que já é garantido pelo formulário.
-   * Mantemos .eq() para estratégias pois a ordem é determinística.
+   * A comparação correta usa os operadores nativos do PostgreSQL para
+   * JSONB, que comparam por CONTEÚDO (como um conjunto), independente
+   * de posição/ordem:
+   *   cs (contains)      ↔ operador @>  "A contém todos os elementos de B"
+   *   cd (contained by)  ↔ operador <@  "A está contido em B"
+   * Combinando os dois nos dois sentidos obtemos igualdade de conjunto,
+   * SEM depender da ordem dos elementos.
    */
   const applyFinancialMetrics = async () => {
     const activeSelecoes = selecoes.filter((s) => s.selecionado)
@@ -592,40 +586,15 @@ export default function Cenarios() {
       const cenarioArr = sel.cenarios as string[]
       const estrategiaArr = sel.estrategias as string[]
 
-      // Serializa o array exatamente como o PostgreSQL armazena JSONB:
-      // elementos em ordem, sem espaços extras. Isso garante match com .eq().
-      // Importante: sort() antes de serializar pois o PostgreSQL pode reordenar
-      // elementos de array JSONB ao armazenar.
-      const cenarioJson = JSON.stringify([...cenarioArr].sort())
-      const estrategiaJson = JSON.stringify([...estrategiaArr].sort())
-
-      // Log para diagnóstico — remover após confirmar funcionamento
-      console.log('[simulação] buscando cenarios:', cenarioJson)
-      console.log('[simulação] buscando estrategias:', estrategiaJson)
-
-      // Busca também a amostra do banco para comparar na mesma ordem
-      const { data: amostra } = await supabase
-        .from('dados_simulacao')
-        .select('cenarios, estrategias')
-        .eq('id_fonte', sel.id_fonte)
-        .limit(1)
-
-      if (amostra && amostra.length > 0) {
-        const cenariosDb = amostra[0].cenarios
-        const cenariosDbJson = Array.isArray(cenariosDb)
-          ? JSON.stringify([...cenariosDb].sort())
-          : JSON.stringify(cenariosDb)
-        console.log('[simulação] cenarios no banco:', cenariosDbJson)
-        console.log('[simulação] match cenarios:', cenarioJson === cenariosDbJson)
-      }
+      // Serializa o array EXATAMENTE como foi gravado — sem reordenar.
+      // Os operadores cs/cd (@>/<@) do PostgreSQL já comparam por conteúdo.
+      const cenarioJson = JSON.stringify(cenarioArr)
+      const estrategiaJson = JSON.stringify(estrategiaArr)
 
       let q = supabase
         .from('dados_simulacao')
         .select('*')
         .eq('id_fonte', sel.id_fonte)
-        // Usa filter com operador cs (contains) para array JSONB:
-        // cs é o operador @> do PostgreSQL — "contém todos os elementos"
-        // Combinando cs em ambas as direções = igualdade de conteúdo
         .filter('cenarios', 'cs', cenarioJson)
         .filter('cenarios', 'cd', cenarioJson)
         .filter('estrategias', 'cs', estrategiaJson)
@@ -646,7 +615,6 @@ export default function Cenarios() {
         toast.error(`Erro ao buscar dados (fonte ${sel.id_fonte}): ${error.message}`)
         continue
       }
-      console.log(`[simulação] linhas encontradas: ${rows?.length ?? 0}`)
       if (rows && rows.length > 0) allRows = [...allRows, ...rows]
     }
 
@@ -719,7 +687,6 @@ export default function Cenarios() {
     return dsUpdated
   }
 
-  // ── Executa simulação ──────────────────────────────────────────────────────
   const handleSimulate = async () => {
     if (!simObj) return toast.error('Configuração de simulação não carregada')
     if (selecoes.length === 0) return toast.error('Configure ao menos uma fonte para simular')
@@ -1017,7 +984,6 @@ export default function Cenarios() {
     </label>
   )
 
-  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
       <div>
@@ -1029,7 +995,6 @@ export default function Cenarios() {
       </div>
 
       <div className="space-y-6">
-        {/* ── QUADRO 1: Configurações para Simulação ── */}
         <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200 w-full">
           <div className="flex items-center justify-between border-b pb-3 mb-4">
             <h3 className="font-semibold text-primary text-sm uppercase tracking-wider">
@@ -1132,7 +1097,6 @@ export default function Cenarios() {
                         <td className="px-3 py-2.5 font-medium text-slate-700 whitespace-nowrap">
                           {sel.fonte_agua?.nome_fonte ?? `Fonte ${sel.id_fonte}`}
                         </td>
-                        {/* Cenários: array de strings */}
                         <td className="px-3 py-2.5 text-slate-600 max-w-[260px]">
                           {Array.isArray(sel.cenarios) && sel.cenarios.length > 0 ? (
                             <div className="flex flex-wrap gap-1">
@@ -1149,7 +1113,6 @@ export default function Cenarios() {
                             <span className="text-slate-400">-</span>
                           )}
                         </td>
-                        {/* Estratégias: array de strings */}
                         <td className="px-3 py-2.5 text-slate-600 max-w-[260px]">
                           {Array.isArray(sel.estrategias) && sel.estrategias.length > 0 ? (
                             <div className="flex flex-wrap gap-1">
@@ -1183,7 +1146,6 @@ export default function Cenarios() {
             </div>
           )}
 
-          {/* Formulário de adição */}
           <div className="mt-6 space-y-4 border border-slate-200 rounded-lg p-4 bg-slate-50">
             <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               Adicionar nova fonte à simulação
@@ -1206,7 +1168,6 @@ export default function Cenarios() {
 
             {idFonte && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Cenários */}
                 <div className="border p-4 rounded-lg bg-white space-y-3">
                   <h4 className="font-semibold text-sm">Cenários</h4>
                   <Select value={idTc} onValueChange={setIdTc}>
@@ -1272,7 +1233,6 @@ export default function Cenarios() {
                   </ul>
                 </div>
 
-                {/* Estratégias */}
                 <div className="border p-4 rounded-lg bg-white space-y-3">
                   <h4 className="font-semibold text-sm">Estratégias</h4>
                   <Select value={idAcao} onValueChange={setIdAcao}>
@@ -1337,7 +1297,6 @@ export default function Cenarios() {
           </div>
         </div>
 
-        {/* ── QUADRO 2: Configuração da Simulação ── */}
         {simEdit && (
           <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200 w-full">
             <h3 className="font-semibold text-primary border-b pb-3 mb-4 text-sm uppercase tracking-wider">
@@ -1367,7 +1326,6 @@ export default function Cenarios() {
           </div>
         )}
 
-        {/* ── QUADRO 3: Demanda e Perdas Automático ── */}
         {simObj && (simObj.demanda_auto || simObj.perdas_auto) && (
           <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200 w-full">
             <h3 className="font-semibold text-primary border-b pb-3 mb-4 text-sm uppercase tracking-wider">
@@ -1418,7 +1376,6 @@ export default function Cenarios() {
           </div>
         )}
 
-        {/* ── QUADRO 4: Indicadores ── */}
         {simObj && (
           <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200 w-full">
             <h3 className="font-semibold text-primary border-b pb-3 mb-4 text-sm uppercase tracking-wider">
@@ -1457,7 +1414,6 @@ export default function Cenarios() {
           </div>
         )}
 
-        {/* ── QUADRO 5: Período + Executar ── */}
         <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200 w-full">
           <h3 className="font-semibold text-primary border-b pb-3 mb-4 text-sm uppercase tracking-wider">
             Período
@@ -1570,7 +1526,6 @@ export default function Cenarios() {
         </div>
       )}
 
-      {/* ── Índice de Segurança Hídrica ── */}
       {segurancaHidrica && segCard && (
         <div>
           <h2 className="text-lg font-semibold text-primary mb-3">Índice de Segurança Hídrica</h2>
@@ -1624,7 +1579,6 @@ export default function Cenarios() {
         </div>
       )}
 
-      {/* ── Gráfico segurança hídrica ── */}
       {segurancaHidrica && segurancaHidrica.chartData.length > 0 && (
         <div>
           <div className="flex flex-wrap gap-6 text-xs text-slate-500 mb-2 px-1">
@@ -1660,7 +1614,6 @@ export default function Cenarios() {
         </div>
       )}
 
-      {/* ── Cronograma de períodos críticos ── */}
       {segurancaHidrica &&
         segurancaHidrica.criticos.length > 0 &&
         (() => {
