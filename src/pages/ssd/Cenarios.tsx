@@ -301,6 +301,72 @@ const TooltipSeguranca = ({
   )
 }
 
+// ── Campos do Quadro de Configuração da Simulação ──────────────────────────────
+// IMPORTANTE: declarados FORA do componente Cenarios. Quando esses componentes
+// eram declarados dentro do componente principal, toda vez que o usuário
+// digitava um caractere, simEdit mudava, o componente Cenarios re-renderizava
+// inteiro e recriava uma NOVA instância da função SimField/SimToggle — fazendo
+// o React tratar o <Input> como um elemento novo e perder o foco a cada tecla.
+// Como componentes próprios (fora do escopo de Cenarios), o React preserva a
+// identidade do componente entre renders e o foco não é mais perdido.
+function SimField({
+  label,
+  field,
+  type = 'text',
+  simEdit,
+  setSimEdit,
+}: {
+  label: string
+  field: string
+  type?: string
+  simEdit: any
+  setSimEdit: React.Dispatch<React.SetStateAction<any>>
+}) {
+  return (
+    <div className="space-y-1">
+      <label className="text-xs font-semibold text-muted-foreground">{label}</label>
+      <Input
+        type={type}
+        value={simEdit?.[field] ?? ''}
+        className="h-8 text-sm"
+        onChange={(e) =>
+          setSimEdit((prev: any) => ({
+            ...prev,
+            [field]:
+              type === 'number'
+                ? e.target.value === ''
+                  ? ''
+                  : Number(e.target.value)
+                : e.target.value,
+          }))
+        }
+      />
+    </div>
+  )
+}
+
+function SimToggle({
+  label,
+  field,
+  simEdit,
+  setSimEdit,
+}: {
+  label: string
+  field: string
+  simEdit: any
+  setSimEdit: React.Dispatch<React.SetStateAction<any>>
+}) {
+  return (
+    <label className="flex items-center gap-2 cursor-pointer">
+      <Checkbox
+        checked={!!simEdit?.[field]}
+        onCheckedChange={(v) => setSimEdit((prev: any) => ({ ...prev, [field]: !!v }))}
+      />
+      <span className="text-sm">{label}</span>
+    </label>
+  )
+}
+
 export default function Cenarios() {
   const { cenario_demanda, cenario_consumo, cenario_perdas } = useSsdData()
 
@@ -956,46 +1022,6 @@ export default function Cenarios() {
     </LineChart>
   )
 
-  const SimField = ({
-    label,
-    field,
-    type = 'text',
-  }: {
-    label: string
-    field: string
-    type?: string
-  }) => (
-    <div className="space-y-1">
-      <label className="text-xs font-semibold text-muted-foreground">{label}</label>
-      <Input
-        type={type}
-        value={simEdit?.[field] ?? ''}
-        className="h-8 text-sm"
-        onChange={(e) =>
-          setSimEdit((prev: any) => ({
-            ...prev,
-            [field]:
-              type === 'number'
-                ? e.target.value === ''
-                  ? ''
-                  : Number(e.target.value)
-                : e.target.value,
-          }))
-        }
-      />
-    </div>
-  )
-
-  const SimToggle = ({ label, field }: { label: string; field: string }) => (
-    <label className="flex items-center gap-2 cursor-pointer">
-      <Checkbox
-        checked={!!simEdit?.[field]}
-        onCheckedChange={(v) => setSimEdit((prev: any) => ({ ...prev, [field]: !!v }))}
-      />
-      <span className="text-sm">{label}</span>
-    </label>
-  )
-
   return (
     <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
       <div>
@@ -1315,19 +1341,61 @@ export default function Cenarios() {
               Configuração da Simulação
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              <SimField label="População Inicial" field="pop_inicial" type="number" />
+              <SimField
+                label="População Inicial"
+                field="pop_inicial"
+                type="number"
+                simEdit={simEdit}
+                setSimEdit={setSimEdit}
+              />
               <SimField
                 label="Perc. Inicial de Perdas (%)"
                 field="perc_inicial_perdas"
                 type="number"
+                simEdit={simEdit}
+                setSimEdit={setSimEdit}
               />
-              <SimField label="Início da Redução de Perdas" field="inicio_perdas" type="text" />
-              <SimField label="Limiar de Alerta (0–1)" field="limiar_alerta" type="number" />
-              <SimField label="Limiar de Crise (0–1)" field="limiar_crise" type="number" />
-              <SimField label="Limiar de Colapso (0–1)" field="limiar_colapso" type="number" />
+              <SimField
+                label="Início da Redução de Perdas"
+                field="inicio_perdas"
+                type="text"
+                simEdit={simEdit}
+                setSimEdit={setSimEdit}
+              />
+              <SimField
+                label="Limiar de Alerta (0–1)"
+                field="limiar_alerta"
+                type="number"
+                simEdit={simEdit}
+                setSimEdit={setSimEdit}
+              />
+              <SimField
+                label="Limiar de Crise (0–1)"
+                field="limiar_crise"
+                type="number"
+                simEdit={simEdit}
+                setSimEdit={setSimEdit}
+              />
+              <SimField
+                label="Limiar de Colapso (0–1)"
+                field="limiar_colapso"
+                type="number"
+                simEdit={simEdit}
+                setSimEdit={setSimEdit}
+              />
               <div className="flex flex-col gap-3 pt-1">
-                <SimToggle label="Demanda automática" field="demanda_auto" />
-                <SimToggle label="Perdas automáticas" field="perdas_auto" />
+                <SimToggle
+                  label="Demanda automática"
+                  field="demanda_auto"
+                  simEdit={simEdit}
+                  setSimEdit={setSimEdit}
+                />
+                <SimToggle
+                  label="Perdas automáticas"
+                  field="perdas_auto"
+                  simEdit={simEdit}
+                  setSimEdit={setSimEdit}
+                />
               </div>
             </div>
             <div className="mt-5 flex justify-end">
