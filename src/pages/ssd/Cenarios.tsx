@@ -615,6 +615,18 @@ export default function Cenarios() {
         toast.error(`Erro ao buscar dados (fonte ${sel.id_fonte}): ${error.message}`)
         continue
       }
+
+      // ── LOG DE DIAGNÓSTICO — remover após localizar o problema ──────────────
+      console.log(
+        `[diagnóstico] fonte ${sel.id_fonte} — cenarios enviados: ${cenarioJson} — estrategias enviadas: ${estrategiaJson} — linhas retornadas: ${rows?.length ?? 0}`,
+      )
+      if (!rows || rows.length === 0) {
+        console.warn(
+          `[diagnóstico] fonte ${sel.id_fonte}: NENHUMA linha encontrada para essa combinação de cenários/estratégias.`,
+        )
+      }
+      // ──────────────────────────────────────────────────────────────────────
+
       if (rows && rows.length > 0) allRows = [...allRows, ...rows]
     }
 
