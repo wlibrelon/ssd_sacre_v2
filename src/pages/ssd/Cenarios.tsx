@@ -1082,7 +1082,7 @@ export default function Cenarios() {
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
-        <NavDropdown<SecaoConfig>
+        <NavDropdown
           label="Configuração"
           current={secaoConfig}
           options={configOptions}
@@ -1631,7 +1631,7 @@ export default function Cenarios() {
       {ran && data.length > 0 && (
         <>
           <div className="flex flex-wrap items-center gap-3 pt-4 border-t">
-            <NavDropdown<SecaoResultado>
+            <NavDropdown
               label="Resultados"
               current={secaoResultado}
               options={resultadoOptions}
