@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import {
   LineChart,
   Line,
@@ -49,7 +49,19 @@ const MONTH_LABELS = [
   'Dez',
 ]
 
-const ChartWrapper = ({ title, data, children }: any) => {
+// ── Helpers de formatação ───────────────────────────────────────────────────────
+export const formatBRL = (v: number) =>
+  new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+    maximumFractionDigits: 0,
+  }).format(v)
+
+export const formatVol = (v: number) =>
+  new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 }).format(v) + ' m³'
+
+// ── ChartWrapper (compartilhado entre todas as abas) ───────────────────────────
+export const ChartWrapper = ({ title, data, children }: any) => {
   const [isOpen, setIsOpen] = useState(false)
 
   const handleExport = () => {
@@ -109,9 +121,7 @@ const ChartWrapper = ({ title, data, children }: any) => {
 }
 
 // ── Mapa de calor de déficit ──────────────────────────────────────────────────
-// deficitMonths: array de strings no formato "AAAA/MM"
-// deficitValues: Record<"AAAA/MM", number> com o valor do saldo (negativo = déficit)
-const DeficitHeatmap = ({
+export const DeficitHeatmap = ({
   deficitMonths,
   allMonths,
   deficitValues,
@@ -122,7 +132,6 @@ const DeficitHeatmap = ({
 }) => {
   if (allMonths.length === 0) return null
 
-  // Extrai anos e meses presentes nos dados
   const anosSet = new Set<string>()
   const mesesSet = new Set<number>()
   allMonths.forEach((t) => {
@@ -130,7 +139,6 @@ const DeficitHeatmap = ({
     anosSet.add(ano)
     mesesSet.add(parseInt(mes))
   })
-  // Apenas anos que tenham ao menos um mês com déficit
   const anosComDeficit = new Set(deficitMonths.map((t) => t.split('/')[0]))
   const anos = Array.from(anosSet)
     .sort()
@@ -139,7 +147,6 @@ const DeficitHeatmap = ({
 
   const deficitSet = new Set(deficitMonths)
 
-  // Intensidade: normaliza o déficit mais negativo → célula mais escura
   const deficitNums = deficitMonths.map((t) => deficitValues[t] ?? 0)
   const minVal = Math.min(...deficitNums, 0)
 
@@ -147,6 +154,8 @@ const DeficitHeatmap = ({
     if (minVal === 0) return 0.6
     return Math.min(0.9, 0.3 + (Math.abs(val) / Math.abs(minVal)) * 0.6)
   }
+
+  if (anos.length === 0) return null
 
   return (
     <Card className="border-red-200 bg-red-50/30">
@@ -174,7 +183,6 @@ const DeficitHeatmap = ({
           <table className="w-full border-collapse text-xs">
             <thead>
               <tr>
-                {/* Coluna de ano */}
                 <th className="text-left px-2 py-1.5 font-semibold text-slate-500 w-16 sticky left-0 bg-red-50/30">
                   Ano
                 </th>
@@ -248,7 +256,6 @@ const DeficitHeatmap = ({
           </table>
         </div>
 
-        {/* Legenda de intensidade */}
         {deficitMonths.length > 0 && minVal < 0 && (
           <div className="mt-3 flex items-center gap-2 text-[11px] text-slate-500">
             <span>Intensidade do déficit:</span>
@@ -269,138 +276,227 @@ const DeficitHeatmap = ({
   )
 }
 
-export function CenariosDashboard({ data, fontesMap }: any) {
-  const timeMap: any = {}
-  let totalCapex = 0
-  let totalOpex = 0
-  let monthsWithDeficit = 0
-  let monthsWithExcedent = 0
+// ── Hook de cálculo central ─────────────────────────────────────────────────────
+// Toda a lógica de agregação por tempo, antes espalhada dentro do componente
+// monolítico CenariosDashboard, agora vive aqui e pode ser consumida por
+// qualquer aba (Dados Gerais, Por Fonte, Captação/Distribuição, Financeiro)
+// sem recalcular nada duas vezes.
+export function useDashboardData(data: any[], fontesMap: any) {
+  return useMemo(() => {
+    const timeMap: any = {}
+    let totalCapex = 0
+    let totalOpex = 0
+    let monthsWithDeficit = 0
+    let monthsWithExcedent = 0
 
-  data.forEach((row: any) => {
-    const vd = row.volume_captado * (1 - (row.perdas || 0) / 100)
-    if (!timeMap[row.tempo]) {
-      timeMap[row.tempo] = {
-        tempo: row.tempo,
-        distribuicao_total: 0,
-        demanda: row.demanda || 0,
-        captacao_total: 0,
-      }
-    }
-    timeMap[row.tempo].distribuicao_total += vd
-    timeMap[row.tempo].captacao_total += row.volume_captado || 0
-    totalCapex += row.capex || 0
-    totalOpex += row.opex || 0
-
-    const fName = fontesMap[row.id_fonte] || `Fonte_${row.id_fonte}`
-    timeMap[row.tempo][`${fName}_cap`] =
-      (timeMap[row.tempo][`${fName}_cap`] || 0) + row.volume_captado
-  })
-
-  const chartData = Object.values(timeMap)
-    .map((t: any) => {
-      const deficit = t.distribuicao_total - t.demanda
-      if (deficit < 0) monthsWithDeficit++
-      else monthsWithExcedent++
-
-      Object.keys(fontesMap).forEach((k) => {
-        const fName = fontesMap[k]
-        if (t[`${fName}_cap`]) {
-          t[`${fName}_pct`] = Math.min(
-            100,
-            Math.floor((t[`${fName}_cap`] / t.captacao_total) * 100),
-          )
+    data.forEach((row: any) => {
+      const vd = row.volume_captado * (1 - (row.perdas || 0) / 100)
+      if (!timeMap[row.tempo]) {
+        timeMap[row.tempo] = {
+          tempo: row.tempo,
+          distribuicao_total: 0,
+          demanda: row.demanda || 0,
+          captacao_total: 0,
+          capex: 0,
+          opex: 0,
         }
-      })
-      return { ...t, deficit }
+      }
+      timeMap[row.tempo].distribuicao_total += vd
+      timeMap[row.tempo].captacao_total += row.volume_captado || 0
+      timeMap[row.tempo].capex += row.capex || 0
+      timeMap[row.tempo].opex += row.opex || 0
+      totalCapex += row.capex || 0
+      totalOpex += row.opex || 0
+
+      const fName = fontesMap[row.id_fonte] || `Fonte_${row.id_fonte}`
+      timeMap[row.tempo][`${fName}_cap`] =
+        (timeMap[row.tempo][`${fName}_cap`] || 0) + row.volume_captado
     })
-    .sort((a: any, b: any) => a.tempo.localeCompare(b.tempo))
 
-  const avgDist =
-    chartData.reduce((acc: any, curr: any) => acc + curr.distribuicao_total, 0) /
-    (chartData.length || 1)
-  const avgDem =
-    chartData.reduce((acc: any, curr: any) => acc + curr.demanda, 0) / (chartData.length || 1)
-  const fontesKeys = Object.values(fontesMap) as string[]
+    const chartData = Object.values(timeMap)
+      .map((t: any) => {
+        const deficit = t.distribuicao_total - t.demanda
+        if (deficit < 0) monthsWithDeficit++
+        else monthsWithExcedent++
 
-  // Mapa de calor: todos os tempos presentes e quais têm déficit
-  const allMonths = chartData.map((x: any) => x.tempo)
-  const deficitValues: Record<string, number> = {}
-  chartData.forEach((x: any) => {
-    deficitValues[x.tempo] = x.deficit
-  })
-  const deficitMonths = chartData.filter((x: any) => x.deficit < 0).map((x: any) => x.tempo)
+        Object.keys(fontesMap).forEach((k) => {
+          const fName = fontesMap[k]
+          if (t[`${fName}_cap`]) {
+            t[`${fName}_pct`] = Math.min(
+              100,
+              Math.floor((t[`${fName}_cap`] / t.captacao_total) * 100),
+            )
+          }
+        })
+        return { ...t, deficit }
+      })
+      .sort((a: any, b: any) => a.tempo.localeCompare(b.tempo))
 
-  const formatBRL = (v: number) =>
-    new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-      maximumFractionDigits: 0,
-    }).format(v)
-  const formatVol = (v: number) =>
-    new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 }).format(v) + ' m³'
+    const avgDist =
+      chartData.reduce((acc: any, curr: any) => acc + curr.distribuicao_total, 0) /
+      (chartData.length || 1)
+    const avgDem =
+      chartData.reduce((acc: any, curr: any) => acc + curr.demanda, 0) / (chartData.length || 1)
+    const fontesKeys = Object.values(fontesMap) as string[]
+
+    const allMonths = chartData.map((x: any) => x.tempo)
+    const deficitValues: Record<string, number> = {}
+    chartData.forEach((x: any) => {
+      deficitValues[x.tempo] = x.deficit
+    })
+    const deficitMonths = chartData.filter((x: any) => x.deficit < 0).map((x: any) => x.tempo)
+
+    // Período em anos: extrai o primeiro e último ano presentes em "tempo" (AAAA/MM)
+    const anos = allMonths.map((t: string) => parseInt(t.split('/')[0])).filter((n) => !isNaN(n))
+    const anoInicio = anos.length > 0 ? Math.min(...anos) : null
+    const anoFim = anos.length > 0 ? Math.max(...anos) : null
+    const periodoAnos =
+      anoInicio != null && anoFim != null
+        ? anoInicio === anoFim
+          ? `${anoInicio}`
+          : `${anoInicio}–${anoFim}`
+        : '-'
+
+    return {
+      chartData,
+      totalCapex,
+      totalOpex,
+      monthsWithDeficit,
+      monthsWithExcedent,
+      avgDist,
+      avgDem,
+      fontesKeys,
+      allMonths,
+      deficitValues,
+      deficitMonths,
+      periodoAnos,
+      totalMeses: chartData.length,
+    }
+  }, [data, fontesMap])
+}
+
+// ── ABA: Dados Gerais (totalizadores) ──────────────────────────────────────────
+// Média distribuída, Média Demanda, Período em anos, Total de meses,
+// Meses com déficit, Meses com excedente.
+export function DadosGeraisTab({ data, fontesMap }: any) {
+  const { avgDist, avgDem, periodoAnos, totalMeses, monthsWithDeficit, monthsWithExcedent } =
+    useDashboardData(data, fontesMap)
 
   return (
-    <div className="space-y-6 animate-fade-in-up">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-muted-foreground">Média Distribuída</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-xl font-bold">{formatVol(avgDist)}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-muted-foreground">Média Demanda</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-xl font-bold text-blue-600">{formatVol(avgDem)}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-muted-foreground">Total CAPEX</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-xl font-bold text-orange-600">{formatBRL(totalCapex)}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-muted-foreground">Total OPEX</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-xl font-bold text-red-600">{formatBRL(totalOpex)}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-muted-foreground">Total Meses</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-xl font-bold">{chartData.length}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-muted-foreground">Meses c/ Déficit</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-xl font-bold text-red-500">{monthsWithDeficit}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-muted-foreground">Meses c/ Excedente</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-xl font-bold text-green-600">{monthsWithExcedent}</div>
-          </CardContent>
-        </Card>
-      </div>
+    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm text-muted-foreground">Média Distribuída</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-xl font-bold">{formatVol(avgDist)}</div>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm text-muted-foreground">Média Demanda</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-xl font-bold text-blue-600">{formatVol(avgDem)}</div>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm text-muted-foreground">Período (anos)</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-xl font-bold">{periodoAnos}</div>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm text-muted-foreground">Total de Meses</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-xl font-bold">{totalMeses}</div>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm text-muted-foreground">Meses c/ Déficit</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-xl font-bold text-red-500">{monthsWithDeficit}</div>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm text-muted-foreground">Meses c/ Excedente</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-xl font-bold text-green-600">{monthsWithExcedent}</div>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
 
-      {/* Mapa de calor substituindo o card de texto */}
+// ── ABA: Dados por Fonte ────────────────────────────────────────────────────────
+// Volume Captado por Fonte + Participação das Fontes (%)
+export function DadosPorFonteTab({ data, fontesMap }: any) {
+  const { chartData, fontesKeys } = useDashboardData(data, fontesMap)
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <ChartWrapper title="Volume Captado por Fonte" data={chartData}>
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" opacity={0.4} />
+            <XAxis dataKey="tempo" />
+            <YAxis />
+            <Tooltip formatter={(value: number) => formatVol(value)} />
+            <Legend />
+            {fontesKeys.map((fk, i) => (
+              <Line
+                key={fk}
+                type="monotone"
+                dataKey={`${fk}_cap`}
+                name={fk}
+                stroke={CHART_COLORS[i % CHART_COLORS.length]}
+                strokeWidth={2.5}
+                dot={false}
+              />
+            ))}
+          </LineChart>
+        </ResponsiveContainer>
+      </ChartWrapper>
+
+      <ChartWrapper title="Participação das Fontes (%)" data={chartData}>
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" opacity={0.4} />
+            <XAxis dataKey="tempo" />
+            <YAxis domain={[0, 100]} />
+            <Tooltip formatter={(value: number) => `${value.toFixed(1)}%`} />
+            <Legend />
+            {fontesKeys.map((fk, i) => (
+              <Bar
+                key={fk}
+                dataKey={`${fk}_pct`}
+                name={fk}
+                stackId="a"
+                fill={CHART_COLORS[i % CHART_COLORS.length]}
+              />
+            ))}
+          </BarChart>
+        </ResponsiveContainer>
+      </ChartWrapper>
+    </div>
+  )
+}
+
+// ── ABA: Captação e Distribuição ────────────────────────────────────────────────
+// Captação vs Distribuição + Distribuição/Demanda/Saldo + Mapa de Déficit
+export function CaptacaoDistribuicaoTab({ data, fontesMap }: any) {
+  const { chartData, allMonths, deficitValues, deficitMonths } = useDashboardData(data, fontesMap)
+
+  return (
+    <div className="space-y-6">
       <DeficitHeatmap
         deficitMonths={deficitMonths}
         allMonths={allMonths}
@@ -408,50 +504,6 @@ export function CenariosDashboard({ data, fontesMap }: any) {
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <ChartWrapper title="Volume Captado por Fonte" data={chartData}>
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" opacity={0.4} />
-              <XAxis dataKey="tempo" />
-              <YAxis />
-              <Tooltip formatter={(value: number) => formatVol(value)} />
-              <Legend />
-              {fontesKeys.map((fk, i) => (
-                <Line
-                  key={fk}
-                  type="monotone"
-                  dataKey={`${fk}_cap`}
-                  name={fk}
-                  stroke={CHART_COLORS[i % CHART_COLORS.length]}
-                  strokeWidth={2.5}
-                  dot={false}
-                />
-              ))}
-            </LineChart>
-          </ResponsiveContainer>
-        </ChartWrapper>
-
-        <ChartWrapper title="Participação das Fontes (%)" data={chartData}>
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" opacity={0.4} />
-              <XAxis dataKey="tempo" />
-              <YAxis domain={[0, 100]} />
-              <Tooltip formatter={(value: number) => `${value.toFixed(1)}%`} />
-              <Legend />
-              {fontesKeys.map((fk, i) => (
-                <Bar
-                  key={fk}
-                  dataKey={`${fk}_pct`}
-                  name={fk}
-                  stackId="a"
-                  fill={CHART_COLORS[i % CHART_COLORS.length]}
-                />
-              ))}
-            </BarChart>
-          </ResponsiveContainer>
-        </ChartWrapper>
-
         <ChartWrapper title="Captação vs Distribuição" data={chartData}>
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
@@ -517,6 +569,77 @@ export function CenariosDashboard({ data, fontesMap }: any) {
           </ResponsiveContainer>
         </ChartWrapper>
       </div>
+    </div>
+  )
+}
+
+// ── ABA: Financeiro ──────────────────────────────────────────────────────────────
+// Série histórica de CAPEX e OPEX + totalizadores abaixo do gráfico
+export function FinanceiroTab({ data, fontesMap }: any) {
+  const { chartData, totalCapex, totalOpex } = useDashboardData(data, fontesMap)
+
+  return (
+    <div className="space-y-6">
+      <ChartWrapper title="Série Histórica – CAPEX e OPEX" data={chartData}>
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" opacity={0.4} />
+            <XAxis dataKey="tempo" />
+            <YAxis />
+            <Tooltip formatter={(value: number) => formatBRL(value)} />
+            <Legend />
+            <Line
+              type="monotone"
+              dataKey="capex"
+              name="CAPEX"
+              stroke="#d97706"
+              strokeWidth={2.5}
+              dot={false}
+            />
+            <Line
+              type="monotone"
+              dataKey="opex"
+              name="OPEX"
+              stroke="#dc2626"
+              strokeWidth={2.5}
+              dot={false}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      </ChartWrapper>
+
+      <div className="grid grid-cols-2 gap-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm text-muted-foreground">Total CAPEX</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-orange-600">{formatBRL(totalCapex)}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm text-muted-foreground">Total OPEX</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-red-600">{formatBRL(totalOpex)}</div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  )
+}
+
+// ── Componente legado (compatibilidade) ─────────────────────────────────────────
+// Mantido para não quebrar imports antigos que ainda chamem o dashboard
+// monolítico original. Internamente reaproveita as abas já separadas acima.
+export function CenariosDashboard({ data, fontesMap }: any) {
+  return (
+    <div className="space-y-6 animate-fade-in-up">
+      <DadosGeraisTab data={data} fontesMap={fontesMap} />
+      <DadosPorFonteTab data={data} fontesMap={fontesMap} />
+      <CaptacaoDistribuicaoTab data={data} fontesMap={fontesMap} />
+      <FinanceiroTab data={data} fontesMap={fontesMap} />
     </div>
   )
 }

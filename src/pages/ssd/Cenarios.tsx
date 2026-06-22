@@ -4,11 +4,16 @@ import { NativeSelect } from './components/NativeSelect'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { supabase } from '@/lib/supabase/client'
-import { CenariosDashboard } from './components/CenariosDashboard'
+import {
+  DadosGeraisTab,
+  DadosPorFonteTab,
+  CaptacaoDistribuicaoTab,
+  FinanceiroTab,
+} from './components/CenariosDashboard'
 import { ProjecaoPopulacional } from './ProjecaoPopulacional'
 import { Checkbox } from '@/components/ui/checkbox'
 import { toast } from 'sonner'
-import { Trash2, Plus, ChevronDown } from 'lucide-react'
+import { Trash2, Plus } from 'lucide-react'
 import {
   Select,
   SelectContent,
@@ -17,11 +22,12 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   LineChart,
   Line,
@@ -64,32 +70,6 @@ type SelecaoCenario = {
   estrategias: string[]
   fonte_agua?: { nome_fonte: string }
   _userLabel?: string
-}
-
-// ── Seções de navegação ──────────────────────────────────────────────────────
-type SecaoConfig = 'fontes' | 'parametros' | 'automaticos' | 'periodo'
-type SecaoResultado =
-  | 'visao_geral'
-  | 'serie_temporal'
-  | 'cronograma_criticos'
-  | 'painel_financeiro'
-  | 'projecao_populacional'
-  | 'indicadores_extras'
-
-const CONFIG_LABELS: Record<SecaoConfig, string> = {
-  fontes: 'Fontes e Seleções',
-  parametros: 'Parâmetros do Modelo',
-  automaticos: 'Cenários Automáticos',
-  periodo: 'Período',
-}
-
-const RESULTADO_LABELS: Record<SecaoResultado, string> = {
-  visao_geral: 'Visão Geral',
-  serie_temporal: 'Série Temporal',
-  cronograma_criticos: 'Cronograma de Críticos',
-  painel_financeiro: 'Painel Financeiro',
-  projecao_populacional: 'Projeção Populacional',
-  indicadores_extras: 'Indicadores Extras',
 }
 
 function getStatus(
@@ -332,6 +312,9 @@ const TooltipSeguranca = ({
   )
 }
 
+// ── Campos do Quadro de Parâmetros do Modelo ────────────────────────────────────
+// Declarados FORA do componente Cenarios para preservar o foco do <Input>
+// entre re-renders.
 function SimField({
   label,
   field,
@@ -390,53 +373,6 @@ function SimToggle({
   )
 }
 
-function NavDropdown<T extends string>({
-  label,
-  current,
-  options,
-  labels,
-  onSelect,
-  disabled,
-}: {
-  label: string
-  current: T
-  options: T[]
-  labels: Record<T, string>
-  onSelect: (value: T) => void
-  disabled?: boolean
-}) {
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="outline"
-          disabled={disabled}
-          className="justify-between min-w-[220px] bg-white"
-        >
-          <span className="flex flex-col items-start leading-tight">
-            <span className="text-[10px] text-muted-foreground uppercase tracking-wide">
-              {label}
-            </span>
-            <span className="text-sm font-medium">{labels[current]}</span>
-          </span>
-          <ChevronDown className="w-4 h-4 ml-2 text-muted-foreground" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="min-w-[220px]">
-        {options.map((opt) => (
-          <DropdownMenuItem
-            key={opt}
-            onClick={() => onSelect(opt)}
-            className={opt === current ? 'bg-slate-100 font-medium' : ''}
-          >
-            {labels[opt]}
-          </DropdownMenuItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  )
-}
-
 export default function Cenarios() {
   const { cenario_demanda, cenario_consumo, cenario_perdas } = useSsdData()
 
@@ -477,10 +413,9 @@ export default function Cenarios() {
     criticos: { tempo: string; indice: number; status: StatusSeg; deficit: number }[]
   } | null>(null)
 
+  // Lista completa de indicadores aplicados — exibidos sempre que existirem,
+  // sem necessidade de seleção manual pelo usuário.
   const [indicadores, setIndicadores] = useState<any[]>([])
-
-  const [secaoConfig, setSecaoConfig] = useState<SecaoConfig>('fontes')
-  const [secaoResultado, setSecaoResultado] = useState<SecaoResultado>('visao_geral')
 
   const fetchSelecoes = useCallback(async () => {
     setSelecaoLoading(true)
@@ -545,6 +480,9 @@ export default function Cenarios() {
     )
   }, [fetchSelecoes])
 
+  // Carrega os indicadores aplicados à simulação — sem seleção manual,
+  // todos os indicadores existentes serão exibidos automaticamente nos
+  // gráficos quando houver dados.
   useEffect(() => {
     if (!simObj) {
       setIndicadores([])
@@ -919,7 +857,6 @@ export default function Cenarios() {
     setGroupedData(groupedArray)
     setRan(true)
     setLoading(false)
-    setSecaoResultado('visao_geral')
   }
 
   const fontesMap = refData.fontes.reduce(
@@ -930,6 +867,8 @@ export default function Cenarios() {
   const limiarCrise = simObj?.limiar_crise ?? 0.6
   const limiarColapso = simObj?.limiar_colapso ?? 0.4
 
+  // Gráficos de indicadores extras — geram-se para TODOS os indicadores
+  // aplicados, sem depender de seleção manual.
   const indicadoresCharts = (() => {
     if (!ran || data.length === 0 || indicadores.length === 0) return []
     const porUnidade: Record<string, any[]> = {}
@@ -1055,21 +994,6 @@ export default function Cenarios() {
   )
 
   const temAutomatico = !!(simObj?.demanda_auto || simObj?.perdas_auto)
-  const resultadoOptions: SecaoResultado[] = [
-    'visao_geral',
-    'serie_temporal',
-    'cronograma_criticos',
-    'painel_financeiro',
-    ...(temAutomatico ? (['projecao_populacional'] as SecaoResultado[]) : []),
-    ...(indicadoresCharts.length > 0 ? (['indicadores_extras'] as SecaoResultado[]) : []),
-  ]
-
-  const configOptions: SecaoConfig[] = [
-    'fontes',
-    'parametros',
-    ...(temAutomatico ? (['automaticos'] as SecaoConfig[]) : []),
-    'periodo',
-  ]
 
   return (
     <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
@@ -1081,541 +1005,1003 @@ export default function Cenarios() {
         </p>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3">
-        <NavDropdown
-          label="Configuração"
-          current={secaoConfig}
-          options={configOptions}
-          labels={CONFIG_LABELS}
-          onSelect={setSecaoConfig}
-        />
-        {!selecaoLoading && (
-          <span className="text-xs text-muted-foreground">
-            {selecoes.filter((s) => s.selecionado).length} de {selecoes.length} fontes selecionadas
-          </span>
-        )}
-      </div>
-
-      {secaoConfig === 'fontes' && (
-        <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200 w-full">
-          <h3 className="font-semibold text-primary border-b pb-3 mb-4 text-sm uppercase tracking-wider">
-            Fontes e Seleções
-          </h3>
-
-          {selecaoLoading && (
-            <div className="flex items-center gap-2 py-4 text-sm text-muted-foreground">
-              <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
-              </svg>
-              Carregando configurações…
+      {/* ════════════════════════════════════════════════════════════════════
+          ACCORDION: Configurações
+      ════════════════════════════════════════════════════════════════════ */}
+      <Accordion type="multiple" defaultValue={['configuracoes']} className="space-y-4">
+        <AccordionItem value="configuracoes" className="border rounded-xl bg-white shadow-sm">
+          <AccordionTrigger className="px-5 py-4 hover:no-underline">
+            <div className="flex items-center gap-3">
+              <span className="font-semibold text-primary text-base">Configurações</span>
+              {!selecaoLoading && (
+                <span className="text-xs text-muted-foreground">
+                  {selecoes.filter((s) => s.selecionado).length} de {selecoes.length} fontes
+                  selecionadas
+                </span>
+              )}
             </div>
-          )}
+          </AccordionTrigger>
+          <AccordionContent className="px-5 pb-5">
+            <Tabs defaultValue="fontes" className="w-full">
+              <TabsList className="flex-wrap h-auto">
+                <TabsTrigger value="fontes">Seleção da Simulação</TabsTrigger>
+                <TabsTrigger value="parametros">Parâmetros do Modelo</TabsTrigger>
+                <TabsTrigger value="automaticos" disabled={!temAutomatico}>
+                  Demandas e Perdas
+                </TabsTrigger>
+                <TabsTrigger value="periodo">Período</TabsTrigger>
+              </TabsList>
 
-          {!selecaoLoading && selecoes.length === 0 && (
-            <div className="text-center py-8 border border-dashed rounded-lg">
-              <p className="text-sm text-muted-foreground font-medium">
-                Nenhuma configuração salva ainda.
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Use o formulário abaixo para adicionar fontes à simulação.
-              </p>
-            </div>
-          )}
+              {/* ── TAB: Seleção da Simulação ── */}
+              <TabsContent value="fontes" className="space-y-4 pt-4">
+                {selecaoLoading && (
+                  <div className="flex items-center gap-2 py-4 text-sm text-muted-foreground">
+                    <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                    </svg>
+                    Carregando configurações…
+                  </div>
+                )}
 
-          {!selecaoLoading && selecoes.length > 0 && (
-            <div className="border rounded-lg overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs">
-                  <thead className="bg-slate-100 sticky top-0 z-10">
-                    <tr>
-                      <th className="px-3 py-2.5 text-center font-semibold text-slate-600 w-10">
-                        <Checkbox
-                          checked={selecoes.length > 0 && selecoes.every((s) => s.selecionado)}
-                          onCheckedChange={(v) =>
-                            selecoes.forEach((s) => handleToggleSelecao(s.id, !!v))
-                          }
-                          title="Marcar / desmarcar todos"
+                {!selecaoLoading && selecoes.length === 0 && (
+                  <div className="text-center py-8 border border-dashed rounded-lg">
+                    <p className="text-sm text-muted-foreground font-medium">
+                      Nenhuma configuração salva ainda.
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Use o formulário abaixo para adicionar fontes à simulação.
+                    </p>
+                  </div>
+                )}
+
+                {!selecaoLoading && selecoes.length > 0 && (
+                  <div className="border rounded-lg overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-xs">
+                        <thead className="bg-slate-100 sticky top-0 z-10">
+                          <tr>
+                            <th className="px-3 py-2.5 text-center font-semibold text-slate-600 w-10">
+                              <Checkbox
+                                checked={
+                                  selecoes.length > 0 && selecoes.every((s) => s.selecionado)
+                                }
+                                onCheckedChange={(v) =>
+                                  selecoes.forEach((s) => handleToggleSelecao(s.id, !!v))
+                                }
+                                title="Marcar / desmarcar todos"
+                              />
+                            </th>
+                            <th className="px-3 py-2.5 text-left font-semibold text-slate-600 whitespace-nowrap">
+                              Data
+                            </th>
+                            <th className="px-3 py-2.5 text-left font-semibold text-slate-600 whitespace-nowrap">
+                              Usuário
+                            </th>
+                            <th className="px-3 py-2.5 text-left font-semibold text-slate-600 whitespace-nowrap">
+                              Fonte
+                            </th>
+                            <th className="px-3 py-2.5 text-left font-semibold text-slate-600">
+                              Cenários
+                            </th>
+                            <th className="px-3 py-2.5 text-left font-semibold text-slate-600">
+                              Estratégias
+                            </th>
+                            <th className="px-3 py-2.5 w-10" />
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y">
+                          {selecoes.map((sel) => (
+                            <tr
+                              key={sel.id}
+                              className={`hover:bg-slate-50 transition-colors ${sel.selecionado ? 'bg-blue-50/40' : ''}`}
+                            >
+                              <td className="px-3 py-2.5 text-center">
+                                <Checkbox
+                                  checked={!!sel.selecionado}
+                                  onCheckedChange={(v) => handleToggleSelecao(sel.id, !!v)}
+                                />
+                              </td>
+                              <td className="px-3 py-2.5 text-slate-500 whitespace-nowrap">
+                                {sel.criado_at
+                                  ? new Date(sel.criado_at).toLocaleString('pt-BR', {
+                                      day: '2-digit',
+                                      month: '2-digit',
+                                      year: '2-digit',
+                                      hour: '2-digit',
+                                      minute: '2-digit',
+                                    })
+                                  : '-'}
+                              </td>
+                              <td className="px-3 py-2.5 text-slate-600 whitespace-nowrap">
+                                {sel._userLabel ?? sel.id_usuario?.slice(0, 8) + '…'}
+                              </td>
+                              <td className="px-3 py-2.5 font-medium text-slate-700 whitespace-nowrap">
+                                {sel.fonte_agua?.nome_fonte ?? `Fonte ${sel.id_fonte}`}
+                              </td>
+                              <td className="px-3 py-2.5 text-slate-600 max-w-[260px]">
+                                {Array.isArray(sel.cenarios) && sel.cenarios.length > 0 ? (
+                                  <div className="flex flex-wrap gap-1">
+                                    {sel.cenarios.map((c) => (
+                                      <span
+                                        key={c}
+                                        className="inline-block bg-blue-50 border border-blue-200 text-blue-700 rounded px-1.5 py-0.5 text-[11px]"
+                                      >
+                                        {c}
+                                      </span>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <span className="text-slate-400">-</span>
+                                )}
+                              </td>
+                              <td className="px-3 py-2.5 text-slate-600 max-w-[260px]">
+                                {Array.isArray(sel.estrategias) && sel.estrategias.length > 0 ? (
+                                  <div className="flex flex-wrap gap-1">
+                                    {sel.estrategias.map((e) => (
+                                      <span
+                                        key={e}
+                                        className="inline-block bg-emerald-50 border border-emerald-200 text-emerald-700 rounded px-1.5 py-0.5 text-[11px]"
+                                      >
+                                        {e}
+                                      </span>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <span className="text-slate-400">-</span>
+                                )}
+                              </td>
+                              <td className="px-3 py-2.5 text-center">
+                                <button
+                                  onClick={() => handleDeleteSelecao(sel.id)}
+                                  className="text-destructive hover:text-red-700 transition-colors"
+                                  title="Remover"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                <div className="space-y-4 border border-slate-200 rounded-lg p-4 bg-slate-50">
+                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    Adicionar nova fonte à simulação
+                  </h4>
+                  <div className="max-w-xs space-y-1">
+                    <label className="text-xs font-semibold text-muted-foreground">
+                      Fonte de Água
+                    </label>
+                    <Select value={idFonte} onValueChange={handleFonteChange}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione a fonte..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {refData.fontes.map((f: any) => (
+                          <SelectItem key={f.id_fonte} value={f.id_fonte.toString()}>
+                            {f.nome_fonte}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {idFonte && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="border p-4 rounded-lg bg-white space-y-3">
+                        <h4 className="font-semibold text-sm">Cenários</h4>
+                        <Select value={idTc} onValueChange={setIdTc}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Tipo de cenário..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {filteredTipos.map((t: any) => (
+                              <SelectItem key={t.id_tc} value={t.id_tc.toString()}>
+                                {t.descricao}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Select value={idC} onValueChange={setIdC}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Cenário..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {filteredCenarios.map((c: any) => (
+                              <SelectItem key={c.id_cenarios} value={c.id_cenarios.toString()}>
+                                {c.cenarios}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Button
+                          className="w-full"
+                          size="sm"
+                          disabled={!idTc || !idC}
+                          onClick={() => {
+                            const t = refData.tiposCenario.find(
+                              (x: any) => x.id_tc.toString() === idTc,
+                            )
+                            const c = refData.cenariosBd.find(
+                              (x: any) => x.id_cenarios.toString() === idC,
+                            )
+                            if (t && c) {
+                              const label = `${t.descricao}: ${c.cenarios}`
+                              if (draftCenarios.includes(label))
+                                return toast.error('Este cenário já foi adicionado.')
+                              setDraftCenarios((p) => [...p, label])
+                              setIdTc('')
+                              setIdC('')
+                            }
+                          }}
+                        >
+                          <Plus className="w-3.5 h-3.5 mr-1" /> Adicionar Cenário
+                        </Button>
+                        <ul className="space-y-1.5">
+                          {draftCenarios.map((c, i) => (
+                            <li
+                              key={i}
+                              className="flex justify-between items-center bg-slate-50 px-3 py-1.5 rounded border text-xs"
+                            >
+                              <span>{c}</span>
+                              <button
+                                onClick={() =>
+                                  setDraftCenarios((p) => p.filter((_, idx) => idx !== i))
+                                }
+                                className="text-destructive hover:text-red-700 ml-2"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      <div className="border p-4 rounded-lg bg-white space-y-3">
+                        <h4 className="font-semibold text-sm">Estratégias</h4>
+                        <Select value={idAcao} onValueChange={setIdAcao}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Escolha a ação..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {filteredAcoes.map((a: any) => (
+                              <SelectItem key={a.id_acao} value={a.id_acao.toString()}>
+                                {a.descricao}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Button
+                          className="w-full"
+                          size="sm"
+                          disabled={!idAcao}
+                          onClick={() => {
+                            const a = refData.acoesBd.find(
+                              (x: any) => x.id_acao.toString() === idAcao,
+                            )
+                            if (a) {
+                              if (draftEstrategias.includes(a.descricao))
+                                return toast.error('Esta ação já foi adicionada.')
+                              setDraftEstrategias((p) => [...p, a.descricao])
+                              setIdAcao('')
+                            }
+                          }}
+                        >
+                          <Plus className="w-3.5 h-3.5 mr-1" /> Adicionar Ação
+                        </Button>
+                        <ul className="space-y-1.5">
+                          {draftEstrategias.map((e, i) => (
+                            <li
+                              key={i}
+                              className="flex justify-between items-center bg-slate-50 px-3 py-1.5 rounded border text-xs"
+                            >
+                              <span>{e}</span>
+                              <button
+                                onClick={() =>
+                                  setDraftEstrategias((p) => p.filter((_, idx) => idx !== i))
+                                }
+                                className="text-destructive hover:text-red-700 ml-2"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex justify-end pt-2">
+                    <Button
+                      onClick={handleConfirmarFonte}
+                      disabled={
+                        !idFonte || draftCenarios.length === 0 || draftEstrategias.length === 0
+                      }
+                      className="gap-2"
+                    >
+                      <Plus className="w-4 h-4" /> Adicionar Fonte à Simulação
+                    </Button>
+                  </div>
+                </div>
+              </TabsContent>
+
+              {/* ── TAB: Parâmetros do Modelo ── */}
+              <TabsContent value="parametros" className="space-y-4 pt-4">
+                {simEdit && (
+                  <>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                      <SimField
+                        label="População Inicial"
+                        field="pop_inicial"
+                        type="number"
+                        simEdit={simEdit}
+                        setSimEdit={setSimEdit}
+                      />
+                      <SimField
+                        label="Perc. Inicial de Perdas (%)"
+                        field="perc_inicial_perdas"
+                        type="number"
+                        simEdit={simEdit}
+                        setSimEdit={setSimEdit}
+                      />
+                      <SimField
+                        label="Início da Redução de Perdas"
+                        field="inicio_perdas"
+                        type="text"
+                        simEdit={simEdit}
+                        setSimEdit={setSimEdit}
+                      />
+                      <SimField
+                        label="Limiar de Alerta (0–1)"
+                        field="limiar_alerta"
+                        type="number"
+                        simEdit={simEdit}
+                        setSimEdit={setSimEdit}
+                      />
+                      <SimField
+                        label="Limiar de Crise (0–1)"
+                        field="limiar_crise"
+                        type="number"
+                        simEdit={simEdit}
+                        setSimEdit={setSimEdit}
+                      />
+                      <SimField
+                        label="Limiar de Colapso (0–1)"
+                        field="limiar_colapso"
+                        type="number"
+                        simEdit={simEdit}
+                        setSimEdit={setSimEdit}
+                      />
+                      <div className="flex flex-col gap-3 pt-1">
+                        <SimToggle
+                          label="Demanda automática"
+                          field="demanda_auto"
+                          simEdit={simEdit}
+                          setSimEdit={setSimEdit}
                         />
-                      </th>
-                      <th className="px-3 py-2.5 text-left font-semibold text-slate-600 whitespace-nowrap">
-                        Data
-                      </th>
-                      <th className="px-3 py-2.5 text-left font-semibold text-slate-600 whitespace-nowrap">
-                        Usuário
-                      </th>
-                      <th className="px-3 py-2.5 text-left font-semibold text-slate-600 whitespace-nowrap">
-                        Fonte
-                      </th>
-                      <th className="px-3 py-2.5 text-left font-semibold text-slate-600">
-                        Cenários
-                      </th>
-                      <th className="px-3 py-2.5 text-left font-semibold text-slate-600">
-                        Estratégias
-                      </th>
-                      <th className="px-3 py-2.5 w-10" />
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {selecoes.map((sel) => (
-                      <tr
-                        key={sel.id}
-                        className={`hover:bg-slate-50 transition-colors ${sel.selecionado ? 'bg-blue-50/40' : ''}`}
-                      >
-                        <td className="px-3 py-2.5 text-center">
-                          <Checkbox
-                            checked={!!sel.selecionado}
-                            onCheckedChange={(v) => handleToggleSelecao(sel.id, !!v)}
-                          />
-                        </td>
-                        <td className="px-3 py-2.5 text-slate-500 whitespace-nowrap">
-                          {sel.criado_at
-                            ? new Date(sel.criado_at).toLocaleString('pt-BR', {
-                                day: '2-digit',
-                                month: '2-digit',
-                                year: '2-digit',
-                                hour: '2-digit',
-                                minute: '2-digit',
-                              })
-                            : '-'}
-                        </td>
-                        <td className="px-3 py-2.5 text-slate-600 whitespace-nowrap">
-                          {sel._userLabel ?? sel.id_usuario?.slice(0, 8) + '…'}
-                        </td>
-                        <td className="px-3 py-2.5 font-medium text-slate-700 whitespace-nowrap">
-                          {sel.fonte_agua?.nome_fonte ?? `Fonte ${sel.id_fonte}`}
-                        </td>
-                        <td className="px-3 py-2.5 text-slate-600 max-w-[260px]">
-                          {Array.isArray(sel.cenarios) && sel.cenarios.length > 0 ? (
-                            <div className="flex flex-wrap gap-1">
-                              {sel.cenarios.map((c) => (
-                                <span
-                                  key={c}
-                                  className="inline-block bg-blue-50 border border-blue-200 text-blue-700 rounded px-1.5 py-0.5 text-[11px]"
-                                >
-                                  {c}
-                                </span>
-                              ))}
-                            </div>
-                          ) : (
-                            <span className="text-slate-400">-</span>
-                          )}
-                        </td>
-                        <td className="px-3 py-2.5 text-slate-600 max-w-[260px]">
-                          {Array.isArray(sel.estrategias) && sel.estrategias.length > 0 ? (
-                            <div className="flex flex-wrap gap-1">
-                              {sel.estrategias.map((e) => (
-                                <span
-                                  key={e}
-                                  className="inline-block bg-emerald-50 border border-emerald-200 text-emerald-700 rounded px-1.5 py-0.5 text-[11px]"
-                                >
-                                  {e}
-                                </span>
-                              ))}
-                            </div>
-                          ) : (
-                            <span className="text-slate-400">-</span>
-                          )}
-                        </td>
-                        <td className="px-3 py-2.5 text-center">
-                          <button
-                            onClick={() => handleDeleteSelecao(sel.id)}
-                            className="text-destructive hover:text-red-700 transition-colors"
-                            title="Remover"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
+                        <SimToggle
+                          label="Perdas automáticas"
+                          field="perdas_auto"
+                          simEdit={simEdit}
+                          setSimEdit={setSimEdit}
+                        />
+                      </div>
+                    </div>
+                    <div className="flex justify-end">
+                      <Button onClick={handleSaveSim} disabled={simSaving} className="w-48">
+                        {simSaving ? 'Salvando...' : 'Salvar Configuração'}
+                      </Button>
+                    </div>
+                  </>
+                )}
+              </TabsContent>
 
-          <div className="mt-6 space-y-4 border border-slate-200 rounded-lg p-4 bg-slate-50">
-            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              Adicionar nova fonte à simulação
-            </h4>
-            <div className="max-w-xs space-y-1">
-              <label className="text-xs font-semibold text-muted-foreground">Fonte de Água</label>
-              <Select value={idFonte} onValueChange={handleFonteChange}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione a fonte..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {refData.fontes.map((f: any) => (
-                    <SelectItem key={f.id_fonte} value={f.id_fonte.toString()}>
-                      {f.nome_fonte}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+              {/* ── TAB: Demandas e Perdas (Automático) ── */}
+              <TabsContent value="automaticos" className="space-y-4 pt-4">
+                {simObj && temAutomatico && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {simObj.demanda_auto && (
+                      <div className="space-y-3">
+                        <h4 className="text-sm font-semibold text-muted-foreground">Demanda</h4>
+                        <NativeSelect
+                          className="w-full"
+                          options={cenario_demanda.map((o: any) => ({
+                            value: o.id_cd,
+                            label: o.nome_cenario_demanda,
+                          }))}
+                          value={filters.id_cd_auto || ''}
+                          onChange={(v: any) => setFilters({ ...filters, id_cd_auto: v })}
+                          placeholder="Cenário Demanda"
+                        />
+                        <NativeSelect
+                          className="w-full"
+                          options={cenario_consumo.map((o: any) => ({
+                            value: o.id_cc,
+                            label: o.nome_cenario_consumo,
+                          }))}
+                          value={filters.id_cc_auto || ''}
+                          onChange={(v: any) => setFilters({ ...filters, id_cc_auto: v })}
+                          placeholder="Cenário Consumo"
+                        />
+                      </div>
+                    )}
+                    {simObj.perdas_auto && (
+                      <div className="space-y-3">
+                        <h4 className="text-sm font-semibold text-muted-foreground">Perdas</h4>
+                        <NativeSelect
+                          className="w-full"
+                          options={cenario_perdas.map((o: any) => ({
+                            value: o.id_cp,
+                            label: o.nome_cenario_perdas,
+                          }))}
+                          value={filters.id_cp_auto || ''}
+                          onChange={(v: any) => setFilters({ ...filters, id_cp_auto: v })}
+                          placeholder="Cenário Perdas"
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+                {!temAutomatico && (
+                  <p className="text-xs text-muted-foreground py-4 text-center">
+                    Ative "Demanda automática" ou "Perdas automáticas" na aba Parâmetros do Modelo
+                    para configurar aqui.
+                  </p>
+                )}
+              </TabsContent>
 
-            {idFonte && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="border p-4 rounded-lg bg-white space-y-3">
-                  <h4 className="font-semibold text-sm">Cenários</h4>
-                  <Select value={idTc} onValueChange={setIdTc}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Tipo de cenário..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {filteredTipos.map((t: any) => (
-                        <SelectItem key={t.id_tc} value={t.id_tc.toString()}>
-                          {t.descricao}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Select value={idC} onValueChange={setIdC}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Cenário..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {filteredCenarios.map((c: any) => (
-                        <SelectItem key={c.id_cenarios} value={c.id_cenarios.toString()}>
-                          {c.cenarios}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Button
-                    className="w-full"
-                    size="sm"
-                    disabled={!idTc || !idC}
-                    onClick={() => {
-                      const t = refData.tiposCenario.find((x: any) => x.id_tc.toString() === idTc)
-                      const c = refData.cenariosBd.find(
-                        (x: any) => x.id_cenarios.toString() === idC,
-                      )
-                      if (t && c) {
-                        const label = `${t.descricao}: ${c.cenarios}`
-                        if (draftCenarios.includes(label))
-                          return toast.error('Este cenário já foi adicionado.')
-                        setDraftCenarios((p) => [...p, label])
-                        setIdTc('')
-                        setIdC('')
-                      }
-                    }}
-                  >
-                    <Plus className="w-3.5 h-3.5 mr-1" /> Adicionar Cenário
-                  </Button>
-                  <ul className="space-y-1.5">
-                    {draftCenarios.map((c, i) => (
-                      <li
-                        key={i}
-                        className="flex justify-between items-center bg-slate-50 px-3 py-1.5 rounded border text-xs"
-                      >
-                        <span>{c}</span>
-                        <button
-                          onClick={() => setDraftCenarios((p) => p.filter((_, idx) => idx !== i))}
-                          className="text-destructive hover:text-red-700 ml-2"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
+              {/* ── TAB: Período ── */}
+              <TabsContent value="periodo" className="space-y-4 pt-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-muted-foreground">
+                      Ano Início
+                    </label>
+                    <NativeSelect
+                      className="w-full"
+                      options={[
+                        2026, 2027, 2028, 2029, 2030, 2031, 2032, 2033, 2034, 2035, 2036, 2037,
+                        2038, 2039, 2040, 2041, 2042, 2043, 2044, 2045, 2046, 2047, 2048, 2049,
+                        2050,
+                      ].map((y) => ({ value: y, label: y.toString() }))}
+                      value={filters.ano_inicio || ''}
+                      onChange={(v: any) => setFilters({ ...filters, ano_inicio: v })}
+                      placeholder="Início"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-muted-foreground">Ano Fim</label>
+                    <NativeSelect
+                      className="w-full"
+                      options={[
+                        2026, 2027, 2028, 2029, 2030, 2031, 2032, 2033, 2034, 2035, 2036, 2037,
+                        2038, 2039, 2040, 2041, 2042, 2043, 2044, 2045, 2046, 2047, 2048, 2049,
+                        2050,
+                      ].map((y) => ({ value: y, label: y.toString() }))}
+                      value={filters.ano_fim || ''}
+                      onChange={(v: any) => setFilters({ ...filters, ano_fim: v })}
+                      placeholder="Fim"
+                    />
+                  </div>
                 </div>
-
-                <div className="border p-4 rounded-lg bg-white space-y-3">
-                  <h4 className="font-semibold text-sm">Estratégias</h4>
-                  <Select value={idAcao} onValueChange={setIdAcao}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Escolha a ação..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {filteredAcoes.map((a: any) => (
-                        <SelectItem key={a.id_acao} value={a.id_acao.toString()}>
-                          {a.descricao}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Button
-                    className="w-full"
-                    size="sm"
-                    disabled={!idAcao}
-                    onClick={() => {
-                      const a = refData.acoesBd.find((x: any) => x.id_acao.toString() === idAcao)
-                      if (a) {
-                        if (draftEstrategias.includes(a.descricao))
-                          return toast.error('Esta ação já foi adicionada.')
-                        setDraftEstrategias((p) => [...p, a.descricao])
-                        setIdAcao('')
-                      }
-                    }}
-                  >
-                    <Plus className="w-3.5 h-3.5 mr-1" /> Adicionar Ação
-                  </Button>
-                  <ul className="space-y-1.5">
-                    {draftEstrategias.map((e, i) => (
-                      <li
-                        key={i}
-                        className="flex justify-between items-center bg-slate-50 px-3 py-1.5 rounded border text-xs"
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-semibold text-muted-foreground">
+                      Meses (Múltipla Seleção)
+                    </label>
+                    <div className="space-x-2">
+                      <button
+                        type="button"
+                        className="text-xs text-primary hover:underline"
+                        onClick={() => setFilters({ ...filters, meses: MONTHS.map((m) => m.v) })}
                       >
-                        <span>{e}</span>
-                        <button
-                          onClick={() =>
-                            setDraftEstrategias((p) => p.filter((_, idx) => idx !== i))
-                          }
-                          className="text-destructive hover:text-red-700 ml-2"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </li>
+                        Marcar todos
+                      </button>
+                      <button
+                        type="button"
+                        className="text-xs text-primary hover:underline"
+                        onClick={() => setFilters({ ...filters, meses: [] })}
+                      >
+                        Desmarcar todos
+                      </button>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                    {MONTHS.map((m) => (
+                      <label
+                        key={m.v}
+                        className="flex items-center space-x-2 border p-2 rounded-md hover:bg-slate-50 cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+                          checked={filters.meses?.includes(m.v) || false}
+                          onChange={(e) => {
+                            const current = filters.meses || []
+                            setFilters({
+                              ...filters,
+                              meses: e.target.checked
+                                ? [...current, m.v]
+                                : current.filter((x: string) => x !== m.v),
+                            })
+                          }}
+                        />
+                        <span className="text-xs font-medium">{m.l}</span>
+                      </label>
                     ))}
-                  </ul>
+                  </div>
                 </div>
-              </div>
-            )}
+              </TabsContent>
+            </Tabs>
 
-            <div className="flex justify-end pt-2">
+            {/* Botão Executar Simulação — fixo dentro do accordion de Configurações */}
+            <div className="pt-6 border-t mt-6">
               <Button
-                onClick={handleConfirmarFonte}
-                disabled={!idFonte || draftCenarios.length === 0 || draftEstrategias.length === 0}
-                className="gap-2"
+                onClick={handleSimulate}
+                disabled={loading || !simObj || selecoes.length === 0}
+                className="w-full h-11 shadow-sm text-base disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Plus className="w-4 h-4" /> Adicionar Fonte à Simulação
+                {loading ? 'Processando...' : 'Executar Simulação'}
               </Button>
+              {!selecaoLoading && selecoes.length === 0 && (
+                <p className="text-xs text-red-500 text-center font-medium mt-2">
+                  Configure ao menos uma fonte para executar a simulação.
+                </p>
+              )}
+              {!selecaoLoading && selecoes.length > 0 && !selecoes.some((s) => s.selecionado) && (
+                <p className="text-xs text-amber-500 text-center font-medium mt-2">
+                  Selecione pelo menos uma configuração ativa para executar.
+                </p>
+              )}
             </div>
-          </div>
-        </div>
-      )}
+          </AccordionContent>
+        </AccordionItem>
 
-      {secaoConfig === 'parametros' && simEdit && (
-        <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200 w-full">
-          <h3 className="font-semibold text-primary border-b pb-3 mb-4 text-sm uppercase tracking-wider">
-            Parâmetros do Modelo
-          </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            <SimField
-              label="População Inicial"
-              field="pop_inicial"
-              type="number"
-              simEdit={simEdit}
-              setSimEdit={setSimEdit}
-            />
-            <SimField
-              label="Perc. Inicial de Perdas (%)"
-              field="perc_inicial_perdas"
-              type="number"
-              simEdit={simEdit}
-              setSimEdit={setSimEdit}
-            />
-            <SimField
-              label="Início da Redução de Perdas"
-              field="inicio_perdas"
-              type="text"
-              simEdit={simEdit}
-              setSimEdit={setSimEdit}
-            />
-            <SimField
-              label="Limiar de Alerta (0–1)"
-              field="limiar_alerta"
-              type="number"
-              simEdit={simEdit}
-              setSimEdit={setSimEdit}
-            />
-            <SimField
-              label="Limiar de Crise (0–1)"
-              field="limiar_crise"
-              type="number"
-              simEdit={simEdit}
-              setSimEdit={setSimEdit}
-            />
-            <SimField
-              label="Limiar de Colapso (0–1)"
-              field="limiar_colapso"
-              type="number"
-              simEdit={simEdit}
-              setSimEdit={setSimEdit}
-            />
-            <div className="flex flex-col gap-3 pt-1">
-              <SimToggle
-                label="Demanda automática"
-                field="demanda_auto"
-                simEdit={simEdit}
-                setSimEdit={setSimEdit}
-              />
-              <SimToggle
-                label="Perdas automáticas"
-                field="perdas_auto"
-                simEdit={simEdit}
-                setSimEdit={setSimEdit}
-              />
-            </div>
-          </div>
-          <div className="mt-5 flex justify-end">
-            <Button onClick={handleSaveSim} disabled={simSaving} className="w-48">
-              {simSaving ? 'Salvando...' : 'Salvar Configuração'}
-            </Button>
-          </div>
-        </div>
-      )}
+        {/* ════════════════════════════════════════════════════════════════
+            ACCORDION: Resultados (só aparece após executar com dados)
+        ════════════════════════════════════════════════════════════════ */}
+        {ran && data.length > 0 && (
+          <AccordionItem value="resultados" className="border rounded-xl bg-white shadow-sm">
+            <AccordionTrigger className="px-5 py-4 hover:no-underline">
+              <span className="font-semibold text-primary text-base">Resultados</span>
+            </AccordionTrigger>
+            <AccordionContent className="px-5 pb-5">
+              <Tabs defaultValue="dados_gerais" className="w-full">
+                <TabsList className="flex-wrap h-auto">
+                  <TabsTrigger value="dados_gerais">Dados Gerais</TabsTrigger>
+                  <TabsTrigger value="seguranca_hidrica">Índice de Segurança Hídrica</TabsTrigger>
+                  <TabsTrigger value="por_fonte">Dados por Fonte</TabsTrigger>
+                  <TabsTrigger value="captacao_distribuicao">Captação e Distribuição</TabsTrigger>
+                  <TabsTrigger value="indicadores" disabled={indicadoresCharts.length === 0}>
+                    Indicadores
+                  </TabsTrigger>
+                  <TabsTrigger value="financeiro">Financeiro</TabsTrigger>
+                  <TabsTrigger value="projecao_populacional" disabled={!temAutomatico}>
+                    Projeção Populacional
+                  </TabsTrigger>
+                </TabsList>
 
-      {secaoConfig === 'automaticos' && simObj && temAutomatico && (
-        <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200 w-full">
-          <h3 className="font-semibold text-primary border-b pb-3 mb-4 text-sm uppercase tracking-wider">
-            Cenários Automáticos — Demanda e Perdas
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {simObj.demanda_auto && (
-              <div className="space-y-3">
-                <h4 className="text-sm font-semibold text-muted-foreground">Demanda</h4>
-                <NativeSelect
-                  className="w-full"
-                  options={cenario_demanda.map((o: any) => ({
-                    value: o.id_cd,
-                    label: o.nome_cenario_demanda,
-                  }))}
-                  value={filters.id_cd_auto || ''}
-                  onChange={(v: any) => setFilters({ ...filters, id_cd_auto: v })}
-                  placeholder="Cenário Demanda"
-                />
-                <NativeSelect
-                  className="w-full"
-                  options={cenario_consumo.map((o: any) => ({
-                    value: o.id_cc,
-                    label: o.nome_cenario_consumo,
-                  }))}
-                  value={filters.id_cc_auto || ''}
-                  onChange={(v: any) => setFilters({ ...filters, id_cc_auto: v })}
-                  placeholder="Cenário Consumo"
-                />
-              </div>
-            )}
-            {simObj.perdas_auto && (
-              <div className="space-y-3">
-                <h4 className="text-sm font-semibold text-muted-foreground">Perdas</h4>
-                <NativeSelect
-                  className="w-full"
-                  options={cenario_perdas.map((o: any) => ({
-                    value: o.id_cp,
-                    label: o.nome_cenario_perdas,
-                  }))}
-                  value={filters.id_cp_auto || ''}
-                  onChange={(v: any) => setFilters({ ...filters, id_cp_auto: v })}
-                  placeholder="Cenário Perdas"
-                />
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+                {/* ── TAB: Dados Gerais ── */}
+                <TabsContent value="dados_gerais" className="pt-4">
+                  <DadosGeraisTab data={data} fontesMap={fontesMap} />
+                </TabsContent>
 
-      {secaoConfig === 'periodo' && (
-        <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200 w-full">
-          <h3 className="font-semibold text-primary border-b pb-3 mb-4 text-sm uppercase tracking-wider">
-            Período
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-muted-foreground">Ano Início</label>
-              <NativeSelect
-                className="w-full"
-                options={[
-                  2026, 2027, 2028, 2029, 2030, 2031, 2032, 2033, 2034, 2035, 2036, 2037, 2038,
-                  2039, 2040, 2041, 2042, 2043, 2044, 2045, 2046, 2047, 2048, 2049, 2050,
-                ].map((y) => ({ value: y, label: y.toString() }))}
-                value={filters.ano_inicio || ''}
-                onChange={(v: any) => setFilters({ ...filters, ano_inicio: v })}
-                placeholder="Início"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-muted-foreground">Ano Fim</label>
-              <NativeSelect
-                className="w-full"
-                options={[
-                  2026, 2027, 2028, 2029, 2030, 2031, 2032, 2033, 2034, 2035, 2036, 2037, 2038,
-                  2039, 2040, 2041, 2042, 2043, 2044, 2045, 2046, 2047, 2048, 2049, 2050,
-                ].map((y) => ({ value: y, label: y.toString() }))}
-                value={filters.ano_fim || ''}
-                onChange={(v: any) => setFilters({ ...filters, ano_fim: v })}
-                placeholder="Fim"
-              />
-            </div>
-          </div>
-          <div className="space-y-2 mt-4">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-semibold text-muted-foreground">
-                Meses (Múltipla Seleção)
-              </label>
-              <div className="space-x-2">
-                <button
-                  type="button"
-                  className="text-xs text-primary hover:underline"
-                  onClick={() => setFilters({ ...filters, meses: MONTHS.map((m) => m.v) })}
-                >
-                  Marcar todos
-                </button>
-                <button
-                  type="button"
-                  className="text-xs text-primary hover:underline"
-                  onClick={() => setFilters({ ...filters, meses: [] })}
-                >
-                  Desmarcar todos
-                </button>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-              {MONTHS.map((m) => (
-                <label
-                  key={m.v}
-                  className="flex items-center space-x-2 border p-2 rounded-md hover:bg-slate-50 cursor-pointer"
-                >
-                  <input
-                    type="checkbox"
-                    className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
-                    checked={filters.meses?.includes(m.v) || false}
-                    onChange={(e) => {
-                      const current = filters.meses || []
-                      setFilters({
-                        ...filters,
-                        meses: e.target.checked
-                          ? [...current, m.v]
-                          : current.filter((x: string) => x !== m.v),
+                {/* ── TAB: Índice de Segurança Hídrica ── */}
+                <TabsContent value="seguranca_hidrica" className="space-y-6 pt-4">
+                  {segurancaHidrica && segCard && (
+                    <div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                        {(() => {
+                          const {
+                            indicesMedio,
+                            mesesAlerta,
+                            mesesCrise,
+                            mesesColapso,
+                            statusGeral,
+                          } = segCard
+                          const c = STATUS_COLORS[statusGeral]
+                          return (
+                            <div className={`rounded-xl border p-4 space-y-3 ${c.bg} ${c.border}`}>
+                              <div className="flex items-start justify-between gap-2">
+                                <span className="text-sm font-semibold text-slate-700 leading-tight">
+                                  Região (todas as fontes)
+                                </span>
+                                <span
+                                  className={`shrink-0 text-[11px] font-bold px-2 py-0.5 rounded-full ${STATUS_BADGE[statusGeral]}`}
+                                >
+                                  {STATUS_LABEL[statusGeral]}
+                                </span>
+                              </div>
+                              <div className={`text-3xl font-bold ${c.text}`}>
+                                {indicesMedio.toLocaleString('pt-BR', {
+                                  minimumFractionDigits: 2,
+                                  maximumFractionDigits: 2,
+                                })}
+                              </div>
+                              <p className="text-[11px] text-slate-500 -mt-2">
+                                índice médio do período
+                              </p>
+                              <div className="flex flex-wrap gap-3 text-xs pt-1 border-t border-slate-200">
+                                <div>
+                                  <span className="font-bold text-amber-600">{mesesAlerta}</span>
+                                  <span className="text-slate-500 ml-1">
+                                    {mesesAlerta === 1 ? 'mês em alerta' : 'meses em alerta'}
+                                  </span>
+                                </div>
+                                <div>
+                                  <span className="font-bold text-red-600">{mesesCrise}</span>
+                                  <span className="text-slate-500 ml-1">
+                                    {mesesCrise === 1 ? 'mês em crise' : 'meses em crise'}
+                                  </span>
+                                </div>
+                                <div>
+                                  <span className="font-bold text-rose-900">{mesesColapso}</span>
+                                  <span className="text-slate-500 ml-1">
+                                    {mesesColapso === 1 ? 'mês em colapso' : 'meses em colapso'}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        })()}
+                      </div>
+                    </div>
+                  )}
+
+                  {segurancaHidrica && segurancaHidrica.chartData.length > 0 && (
+                    <div>
+                      <div className="flex flex-wrap gap-6 text-xs text-slate-500 mb-2 px-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className="w-7 border-t-2 border-dashed border-amber-400 inline-block" />
+                          <span>
+                            Limiar de Alerta (
+                            {limiarAlerta.toLocaleString('pt-BR', { minimumFractionDigits: 1 })})
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="w-7 border-t-2 border-dashed border-red-400 inline-block" />
+                          <span>
+                            Limiar de Crise (
+                            {limiarCrise.toLocaleString('pt-BR', { minimumFractionDigits: 1 })})
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="w-7 border-t-2 border-dashed border-rose-800 inline-block" />
+                          <span>
+                            Limiar de Colapso (
+                            {limiarColapso.toLocaleString('pt-BR', { minimumFractionDigits: 1 })})
+                          </span>
+                        </div>
+                      </div>
+                      <ChartWrapper
+                        title="Série Temporal – Índice de Segurança Hídrica Regional"
+                        chartData={segurancaHidrica.chartData}
+                        height={340}
+                      >
+                        {segChart as React.ReactElement}
+                      </ChartWrapper>
+                    </div>
+                  )}
+
+                  {segurancaHidrica &&
+                    segurancaHidrica.criticos.length > 0 &&
+                    (() => {
+                      const MONTH_LABELS = [
+                        'Jan',
+                        'Fev',
+                        'Mar',
+                        'Abr',
+                        'Mai',
+                        'Jun',
+                        'Jul',
+                        'Ago',
+                        'Set',
+                        'Out',
+                        'Nov',
+                        'Dez',
+                      ]
+                      const MONTH_LABELS_FULL = [
+                        'Janeiro',
+                        'Fevereiro',
+                        'Março',
+                        'Abril',
+                        'Maio',
+                        'Junho',
+                        'Julho',
+                        'Agosto',
+                        'Setembro',
+                        'Outubro',
+                        'Novembro',
+                        'Dezembro',
+                      ]
+                      const MESES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+                      type Cell = { status: StatusSeg; deficit: number }
+                      const criMap: Record<string, Record<number, Cell>> = {}
+                      segurancaHidrica.criticos.forEach(({ tempo, status, deficit }) => {
+                        const parts = tempo.split(/[-/]/)
+                        const ano = parts[0]
+                        const mes = parseInt(parts[1], 10)
+                        if (!criMap[ano]) criMap[ano] = {}
+                        criMap[ano][mes] = { status, deficit }
                       })
-                    }}
-                  />
-                  <span className="text-xs font-medium">{m.l}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
+                      const anos = Object.keys(criMap).sort()
+                      const fmt = (v: number) =>
+                        v >= 1_000_000
+                          ? `${(v / 1_000_000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}M m³`
+                          : v >= 1_000
+                            ? `${(v / 1_000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}k m³`
+                            : `${v.toLocaleString('pt-BR', { maximumFractionDigits: 0 })} m³`
+                      const cellCss: Record<StatusSeg, { bg: string; dot: string }> = {
+                        seguro: { bg: '#ecfdf5', dot: '#10b981' },
+                        alerta: { bg: '#fffbeb', dot: '#f59e0b' },
+                        crise: { bg: '#fee2e2', dot: '#ef4444' },
+                        colapso: { bg: '#ffe4e6', dot: '#9f1239' },
+                      }
+                      const downloadCsv = () => {
+                        const headerRow = [
+                          'Ano',
+                          ...MONTH_LABELS_FULL.map((m) => `${m} - Status`),
+                          ...MONTH_LABELS_FULL.map((m) => `${m} - Déficit (m³)`),
+                        ].join(';')
+                        const rows = anos.map((ano) =>
+                          [
+                            ano,
+                            ...MESES.map((m) =>
+                              criMap[ano]?.[m] ? STATUS_LABEL[criMap[ano][m].status] : '',
+                            ),
+                            ...MESES.map((m) =>
+                              criMap[ano]?.[m]
+                                ? criMap[ano][m].deficit.toLocaleString('pt-BR', {
+                                    maximumFractionDigits: 0,
+                                  })
+                                : '',
+                            ),
+                          ].join(';'),
+                        )
+                        const csv = [headerRow, ...rows].join('\n')
+                        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+                        const url = URL.createObjectURL(blob)
+                        const a = document.createElement('a')
+                        a.href = url
+                        a.download = 'periodos_criticos_matriz.csv'
+                        a.click()
+                        URL.revokeObjectURL(url)
+                      }
+                      return (
+                        <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200">
+                          <div className="flex items-center justify-between border-b pb-3 mb-4">
+                            <div>
+                              <h3 className="font-semibold text-primary text-sm uppercase tracking-wider">
+                                Cronograma de Períodos Críticos
+                              </h3>
+                              <p className="text-[11px] text-slate-400 mt-0.5">
+                                Células marcadas indicam meses com déficit hídrico — passe o mouse
+                                para ver o valor
+                              </p>
+                            </div>
+                            <button
+                              onClick={downloadCsv}
+                              title="Download CSV"
+                              className="p-1.5 rounded hover:bg-slate-100 text-slate-500 hover:text-primary transition-colors shrink-0 ml-4"
+                            >
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                className="w-4 h-4"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              >
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                <polyline points="7 10 12 15 17 10" />
+                                <line x1="12" y1="15" x2="12" y2="3" />
+                              </svg>
+                            </button>
+                          </div>
+                          <div className="flex flex-wrap gap-4 text-xs mb-4">
+                            {(['alerta', 'crise', 'colapso'] as StatusSeg[]).map((s) => (
+                              <div key={s} className="flex items-center gap-1.5">
+                                <span
+                                  className="w-3.5 h-3.5 rounded-sm inline-block border"
+                                  style={{
+                                    backgroundColor: cellCss[s].bg,
+                                    borderColor: cellCss[s].dot,
+                                  }}
+                                />
+                                <span className="text-slate-600">{STATUS_LABEL[s]}</span>
+                              </div>
+                            ))}
+                            <div className="flex items-center gap-1.5">
+                              <span className="w-3.5 h-3.5 rounded-sm inline-block bg-slate-100 border border-slate-200" />
+                              <span className="text-slate-400">Sem ocorrência</span>
+                            </div>
+                          </div>
+                          <div className="overflow-x-auto">
+                            <table className="border-collapse text-xs w-full">
+                              <thead>
+                                <tr>
+                                  <th className="sticky left-0 z-10 bg-slate-100 px-3 py-2.5 text-left font-semibold text-slate-600 border border-slate-200 whitespace-nowrap min-w-[60px]">
+                                    Ano
+                                  </th>
+                                  {MONTH_LABELS.map((m) => (
+                                    <th
+                                      key={m}
+                                      className="bg-slate-100 px-0 py-2.5 text-center font-semibold text-slate-600 border border-slate-200 whitespace-nowrap w-[52px]"
+                                    >
+                                      {m}
+                                    </th>
+                                  ))}
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {anos.map((ano) => (
+                                  <tr key={ano} className="group">
+                                    <td className="sticky left-0 z-10 bg-slate-50 group-hover:bg-slate-100 px-3 py-1.5 font-semibold text-slate-700 border border-slate-200 whitespace-nowrap transition-colors">
+                                      {ano}
+                                    </td>
+                                    {MESES.map((m) => {
+                                      const cell = criMap[ano]?.[m]
+                                      if (!cell)
+                                        return (
+                                          <td
+                                            key={m}
+                                            className="border border-slate-100 w-[52px] py-1.5"
+                                            style={{ backgroundColor: '#f8fafc' }}
+                                          />
+                                        )
+                                      const css = cellCss[cell.status]
+                                      return (
+                                        <td
+                                          key={m}
+                                          className="border border-slate-200 w-[52px] py-1.5 text-center cursor-default"
+                                          style={{ backgroundColor: css.bg }}
+                                          title={`${MONTH_LABELS_FULL[m - 1]}/${ano} · ${STATUS_LABEL[cell.status]} · Déficit: ${fmt(cell.deficit)}`}
+                                        >
+                                          <div
+                                            className="mx-auto rounded-sm flex items-center justify-center font-bold leading-none"
+                                            style={{
+                                              width: 32,
+                                              height: 22,
+                                              backgroundColor: css.dot,
+                                              color: '#fff',
+                                              fontSize: 9,
+                                            }}
+                                          >
+                                            {STATUS_LABEL[cell.status].slice(0, 3).toUpperCase()}
+                                          </div>
+                                        </td>
+                                      )
+                                    })}
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )
+                    })()}
+                </TabsContent>
 
-      <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200 w-full">
-        <Button
-          onClick={handleSimulate}
-          disabled={loading || !simObj || selecoes.length === 0}
-          className="w-full h-11 shadow-sm text-base disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {loading ? 'Processando...' : 'Executar Simulação'}
-        </Button>
-        {!selecaoLoading && selecoes.length === 0 && (
-          <p className="text-xs text-red-500 text-center font-medium mt-2">
-            Configure ao menos uma fonte para executar a simulação.
-          </p>
+                {/* ── TAB: Dados por Fonte ── */}
+                <TabsContent value="por_fonte" className="pt-4">
+                  <DadosPorFonteTab data={data} fontesMap={fontesMap} />
+                </TabsContent>
+
+                {/* ── TAB: Captação e Distribuição ── */}
+                <TabsContent value="captacao_distribuicao" className="pt-4">
+                  <CaptacaoDistribuicaoTab data={data} fontesMap={fontesMap} />
+                </TabsContent>
+
+                {/* ── TAB: Indicadores ── */}
+                <TabsContent value="indicadores" className="space-y-6 pt-4">
+                  {indicadoresCharts.length > 0 ? (
+                    indicadoresCharts.map(({ unidade, chartData, linhas, titulo }) => (
+                      <ChartWrapper
+                        key={unidade}
+                        title={`Indicadores: ${titulo}`}
+                        chartData={chartData}
+                        height={320}
+                      >
+                        <LineChart
+                          data={chartData}
+                          margin={{ top: 4, right: 24, left: 8, bottom: 4 }}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                          <XAxis
+                            dataKey="tempo"
+                            tick={{ fontSize: 11 }}
+                            interval="preserveStartEnd"
+                          />
+                          <YAxis
+                            tick={{ fontSize: 11 }}
+                            label={{
+                              value: unidade,
+                              angle: -90,
+                              position: 'insideLeft',
+                              offset: 10,
+                              style: { fontSize: 11 },
+                            }}
+                          />
+                          <Tooltip
+                            contentStyle={{ fontSize: 12 }}
+                            formatter={(value: any) =>
+                              typeof value === 'number'
+                                ? value.toLocaleString('pt-BR', { maximumFractionDigits: 2 })
+                                : value
+                            }
+                          />
+                          <Legend wrapperStyle={{ fontSize: 12 }} />
+                          {linhas.map((linha, idx) => (
+                            <Line
+                              key={linha}
+                              type="monotone"
+                              dataKey={linha}
+                              stroke={LINE_COLORS[idx % LINE_COLORS.length]}
+                              dot={false}
+                              strokeWidth={2}
+                            />
+                          ))}
+                        </LineChart>
+                      </ChartWrapper>
+                    ))
+                  ) : (
+                    <p className="text-xs text-muted-foreground py-4 text-center">
+                      Nenhum indicador aplicado para esta simulação.
+                    </p>
+                  )}
+                </TabsContent>
+
+                {/* ── TAB: Financeiro ── */}
+                <TabsContent value="financeiro" className="pt-4">
+                  <FinanceiroTab data={data} fontesMap={fontesMap} />
+                </TabsContent>
+
+                {/* ── TAB: Projeção Populacional ── */}
+                <TabsContent value="projecao_populacional" className="pt-4">
+                  {temAutomatico ? (
+                    (() => {
+                      const cdObj = cenario_demanda?.find(
+                        (c: any) => c.id_cd === parseInt(filters.id_cd_auto),
+                      )
+                      const ccObj = cenario_consumo?.find(
+                        (c: any) => c.id_cc === parseInt(filters.id_cc_auto),
+                      )
+                      return (
+                        <ProjecaoPopulacional
+                          data={data}
+                          simObj={simObj}
+                          cenarioDemanda={cdObj}
+                          cenarioConsumo={ccObj}
+                          nomeCenarioDemanda={cdObj?.nome_cenario_demanda}
+                          nomeCenarioConsumo={ccObj?.nome_cenario_consumo}
+                        />
+                      )
+                    })()
+                  ) : (
+                    <p className="text-xs text-muted-foreground py-4 text-center">
+                      Ative "Demanda automática" ou "Perdas automáticas" para visualizar a projeção
+                      populacional.
+                    </p>
+                  )}
+                </TabsContent>
+              </Tabs>
+            </AccordionContent>
+          </AccordionItem>
         )}
-        {!selecaoLoading && selecoes.length > 0 && !selecoes.some((s) => s.selecionado) && (
-          <p className="text-xs text-amber-500 text-center font-medium mt-2">
-            Selecione pelo menos uma configuração ativa para executar.
-          </p>
-        )}
-      </div>
+      </Accordion>
 
       {ran && data.length === 0 && (
         <div className="text-center p-12 bg-white rounded-lg border border-dashed">
@@ -1626,383 +2012,6 @@ export default function Cenarios() {
             Verifique se a importação foi realizada com as mesmas chaves de cenário e estratégia.
           </p>
         </div>
-      )}
-
-      {ran && data.length > 0 && (
-        <>
-          <div className="flex flex-wrap items-center gap-3 pt-4 border-t">
-            <NavDropdown
-              label="Resultados"
-              current={secaoResultado}
-              options={resultadoOptions}
-              labels={RESULTADO_LABELS}
-              onSelect={setSecaoResultado}
-            />
-          </div>
-
-          {secaoResultado === 'visao_geral' && segurancaHidrica && segCard && (
-            <div>
-              <h2 className="text-lg font-semibold text-primary mb-3">
-                Índice de Segurança Hídrica — Visão Geral
-              </h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {(() => {
-                  const { indicesMedio, mesesAlerta, mesesCrise, mesesColapso, statusGeral } =
-                    segCard
-                  const c = STATUS_COLORS[statusGeral]
-                  return (
-                    <div className={`rounded-xl border p-4 space-y-3 ${c.bg} ${c.border}`}>
-                      <div className="flex items-start justify-between gap-2">
-                        <span className="text-sm font-semibold text-slate-700 leading-tight">
-                          Região (todas as fontes)
-                        </span>
-                        <span
-                          className={`shrink-0 text-[11px] font-bold px-2 py-0.5 rounded-full ${STATUS_BADGE[statusGeral]}`}
-                        >
-                          {STATUS_LABEL[statusGeral]}
-                        </span>
-                      </div>
-                      <div className={`text-3xl font-bold ${c.text}`}>
-                        {indicesMedio.toLocaleString('pt-BR', {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        })}
-                      </div>
-                      <p className="text-[11px] text-slate-500 -mt-2">índice médio do período</p>
-                      <div className="flex flex-wrap gap-3 text-xs pt-1 border-t border-slate-200">
-                        <div>
-                          <span className="font-bold text-amber-600">{mesesAlerta}</span>
-                          <span className="text-slate-500 ml-1">
-                            {mesesAlerta === 1 ? 'mês em alerta' : 'meses em alerta'}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="font-bold text-red-600">{mesesCrise}</span>
-                          <span className="text-slate-500 ml-1">
-                            {mesesCrise === 1 ? 'mês em crise' : 'meses em crise'}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="font-bold text-rose-900">{mesesColapso}</span>
-                          <span className="text-slate-500 ml-1">
-                            {mesesColapso === 1 ? 'mês em colapso' : 'meses em colapso'}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })()}
-              </div>
-            </div>
-          )}
-
-          {secaoResultado === 'serie_temporal' &&
-            segurancaHidrica &&
-            segurancaHidrica.chartData.length > 0 && (
-              <div>
-                <div className="flex flex-wrap gap-6 text-xs text-slate-500 mb-2 px-1">
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-7 border-t-2 border-dashed border-amber-400 inline-block" />
-                    <span>
-                      Limiar de Alerta (
-                      {limiarAlerta.toLocaleString('pt-BR', { minimumFractionDigits: 1 })})
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-7 border-t-2 border-dashed border-red-400 inline-block" />
-                    <span>
-                      Limiar de Crise (
-                      {limiarCrise.toLocaleString('pt-BR', { minimumFractionDigits: 1 })})
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-7 border-t-2 border-dashed border-rose-800 inline-block" />
-                    <span>
-                      Limiar de Colapso (
-                      {limiarColapso.toLocaleString('pt-BR', { minimumFractionDigits: 1 })})
-                    </span>
-                  </div>
-                </div>
-                <ChartWrapper
-                  title="Série Temporal – Índice de Segurança Hídrica Regional"
-                  chartData={segurancaHidrica.chartData}
-                  height={340}
-                >
-                  {segChart as React.ReactElement}
-                </ChartWrapper>
-              </div>
-            )}
-
-          {secaoResultado === 'cronograma_criticos' &&
-            segurancaHidrica &&
-            segurancaHidrica.criticos.length > 0 &&
-            (() => {
-              const MONTH_LABELS = [
-                'Jan',
-                'Fev',
-                'Mar',
-                'Abr',
-                'Mai',
-                'Jun',
-                'Jul',
-                'Ago',
-                'Set',
-                'Out',
-                'Nov',
-                'Dez',
-              ]
-              const MONTH_LABELS_FULL = [
-                'Janeiro',
-                'Fevereiro',
-                'Março',
-                'Abril',
-                'Maio',
-                'Junho',
-                'Julho',
-                'Agosto',
-                'Setembro',
-                'Outubro',
-                'Novembro',
-                'Dezembro',
-              ]
-              const MESES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
-              type Cell = { status: StatusSeg; deficit: number }
-              const criMap: Record<string, Record<number, Cell>> = {}
-              segurancaHidrica.criticos.forEach(({ tempo, status, deficit }) => {
-                const parts = tempo.split(/[-/]/)
-                const ano = parts[0]
-                const mes = parseInt(parts[1], 10)
-                if (!criMap[ano]) criMap[ano] = {}
-                criMap[ano][mes] = { status, deficit }
-              })
-              const anos = Object.keys(criMap).sort()
-              const fmt = (v: number) =>
-                v >= 1_000_000
-                  ? `${(v / 1_000_000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}M m³`
-                  : v >= 1_000
-                    ? `${(v / 1_000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}k m³`
-                    : `${v.toLocaleString('pt-BR', { maximumFractionDigits: 0 })} m³`
-              const cellCss: Record<StatusSeg, { bg: string; dot: string }> = {
-                seguro: { bg: '#ecfdf5', dot: '#10b981' },
-                alerta: { bg: '#fffbeb', dot: '#f59e0b' },
-                crise: { bg: '#fee2e2', dot: '#ef4444' },
-                colapso: { bg: '#ffe4e6', dot: '#9f1239' },
-              }
-              const downloadCsv = () => {
-                const headerRow = [
-                  'Ano',
-                  ...MONTH_LABELS_FULL.map((m) => `${m} - Status`),
-                  ...MONTH_LABELS_FULL.map((m) => `${m} - Déficit (m³)`),
-                ].join(';')
-                const rows = anos.map((ano) =>
-                  [
-                    ano,
-                    ...MESES.map((m) =>
-                      criMap[ano]?.[m] ? STATUS_LABEL[criMap[ano][m].status] : '',
-                    ),
-                    ...MESES.map((m) =>
-                      criMap[ano]?.[m]
-                        ? criMap[ano][m].deficit.toLocaleString('pt-BR', {
-                            maximumFractionDigits: 0,
-                          })
-                        : '',
-                    ),
-                  ].join(';'),
-                )
-                const csv = [headerRow, ...rows].join('\n')
-                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-                const url = URL.createObjectURL(blob)
-                const a = document.createElement('a')
-                a.href = url
-                a.download = 'periodos_criticos_matriz.csv'
-                a.click()
-                URL.revokeObjectURL(url)
-              }
-              return (
-                <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200">
-                  <div className="flex items-center justify-between border-b pb-3 mb-4">
-                    <div>
-                      <h3 className="font-semibold text-primary text-sm uppercase tracking-wider">
-                        Cronograma de Períodos Críticos
-                      </h3>
-                      <p className="text-[11px] text-slate-400 mt-0.5">
-                        Células marcadas indicam meses com déficit hídrico — passe o mouse para ver
-                        o valor
-                      </p>
-                    </div>
-                    <button
-                      onClick={downloadCsv}
-                      title="Download CSV"
-                      className="p-1.5 rounded hover:bg-slate-100 text-slate-500 hover:text-primary transition-colors shrink-0 ml-4"
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="w-4 h-4"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                        <polyline points="7 10 12 15 17 10" />
-                        <line x1="12" y1="15" x2="12" y2="3" />
-                      </svg>
-                    </button>
-                  </div>
-                  <div className="flex flex-wrap gap-4 text-xs mb-4">
-                    {(['alerta', 'crise', 'colapso'] as StatusSeg[]).map((s) => (
-                      <div key={s} className="flex items-center gap-1.5">
-                        <span
-                          className="w-3.5 h-3.5 rounded-sm inline-block border"
-                          style={{ backgroundColor: cellCss[s].bg, borderColor: cellCss[s].dot }}
-                        />
-                        <span className="text-slate-600">{STATUS_LABEL[s]}</span>
-                      </div>
-                    ))}
-                    <div className="flex items-center gap-1.5">
-                      <span className="w-3.5 h-3.5 rounded-sm inline-block bg-slate-100 border border-slate-200" />
-                      <span className="text-slate-400">Sem ocorrência</span>
-                    </div>
-                  </div>
-                  <div className="overflow-x-auto">
-                    <table className="border-collapse text-xs w-full">
-                      <thead>
-                        <tr>
-                          <th className="sticky left-0 z-10 bg-slate-100 px-3 py-2.5 text-left font-semibold text-slate-600 border border-slate-200 whitespace-nowrap min-w-[60px]">
-                            Ano
-                          </th>
-                          {MONTH_LABELS.map((m) => (
-                            <th
-                              key={m}
-                              className="bg-slate-100 px-0 py-2.5 text-center font-semibold text-slate-600 border border-slate-200 whitespace-nowrap w-[52px]"
-                            >
-                              {m}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {anos.map((ano) => (
-                          <tr key={ano} className="group">
-                            <td className="sticky left-0 z-10 bg-slate-50 group-hover:bg-slate-100 px-3 py-1.5 font-semibold text-slate-700 border border-slate-200 whitespace-nowrap transition-colors">
-                              {ano}
-                            </td>
-                            {MESES.map((m) => {
-                              const cell = criMap[ano]?.[m]
-                              if (!cell)
-                                return (
-                                  <td
-                                    key={m}
-                                    className="border border-slate-100 w-[52px] py-1.5"
-                                    style={{ backgroundColor: '#f8fafc' }}
-                                  />
-                                )
-                              const css = cellCss[cell.status]
-                              return (
-                                <td
-                                  key={m}
-                                  className="border border-slate-200 w-[52px] py-1.5 text-center cursor-default"
-                                  style={{ backgroundColor: css.bg }}
-                                  title={`${MONTH_LABELS_FULL[m - 1]}/${ano} · ${STATUS_LABEL[cell.status]} · Déficit: ${fmt(cell.deficit)}`}
-                                >
-                                  <div
-                                    className="mx-auto rounded-sm flex items-center justify-center font-bold leading-none"
-                                    style={{
-                                      width: 32,
-                                      height: 22,
-                                      backgroundColor: css.dot,
-                                      color: '#fff',
-                                      fontSize: 9,
-                                    }}
-                                  >
-                                    {STATUS_LABEL[cell.status].slice(0, 3).toUpperCase()}
-                                  </div>
-                                </td>
-                              )
-                            })}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )
-            })()}
-
-          {secaoResultado === 'painel_financeiro' && (
-            <CenariosDashboard data={data} fontesMap={fontesMap} />
-          )}
-
-          {secaoResultado === 'projecao_populacional' &&
-            temAutomatico &&
-            (() => {
-              const cdObj = cenario_demanda?.find(
-                (c: any) => c.id_cd === parseInt(filters.id_cd_auto),
-              )
-              const ccObj = cenario_consumo?.find(
-                (c: any) => c.id_cc === parseInt(filters.id_cc_auto),
-              )
-              return (
-                <ProjecaoPopulacional
-                  data={data}
-                  simObj={simObj}
-                  cenarioDemanda={cdObj}
-                  cenarioConsumo={ccObj}
-                  nomeCenarioDemanda={cdObj?.nome_cenario_demanda}
-                  nomeCenarioConsumo={ccObj?.nome_cenario_consumo}
-                />
-              )
-            })()}
-
-          {secaoResultado === 'indicadores_extras' && indicadoresCharts.length > 0 && (
-            <div className="space-y-6">
-              {indicadoresCharts.map(({ unidade, chartData, linhas, titulo }) => (
-                <ChartWrapper
-                  key={unidade}
-                  title={`Indicadores: ${titulo}`}
-                  chartData={chartData}
-                  height={320}
-                >
-                  <LineChart data={chartData} margin={{ top: 4, right: 24, left: 8, bottom: 4 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                    <XAxis dataKey="tempo" tick={{ fontSize: 11 }} interval="preserveStartEnd" />
-                    <YAxis
-                      tick={{ fontSize: 11 }}
-                      label={{
-                        value: unidade,
-                        angle: -90,
-                        position: 'insideLeft',
-                        offset: 10,
-                        style: { fontSize: 11 },
-                      }}
-                    />
-                    <Tooltip
-                      contentStyle={{ fontSize: 12 }}
-                      formatter={(value: any) =>
-                        typeof value === 'number'
-                          ? value.toLocaleString('pt-BR', { maximumFractionDigits: 2 })
-                          : value
-                      }
-                    />
-                    <Legend wrapperStyle={{ fontSize: 12 }} />
-                    {linhas.map((linha, idx) => (
-                      <Line
-                        key={linha}
-                        type="monotone"
-                        dataKey={linha}
-                        stroke={LINE_COLORS[idx % LINE_COLORS.length]}
-                        dot={false}
-                        strokeWidth={2}
-                      />
-                    ))}
-                  </LineChart>
-                </ChartWrapper>
-              ))}
-            </div>
-          )}
-        </>
       )}
     </div>
   )
