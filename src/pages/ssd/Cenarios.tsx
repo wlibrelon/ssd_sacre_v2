@@ -386,6 +386,9 @@ export default function Cenarios() {
 
   const [draftCenarios, setDraftCenarios] = useState<string[]>([])
   const [draftEstrategias, setDraftEstrategias] = useState<string[]>([])
+  // Indica que está verificando se a combinação de cenários/estratégias
+  // possui dados importados em dados_simulacao antes de salvar a seleção.
+  const [verificandoFonte, setVerificandoFonte] = useState(false)
 
   const [refData, setRefData] = useState<any>({
     fontes: [],
@@ -536,6 +539,39 @@ export default function Cenarios() {
       data: { user },
     } = await supabase.auth.getUser()
     if (!user) return toast.error('Usuário não autenticado')
+
+    setVerificandoFonte(true)
+
+    // ── Verifica se essa combinação de cenários/estratégias existe em
+    // dados_simulacao ANTES de gravar a seleção. Usa os mesmos operadores
+    // cs (@>) e cd (<@) de applyFinancialMetrics — comparação por CONTEÚDO
+    // do array, independente da ordem dos elementos.
+    const cenarioJson = JSON.stringify(draftCenarios)
+    const estrategiaJson = JSON.stringify(draftEstrategias)
+
+    const { data: existentes, error: checkError } = await supabase
+      .from('dados_simulacao')
+      .select('id_ds')
+      .eq('id_fonte', Number(idFonte))
+      .filter('cenarios', 'cs', cenarioJson)
+      .filter('cenarios', 'cd', cenarioJson)
+      .filter('estrategias', 'cs', estrategiaJson)
+      .filter('estrategias', 'cd', estrategiaJson)
+      .limit(1)
+
+    setVerificandoFonte(false)
+
+    if (checkError) {
+      return toast.error(`Erro ao verificar dados existentes: ${checkError.message}`)
+    }
+
+    if (!existentes || existentes.length === 0) {
+      toast.error(
+        'Esta combinação de cenários e estratégias não possui dados importados para esta fonte. Verifique a importação antes de adicionar esta seleção.',
+        { duration: 8000 },
+      )
+      return
+    }
 
     const { error } = await supabase.from('selecao_cenarios').insert({
       id_fonte: Number(idFonte),
@@ -1326,11 +1362,15 @@ export default function Cenarios() {
                     <Button
                       onClick={handleConfirmarFonte}
                       disabled={
-                        !idFonte || draftCenarios.length === 0 || draftEstrategias.length === 0
+                        !idFonte ||
+                        draftCenarios.length === 0 ||
+                        draftEstrategias.length === 0 ||
+                        verificandoFonte
                       }
                       className="gap-2"
                     >
-                      <Plus className="w-4 h-4" /> Adicionar Fonte à Simulação
+                      <Plus className="w-4 h-4" />
+                      {verificandoFonte ? 'Verificando dados...' : 'Adicionar Fonte à Simulação'}
                     </Button>
                   </div>
                 </div>
