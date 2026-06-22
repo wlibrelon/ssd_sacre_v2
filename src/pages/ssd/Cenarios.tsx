@@ -5,11 +5,10 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { supabase } from '@/lib/supabase/client'
 import { CenariosDashboard } from './components/CenariosDashboard'
-import { MatrizEficacia } from '@/components/ssd/MatrizEficacia'
 import { ProjecaoPopulacional } from './ProjecaoPopulacional'
 import { Checkbox } from '@/components/ui/checkbox'
 import { toast } from 'sonner'
-import { Trash2, Plus } from 'lucide-react'
+import { Trash2, Plus, ChevronDown } from 'lucide-react'
 import {
   Select,
   SelectContent,
@@ -17,6 +16,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import {
   LineChart,
   Line,
@@ -59,6 +64,32 @@ type SelecaoCenario = {
   estrategias: string[]
   fonte_agua?: { nome_fonte: string }
   _userLabel?: string
+}
+
+// ── Seções de navegação ──────────────────────────────────────────────────────
+type SecaoConfig = 'fontes' | 'parametros' | 'automaticos' | 'periodo'
+type SecaoResultado =
+  | 'visao_geral'
+  | 'serie_temporal'
+  | 'cronograma_criticos'
+  | 'painel_financeiro'
+  | 'projecao_populacional'
+  | 'indicadores_extras'
+
+const CONFIG_LABELS: Record<SecaoConfig, string> = {
+  fontes: 'Fontes e Seleções',
+  parametros: 'Parâmetros do Modelo',
+  automaticos: 'Cenários Automáticos',
+  periodo: 'Período',
+}
+
+const RESULTADO_LABELS: Record<SecaoResultado, string> = {
+  visao_geral: 'Visão Geral',
+  serie_temporal: 'Série Temporal',
+  cronograma_criticos: 'Cronograma de Críticos',
+  painel_financeiro: 'Painel Financeiro',
+  projecao_populacional: 'Projeção Populacional',
+  indicadores_extras: 'Indicadores Extras',
 }
 
 function getStatus(
@@ -301,14 +332,6 @@ const TooltipSeguranca = ({
   )
 }
 
-// ── Campos do Quadro de Configuração da Simulação ──────────────────────────────
-// IMPORTANTE: declarados FORA do componente Cenarios. Quando esses componentes
-// eram declarados dentro do componente principal, toda vez que o usuário
-// digitava um caractere, simEdit mudava, o componente Cenarios re-renderizava
-// inteiro e recriava uma NOVA instância da função SimField/SimToggle — fazendo
-// o React tratar o <Input> como um elemento novo e perder o foco a cada tecla.
-// Como componentes próprios (fora do escopo de Cenarios), o React preserva a
-// identidade do componente entre renders e o foco não é mais perdido.
 function SimField({
   label,
   field,
@@ -367,6 +390,53 @@ function SimToggle({
   )
 }
 
+function NavDropdown<T extends string>({
+  label,
+  current,
+  options,
+  labels,
+  onSelect,
+  disabled,
+}: {
+  label: string
+  current: T
+  options: T[]
+  labels: Record<T, string>
+  onSelect: (value: T) => void
+  disabled?: boolean
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="outline"
+          disabled={disabled}
+          className="justify-between min-w-[220px] bg-white"
+        >
+          <span className="flex flex-col items-start leading-tight">
+            <span className="text-[10px] text-muted-foreground uppercase tracking-wide">
+              {label}
+            </span>
+            <span className="text-sm font-medium">{labels[current]}</span>
+          </span>
+          <ChevronDown className="w-4 h-4 ml-2 text-muted-foreground" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="min-w-[220px]">
+        {options.map((opt) => (
+          <DropdownMenuItem
+            key={opt}
+            onClick={() => onSelect(opt)}
+            className={opt === current ? 'bg-slate-100 font-medium' : ''}
+          >
+            {labels[opt]}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
 export default function Cenarios() {
   const { cenario_demanda, cenario_consumo, cenario_perdas } = useSsdData()
 
@@ -408,7 +478,9 @@ export default function Cenarios() {
   } | null>(null)
 
   const [indicadores, setIndicadores] = useState<any[]>([])
-  const [selectedIndicadores, setSelectedIndicadores] = useState<number[]>([])
+
+  const [secaoConfig, setSecaoConfig] = useState<SecaoConfig>('fontes')
+  const [secaoResultado, setSecaoResultado] = useState<SecaoResultado>('visao_geral')
 
   const fetchSelecoes = useCallback(async () => {
     setSelecaoLoading(true)
@@ -476,7 +548,6 @@ export default function Cenarios() {
   useEffect(() => {
     if (!simObj) {
       setIndicadores([])
-      setSelectedIndicadores([])
       return
     }
     supabase
@@ -492,7 +563,6 @@ export default function Cenarios() {
           }, {}),
         )
         setIndicadores(unique as any[])
-        setSelectedIndicadores([])
       })
   }, [simObj])
 
@@ -623,25 +693,6 @@ export default function Cenarios() {
     })
   }
 
-  /**
-   * Tanto selecao_cenarios quanto dados_simulacao gravam no formato array de strings:
-   *   cenarios:    ["Clima: Pessimista", "Uso da Terra: Pessimista"]
-   *   estrategias: ["Captação a montante: Uso moderado"]
-   *
-   * CORREÇÃO: o PostgreSQL preserva a ordem de inserção em arrays JSONB —
-   * ele NÃO reordena elementos. Além disso, a ordem em que o usuário monta
-   * a seleção no formulário pode variar de uma fonte para outra. Por isso,
-   * NUNCA se deve comparar arrays por igualdade de string serializada
-   * (nem ordenada, nem na ordem original).
-   *
-   * A comparação correta usa os operadores nativos do PostgreSQL para
-   * JSONB, que comparam por CONTEÚDO (como um conjunto), independente
-   * de posição/ordem:
-   *   cs (contains)      ↔ operador @>  "A contém todos os elementos de B"
-   *   cd (contained by)  ↔ operador <@  "A está contido em B"
-   * Combinando os dois nos dois sentidos obtemos igualdade de conjunto,
-   * SEM depender da ordem dos elementos.
-   */
   const applyFinancialMetrics = async () => {
     const activeSelecoes = selecoes.filter((s) => s.selecionado)
     if (activeSelecoes.length === 0) return []
@@ -652,8 +703,6 @@ export default function Cenarios() {
       const cenarioArr = sel.cenarios as string[]
       const estrategiaArr = sel.estrategias as string[]
 
-      // Serializa o array EXATAMENTE como foi gravado — sem reordenar.
-      // Os operadores cs/cd (@>/<@) do PostgreSQL já comparam por conteúdo.
       const cenarioJson = JSON.stringify(cenarioArr)
       const estrategiaJson = JSON.stringify(estrategiaArr)
 
@@ -681,18 +730,6 @@ export default function Cenarios() {
         toast.error(`Erro ao buscar dados (fonte ${sel.id_fonte}): ${error.message}`)
         continue
       }
-
-      // ── LOG DE DIAGNÓSTICO — remover após localizar o problema ──────────────
-      console.log(
-        `[diagnóstico] fonte ${sel.id_fonte} — cenarios enviados: ${cenarioJson} — estrategias enviadas: ${estrategiaJson} — linhas retornadas: ${rows?.length ?? 0}`,
-      )
-      if (!rows || rows.length === 0) {
-        console.warn(
-          `[diagnóstico] fonte ${sel.id_fonte}: NENHUMA linha encontrada para essa combinação de cenários/estratégias.`,
-        )
-      }
-      // ──────────────────────────────────────────────────────────────────────
-
       if (rows && rows.length > 0) allRows = [...allRows, ...rows]
     }
 
@@ -882,6 +919,7 @@ export default function Cenarios() {
     setGroupedData(groupedArray)
     setRan(true)
     setLoading(false)
+    setSecaoResultado('visao_geral')
   }
 
   const fontesMap = refData.fontes.reduce(
@@ -892,16 +930,10 @@ export default function Cenarios() {
   const limiarCrise = simObj?.limiar_crise ?? 0.6
   const limiarColapso = simObj?.limiar_colapso ?? 0.4
 
-  const toggleIndicador = (id: number) =>
-    setSelectedIndicadores((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    )
-
   const indicadoresCharts = (() => {
-    if (!ran || data.length === 0 || selectedIndicadores.length === 0) return []
-    const indsSelected = indicadores.filter((ind) => selectedIndicadores.includes(ind.id_indicador))
+    if (!ran || data.length === 0 || indicadores.length === 0) return []
     const porUnidade: Record<string, any[]> = {}
-    indsSelected.forEach((ind) => {
+    indicadores.forEach((ind) => {
       const u = ind.unidade || 'sem_unidade'
       if (!porUnidade[u]) porUnidade[u] = []
       porUnidade[u].push(ind)
@@ -1022,6 +1054,23 @@ export default function Cenarios() {
     </LineChart>
   )
 
+  const temAutomatico = !!(simObj?.demanda_auto || simObj?.perdas_auto)
+  const resultadoOptions: SecaoResultado[] = [
+    'visao_geral',
+    'serie_temporal',
+    'cronograma_criticos',
+    'painel_financeiro',
+    ...(temAutomatico ? (['projecao_populacional'] as SecaoResultado[]) : []),
+    ...(indicadoresCharts.length > 0 ? (['indicadores_extras'] as SecaoResultado[]) : []),
+  ]
+
+  const configOptions: SecaoConfig[] = [
+    'fontes',
+    'parametros',
+    ...(temAutomatico ? (['automaticos'] as SecaoConfig[]) : []),
+    'periodo',
+  ]
+
   return (
     <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
       <div>
@@ -1032,18 +1081,26 @@ export default function Cenarios() {
         </p>
       </div>
 
-      <div className="space-y-6">
+      <div className="flex flex-wrap items-center gap-3">
+        <NavDropdown<SecaoConfig>
+          label="Configuração"
+          current={secaoConfig}
+          options={configOptions}
+          labels={CONFIG_LABELS}
+          onSelect={setSecaoConfig}
+        />
+        {!selecaoLoading && (
+          <span className="text-xs text-muted-foreground">
+            {selecoes.filter((s) => s.selecionado).length} de {selecoes.length} fontes selecionadas
+          </span>
+        )}
+      </div>
+
+      {secaoConfig === 'fontes' && (
         <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200 w-full">
-          <div className="flex items-center justify-between border-b pb-3 mb-4">
-            <h3 className="font-semibold text-primary text-sm uppercase tracking-wider">
-              Configurações para Simulação
-            </h3>
-            {!selecaoLoading && (
-              <span className="text-xs text-muted-foreground">
-                {selecoes.filter((s) => s.selecionado).length} de {selecoes.length} selecionadas
-              </span>
-            )}
-          </div>
+          <h3 className="font-semibold text-primary border-b pb-3 mb-4 text-sm uppercase tracking-wider">
+            Fontes e Seleções
+          </h3>
 
           {selecaoLoading && (
             <div className="flex items-center gap-2 py-4 text-sm text-muted-foreground">
@@ -1334,166 +1391,130 @@ export default function Cenarios() {
             </div>
           </div>
         </div>
+      )}
 
-        {simEdit && (
-          <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200 w-full">
-            <h3 className="font-semibold text-primary border-b pb-3 mb-4 text-sm uppercase tracking-wider">
-              Configuração da Simulação
-            </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              <SimField
-                label="População Inicial"
-                field="pop_inicial"
-                type="number"
+      {secaoConfig === 'parametros' && simEdit && (
+        <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200 w-full">
+          <h3 className="font-semibold text-primary border-b pb-3 mb-4 text-sm uppercase tracking-wider">
+            Parâmetros do Modelo
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            <SimField
+              label="População Inicial"
+              field="pop_inicial"
+              type="number"
+              simEdit={simEdit}
+              setSimEdit={setSimEdit}
+            />
+            <SimField
+              label="Perc. Inicial de Perdas (%)"
+              field="perc_inicial_perdas"
+              type="number"
+              simEdit={simEdit}
+              setSimEdit={setSimEdit}
+            />
+            <SimField
+              label="Início da Redução de Perdas"
+              field="inicio_perdas"
+              type="text"
+              simEdit={simEdit}
+              setSimEdit={setSimEdit}
+            />
+            <SimField
+              label="Limiar de Alerta (0–1)"
+              field="limiar_alerta"
+              type="number"
+              simEdit={simEdit}
+              setSimEdit={setSimEdit}
+            />
+            <SimField
+              label="Limiar de Crise (0–1)"
+              field="limiar_crise"
+              type="number"
+              simEdit={simEdit}
+              setSimEdit={setSimEdit}
+            />
+            <SimField
+              label="Limiar de Colapso (0–1)"
+              field="limiar_colapso"
+              type="number"
+              simEdit={simEdit}
+              setSimEdit={setSimEdit}
+            />
+            <div className="flex flex-col gap-3 pt-1">
+              <SimToggle
+                label="Demanda automática"
+                field="demanda_auto"
                 simEdit={simEdit}
                 setSimEdit={setSimEdit}
               />
-              <SimField
-                label="Perc. Inicial de Perdas (%)"
-                field="perc_inicial_perdas"
-                type="number"
+              <SimToggle
+                label="Perdas automáticas"
+                field="perdas_auto"
                 simEdit={simEdit}
                 setSimEdit={setSimEdit}
               />
-              <SimField
-                label="Início da Redução de Perdas"
-                field="inicio_perdas"
-                type="text"
-                simEdit={simEdit}
-                setSimEdit={setSimEdit}
-              />
-              <SimField
-                label="Limiar de Alerta (0–1)"
-                field="limiar_alerta"
-                type="number"
-                simEdit={simEdit}
-                setSimEdit={setSimEdit}
-              />
-              <SimField
-                label="Limiar de Crise (0–1)"
-                field="limiar_crise"
-                type="number"
-                simEdit={simEdit}
-                setSimEdit={setSimEdit}
-              />
-              <SimField
-                label="Limiar de Colapso (0–1)"
-                field="limiar_colapso"
-                type="number"
-                simEdit={simEdit}
-                setSimEdit={setSimEdit}
-              />
-              <div className="flex flex-col gap-3 pt-1">
-                <SimToggle
-                  label="Demanda automática"
-                  field="demanda_auto"
-                  simEdit={simEdit}
-                  setSimEdit={setSimEdit}
+            </div>
+          </div>
+          <div className="mt-5 flex justify-end">
+            <Button onClick={handleSaveSim} disabled={simSaving} className="w-48">
+              {simSaving ? 'Salvando...' : 'Salvar Configuração'}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {secaoConfig === 'automaticos' && simObj && temAutomatico && (
+        <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200 w-full">
+          <h3 className="font-semibold text-primary border-b pb-3 mb-4 text-sm uppercase tracking-wider">
+            Cenários Automáticos — Demanda e Perdas
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {simObj.demanda_auto && (
+              <div className="space-y-3">
+                <h4 className="text-sm font-semibold text-muted-foreground">Demanda</h4>
+                <NativeSelect
+                  className="w-full"
+                  options={cenario_demanda.map((o: any) => ({
+                    value: o.id_cd,
+                    label: o.nome_cenario_demanda,
+                  }))}
+                  value={filters.id_cd_auto || ''}
+                  onChange={(v: any) => setFilters({ ...filters, id_cd_auto: v })}
+                  placeholder="Cenário Demanda"
                 />
-                <SimToggle
-                  label="Perdas automáticas"
-                  field="perdas_auto"
-                  simEdit={simEdit}
-                  setSimEdit={setSimEdit}
+                <NativeSelect
+                  className="w-full"
+                  options={cenario_consumo.map((o: any) => ({
+                    value: o.id_cc,
+                    label: o.nome_cenario_consumo,
+                  }))}
+                  value={filters.id_cc_auto || ''}
+                  onChange={(v: any) => setFilters({ ...filters, id_cc_auto: v })}
+                  placeholder="Cenário Consumo"
                 />
               </div>
-            </div>
-            <div className="mt-5 flex justify-end">
-              <Button onClick={handleSaveSim} disabled={simSaving} className="w-48">
-                {simSaving ? 'Salvando...' : 'Salvar Configuração'}
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {simObj && (simObj.demanda_auto || simObj.perdas_auto) && (
-          <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200 w-full">
-            <h3 className="font-semibold text-primary border-b pb-3 mb-4 text-sm uppercase tracking-wider">
-              Demanda e Perdas (Automático)
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {simObj.demanda_auto && (
-                <div className="space-y-3">
-                  <h4 className="text-sm font-semibold text-muted-foreground">Demanda</h4>
-                  <NativeSelect
-                    className="w-full"
-                    options={cenario_demanda.map((o: any) => ({
-                      value: o.id_cd,
-                      label: o.nome_cenario_demanda,
-                    }))}
-                    value={filters.id_cd_auto || ''}
-                    onChange={(v: any) => setFilters({ ...filters, id_cd_auto: v })}
-                    placeholder="Cenário Demanda"
-                  />
-                  <NativeSelect
-                    className="w-full"
-                    options={cenario_consumo.map((o: any) => ({
-                      value: o.id_cc,
-                      label: o.nome_cenario_consumo,
-                    }))}
-                    value={filters.id_cc_auto || ''}
-                    onChange={(v: any) => setFilters({ ...filters, id_cc_auto: v })}
-                    placeholder="Cenário Consumo"
-                  />
-                </div>
-              )}
-              {simObj.perdas_auto && (
-                <div className="space-y-3">
-                  <h4 className="text-sm font-semibold text-muted-foreground">Perdas</h4>
-                  <NativeSelect
-                    className="w-full"
-                    options={cenario_perdas.map((o: any) => ({
-                      value: o.id_cp,
-                      label: o.nome_cenario_perdas,
-                    }))}
-                    value={filters.id_cp_auto || ''}
-                    onChange={(v: any) => setFilters({ ...filters, id_cp_auto: v })}
-                    placeholder="Cenário Perdas"
-                  />
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {simObj && (
-          <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200 w-full">
-            <h3 className="font-semibold text-primary border-b pb-3 mb-4 text-sm uppercase tracking-wider">
-              Indicadores
-            </h3>
-            {indicadores.length === 0 ? (
-              <p className="text-xs text-muted-foreground">
-                Nenhum indicador configurado para esta simulação.
-              </p>
-            ) : (
-              <div className="space-y-2">
-                <p className="text-xs text-muted-foreground mb-3">
-                  Selecione os indicadores para gerar gráficos de série histórica por fonte de água.
-                </p>
-                {indicadores.map((ind) => (
-                  <label
-                    key={ind.id_indicador}
-                    className="flex items-center gap-3 border p-2.5 rounded-md hover:bg-slate-50 cursor-pointer"
-                  >
-                    <Checkbox
-                      checked={selectedIndicadores.includes(ind.id_indicador)}
-                      onCheckedChange={() => toggleIndicador(ind.id_indicador)}
-                    />
-                    <span className="text-sm font-medium flex-1">
-                      {ind.descricao || ind.campo_extra}
-                    </span>
-                    {ind.unidade && (
-                      <span className="text-xs text-muted-foreground bg-slate-100 px-2 py-0.5 rounded">
-                        {ind.unidade}
-                      </span>
-                    )}
-                  </label>
-                ))}
+            )}
+            {simObj.perdas_auto && (
+              <div className="space-y-3">
+                <h4 className="text-sm font-semibold text-muted-foreground">Perdas</h4>
+                <NativeSelect
+                  className="w-full"
+                  options={cenario_perdas.map((o: any) => ({
+                    value: o.id_cp,
+                    label: o.nome_cenario_perdas,
+                  }))}
+                  value={filters.id_cp_auto || ''}
+                  onChange={(v: any) => setFilters({ ...filters, id_cp_auto: v })}
+                  placeholder="Cenário Perdas"
+                />
               </div>
             )}
           </div>
-        )}
+        </div>
+      )}
 
+      {secaoConfig === 'periodo' && (
         <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200 w-full">
           <h3 className="font-semibold text-primary border-b pb-3 mb-4 text-sm uppercase tracking-wider">
             Período
@@ -1573,26 +1594,27 @@ export default function Cenarios() {
               ))}
             </div>
           </div>
-          <div className="pt-6 flex flex-col gap-2">
-            <Button
-              onClick={handleSimulate}
-              disabled={loading || !simObj || selecoes.length === 0}
-              className="w-full h-11 shadow-sm text-base disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? 'Processando...' : 'Executar Simulação'}
-            </Button>
-            {!selecaoLoading && selecoes.length === 0 && (
-              <p className="text-xs text-red-500 text-center font-medium">
-                Configure ao menos uma fonte para executar a simulação.
-              </p>
-            )}
-            {!selecaoLoading && selecoes.length > 0 && !selecoes.some((s) => s.selecionado) && (
-              <p className="text-xs text-amber-500 text-center font-medium mt-1">
-                Selecione pelo menos uma configuração ativa para executar.
-              </p>
-            )}
-          </div>
         </div>
+      )}
+
+      <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200 w-full">
+        <Button
+          onClick={handleSimulate}
+          disabled={loading || !simObj || selecoes.length === 0}
+          className="w-full h-11 shadow-sm text-base disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {loading ? 'Processando...' : 'Executar Simulação'}
+        </Button>
+        {!selecaoLoading && selecoes.length === 0 && (
+          <p className="text-xs text-red-500 text-center font-medium mt-2">
+            Configure ao menos uma fonte para executar a simulação.
+          </p>
+        )}
+        {!selecaoLoading && selecoes.length > 0 && !selecoes.some((s) => s.selecionado) && (
+          <p className="text-xs text-amber-500 text-center font-medium mt-2">
+            Selecione pelo menos uma configuração ativa para executar.
+          </p>
+        )}
       </div>
 
       {ran && data.length === 0 && (
@@ -1606,362 +1628,381 @@ export default function Cenarios() {
         </div>
       )}
 
-      {segurancaHidrica && segCard && (
-        <div>
-          <h2 className="text-lg font-semibold text-primary mb-3">Índice de Segurança Hídrica</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {(() => {
-              const { indicesMedio, mesesAlerta, mesesCrise, mesesColapso, statusGeral } = segCard
-              const c = STATUS_COLORS[statusGeral]
+      {ran && data.length > 0 && (
+        <>
+          <div className="flex flex-wrap items-center gap-3 pt-4 border-t">
+            <NavDropdown<SecaoResultado>
+              label="Resultados"
+              current={secaoResultado}
+              options={resultadoOptions}
+              labels={RESULTADO_LABELS}
+              onSelect={setSecaoResultado}
+            />
+          </div>
+
+          {secaoResultado === 'visao_geral' && segurancaHidrica && segCard && (
+            <div>
+              <h2 className="text-lg font-semibold text-primary mb-3">
+                Índice de Segurança Hídrica — Visão Geral
+              </h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {(() => {
+                  const { indicesMedio, mesesAlerta, mesesCrise, mesesColapso, statusGeral } =
+                    segCard
+                  const c = STATUS_COLORS[statusGeral]
+                  return (
+                    <div className={`rounded-xl border p-4 space-y-3 ${c.bg} ${c.border}`}>
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="text-sm font-semibold text-slate-700 leading-tight">
+                          Região (todas as fontes)
+                        </span>
+                        <span
+                          className={`shrink-0 text-[11px] font-bold px-2 py-0.5 rounded-full ${STATUS_BADGE[statusGeral]}`}
+                        >
+                          {STATUS_LABEL[statusGeral]}
+                        </span>
+                      </div>
+                      <div className={`text-3xl font-bold ${c.text}`}>
+                        {indicesMedio.toLocaleString('pt-BR', {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </div>
+                      <p className="text-[11px] text-slate-500 -mt-2">índice médio do período</p>
+                      <div className="flex flex-wrap gap-3 text-xs pt-1 border-t border-slate-200">
+                        <div>
+                          <span className="font-bold text-amber-600">{mesesAlerta}</span>
+                          <span className="text-slate-500 ml-1">
+                            {mesesAlerta === 1 ? 'mês em alerta' : 'meses em alerta'}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="font-bold text-red-600">{mesesCrise}</span>
+                          <span className="text-slate-500 ml-1">
+                            {mesesCrise === 1 ? 'mês em crise' : 'meses em crise'}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="font-bold text-rose-900">{mesesColapso}</span>
+                          <span className="text-slate-500 ml-1">
+                            {mesesColapso === 1 ? 'mês em colapso' : 'meses em colapso'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })()}
+              </div>
+            </div>
+          )}
+
+          {secaoResultado === 'serie_temporal' &&
+            segurancaHidrica &&
+            segurancaHidrica.chartData.length > 0 && (
+              <div>
+                <div className="flex flex-wrap gap-6 text-xs text-slate-500 mb-2 px-1">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-7 border-t-2 border-dashed border-amber-400 inline-block" />
+                    <span>
+                      Limiar de Alerta (
+                      {limiarAlerta.toLocaleString('pt-BR', { minimumFractionDigits: 1 })})
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-7 border-t-2 border-dashed border-red-400 inline-block" />
+                    <span>
+                      Limiar de Crise (
+                      {limiarCrise.toLocaleString('pt-BR', { minimumFractionDigits: 1 })})
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-7 border-t-2 border-dashed border-rose-800 inline-block" />
+                    <span>
+                      Limiar de Colapso (
+                      {limiarColapso.toLocaleString('pt-BR', { minimumFractionDigits: 1 })})
+                    </span>
+                  </div>
+                </div>
+                <ChartWrapper
+                  title="Série Temporal – Índice de Segurança Hídrica Regional"
+                  chartData={segurancaHidrica.chartData}
+                  height={340}
+                >
+                  {segChart as React.ReactElement}
+                </ChartWrapper>
+              </div>
+            )}
+
+          {secaoResultado === 'cronograma_criticos' &&
+            segurancaHidrica &&
+            segurancaHidrica.criticos.length > 0 &&
+            (() => {
+              const MONTH_LABELS = [
+                'Jan',
+                'Fev',
+                'Mar',
+                'Abr',
+                'Mai',
+                'Jun',
+                'Jul',
+                'Ago',
+                'Set',
+                'Out',
+                'Nov',
+                'Dez',
+              ]
+              const MONTH_LABELS_FULL = [
+                'Janeiro',
+                'Fevereiro',
+                'Março',
+                'Abril',
+                'Maio',
+                'Junho',
+                'Julho',
+                'Agosto',
+                'Setembro',
+                'Outubro',
+                'Novembro',
+                'Dezembro',
+              ]
+              const MESES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+              type Cell = { status: StatusSeg; deficit: number }
+              const criMap: Record<string, Record<number, Cell>> = {}
+              segurancaHidrica.criticos.forEach(({ tempo, status, deficit }) => {
+                const parts = tempo.split(/[-/]/)
+                const ano = parts[0]
+                const mes = parseInt(parts[1], 10)
+                if (!criMap[ano]) criMap[ano] = {}
+                criMap[ano][mes] = { status, deficit }
+              })
+              const anos = Object.keys(criMap).sort()
+              const fmt = (v: number) =>
+                v >= 1_000_000
+                  ? `${(v / 1_000_000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}M m³`
+                  : v >= 1_000
+                    ? `${(v / 1_000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}k m³`
+                    : `${v.toLocaleString('pt-BR', { maximumFractionDigits: 0 })} m³`
+              const cellCss: Record<StatusSeg, { bg: string; dot: string }> = {
+                seguro: { bg: '#ecfdf5', dot: '#10b981' },
+                alerta: { bg: '#fffbeb', dot: '#f59e0b' },
+                crise: { bg: '#fee2e2', dot: '#ef4444' },
+                colapso: { bg: '#ffe4e6', dot: '#9f1239' },
+              }
+              const downloadCsv = () => {
+                const headerRow = [
+                  'Ano',
+                  ...MONTH_LABELS_FULL.map((m) => `${m} - Status`),
+                  ...MONTH_LABELS_FULL.map((m) => `${m} - Déficit (m³)`),
+                ].join(';')
+                const rows = anos.map((ano) =>
+                  [
+                    ano,
+                    ...MESES.map((m) =>
+                      criMap[ano]?.[m] ? STATUS_LABEL[criMap[ano][m].status] : '',
+                    ),
+                    ...MESES.map((m) =>
+                      criMap[ano]?.[m]
+                        ? criMap[ano][m].deficit.toLocaleString('pt-BR', {
+                            maximumFractionDigits: 0,
+                          })
+                        : '',
+                    ),
+                  ].join(';'),
+                )
+                const csv = [headerRow, ...rows].join('\n')
+                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+                const url = URL.createObjectURL(blob)
+                const a = document.createElement('a')
+                a.href = url
+                a.download = 'periodos_criticos_matriz.csv'
+                a.click()
+                URL.revokeObjectURL(url)
+              }
               return (
-                <div className={`rounded-xl border p-4 space-y-3 ${c.bg} ${c.border}`}>
-                  <div className="flex items-start justify-between gap-2">
-                    <span className="text-sm font-semibold text-slate-700 leading-tight">
-                      Região (todas as fontes)
-                    </span>
-                    <span
-                      className={`shrink-0 text-[11px] font-bold px-2 py-0.5 rounded-full ${STATUS_BADGE[statusGeral]}`}
+                <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200">
+                  <div className="flex items-center justify-between border-b pb-3 mb-4">
+                    <div>
+                      <h3 className="font-semibold text-primary text-sm uppercase tracking-wider">
+                        Cronograma de Períodos Críticos
+                      </h3>
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        Células marcadas indicam meses com déficit hídrico — passe o mouse para ver
+                        o valor
+                      </p>
+                    </div>
+                    <button
+                      onClick={downloadCsv}
+                      title="Download CSV"
+                      className="p-1.5 rounded hover:bg-slate-100 text-slate-500 hover:text-primary transition-colors shrink-0 ml-4"
                     >
-                      {STATUS_LABEL[statusGeral]}
-                    </span>
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="w-4 h-4"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        <polyline points="7 10 12 15 17 10" />
+                        <line x1="12" y1="15" x2="12" y2="3" />
+                      </svg>
+                    </button>
                   </div>
-                  <div className={`text-3xl font-bold ${c.text}`}>
-                    {indicesMedio.toLocaleString('pt-BR', {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}
+                  <div className="flex flex-wrap gap-4 text-xs mb-4">
+                    {(['alerta', 'crise', 'colapso'] as StatusSeg[]).map((s) => (
+                      <div key={s} className="flex items-center gap-1.5">
+                        <span
+                          className="w-3.5 h-3.5 rounded-sm inline-block border"
+                          style={{ backgroundColor: cellCss[s].bg, borderColor: cellCss[s].dot }}
+                        />
+                        <span className="text-slate-600">{STATUS_LABEL[s]}</span>
+                      </div>
+                    ))}
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-3.5 h-3.5 rounded-sm inline-block bg-slate-100 border border-slate-200" />
+                      <span className="text-slate-400">Sem ocorrência</span>
+                    </div>
                   </div>
-                  <p className="text-[11px] text-slate-500 -mt-2">índice médio do período</p>
-                  <div className="flex flex-wrap gap-3 text-xs pt-1 border-t border-slate-200">
-                    <div>
-                      <span className="font-bold text-amber-600">{mesesAlerta}</span>
-                      <span className="text-slate-500 ml-1">
-                        {mesesAlerta === 1 ? 'mês em alerta' : 'meses em alerta'}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="font-bold text-red-600">{mesesCrise}</span>
-                      <span className="text-slate-500 ml-1">
-                        {mesesCrise === 1 ? 'mês em crise' : 'meses em crise'}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="font-bold text-rose-900">{mesesColapso}</span>
-                      <span className="text-slate-500 ml-1">
-                        {mesesColapso === 1 ? 'mês em colapso' : 'meses em colapso'}
-                      </span>
-                    </div>
+                  <div className="overflow-x-auto">
+                    <table className="border-collapse text-xs w-full">
+                      <thead>
+                        <tr>
+                          <th className="sticky left-0 z-10 bg-slate-100 px-3 py-2.5 text-left font-semibold text-slate-600 border border-slate-200 whitespace-nowrap min-w-[60px]">
+                            Ano
+                          </th>
+                          {MONTH_LABELS.map((m) => (
+                            <th
+                              key={m}
+                              className="bg-slate-100 px-0 py-2.5 text-center font-semibold text-slate-600 border border-slate-200 whitespace-nowrap w-[52px]"
+                            >
+                              {m}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {anos.map((ano) => (
+                          <tr key={ano} className="group">
+                            <td className="sticky left-0 z-10 bg-slate-50 group-hover:bg-slate-100 px-3 py-1.5 font-semibold text-slate-700 border border-slate-200 whitespace-nowrap transition-colors">
+                              {ano}
+                            </td>
+                            {MESES.map((m) => {
+                              const cell = criMap[ano]?.[m]
+                              if (!cell)
+                                return (
+                                  <td
+                                    key={m}
+                                    className="border border-slate-100 w-[52px] py-1.5"
+                                    style={{ backgroundColor: '#f8fafc' }}
+                                  />
+                                )
+                              const css = cellCss[cell.status]
+                              return (
+                                <td
+                                  key={m}
+                                  className="border border-slate-200 w-[52px] py-1.5 text-center cursor-default"
+                                  style={{ backgroundColor: css.bg }}
+                                  title={`${MONTH_LABELS_FULL[m - 1]}/${ano} · ${STATUS_LABEL[cell.status]} · Déficit: ${fmt(cell.deficit)}`}
+                                >
+                                  <div
+                                    className="mx-auto rounded-sm flex items-center justify-center font-bold leading-none"
+                                    style={{
+                                      width: 32,
+                                      height: 22,
+                                      backgroundColor: css.dot,
+                                      color: '#fff',
+                                      fontSize: 9,
+                                    }}
+                                  >
+                                    {STATUS_LABEL[cell.status].slice(0, 3).toUpperCase()}
+                                  </div>
+                                </td>
+                              )
+                            })}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               )
             })()}
-          </div>
-        </div>
-      )}
 
-      {segurancaHidrica && segurancaHidrica.chartData.length > 0 && (
-        <div>
-          <div className="flex flex-wrap gap-6 text-xs text-slate-500 mb-2 px-1">
-            <div className="flex items-center gap-1.5">
-              <span className="w-7 border-t-2 border-dashed border-amber-400 inline-block" />
-              <span>
-                Limiar de Alerta (
-                {limiarAlerta.toLocaleString('pt-BR', { minimumFractionDigits: 1 })})
-              </span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="w-7 border-t-2 border-dashed border-red-400 inline-block" />
-              <span>
-                Limiar de Crise ({limiarCrise.toLocaleString('pt-BR', { minimumFractionDigits: 1 })}
-                )
-              </span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="w-7 border-t-2 border-dashed border-rose-800 inline-block" />
-              <span>
-                Limiar de Colapso (
-                {limiarColapso.toLocaleString('pt-BR', { minimumFractionDigits: 1 })})
-              </span>
-            </div>
-          </div>
-          <ChartWrapper
-            title="Série Temporal – Índice de Segurança Hídrica Regional"
-            chartData={segurancaHidrica.chartData}
-            height={340}
-          >
-            {segChart as React.ReactElement}
-          </ChartWrapper>
-        </div>
-      )}
+          {secaoResultado === 'painel_financeiro' && (
+            <CenariosDashboard data={data} fontesMap={fontesMap} />
+          )}
 
-      {segurancaHidrica &&
-        segurancaHidrica.criticos.length > 0 &&
-        (() => {
-          const MONTH_LABELS = [
-            'Jan',
-            'Fev',
-            'Mar',
-            'Abr',
-            'Mai',
-            'Jun',
-            'Jul',
-            'Ago',
-            'Set',
-            'Out',
-            'Nov',
-            'Dez',
-          ]
-          const MONTH_LABELS_FULL = [
-            'Janeiro',
-            'Fevereiro',
-            'Março',
-            'Abril',
-            'Maio',
-            'Junho',
-            'Julho',
-            'Agosto',
-            'Setembro',
-            'Outubro',
-            'Novembro',
-            'Dezembro',
-          ]
-          const MESES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
-          type Cell = { status: StatusSeg; deficit: number }
-          const criMap: Record<string, Record<number, Cell>> = {}
-          segurancaHidrica.criticos.forEach(({ tempo, status, deficit }) => {
-            const parts = tempo.split(/[-/]/)
-            const ano = parts[0]
-            const mes = parseInt(parts[1], 10)
-            if (!criMap[ano]) criMap[ano] = {}
-            criMap[ano][mes] = { status, deficit }
-          })
-          const anos = Object.keys(criMap).sort()
-          const fmt = (v: number) =>
-            v >= 1_000_000
-              ? `${(v / 1_000_000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}M m³`
-              : v >= 1_000
-                ? `${(v / 1_000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}k m³`
-                : `${v.toLocaleString('pt-BR', { maximumFractionDigits: 0 })} m³`
-          const cellCss: Record<StatusSeg, { bg: string; dot: string }> = {
-            seguro: { bg: '#ecfdf5', dot: '#10b981' },
-            alerta: { bg: '#fffbeb', dot: '#f59e0b' },
-            crise: { bg: '#fee2e2', dot: '#ef4444' },
-            colapso: { bg: '#ffe4e6', dot: '#9f1239' },
-          }
-          const downloadCsv = () => {
-            const headerRow = [
-              'Ano',
-              ...MONTH_LABELS_FULL.map((m) => `${m} - Status`),
-              ...MONTH_LABELS_FULL.map((m) => `${m} - Déficit (m³)`),
-            ].join(';')
-            const rows = anos.map((ano) =>
-              [
-                ano,
-                ...MESES.map((m) => (criMap[ano]?.[m] ? STATUS_LABEL[criMap[ano][m].status] : '')),
-                ...MESES.map((m) =>
-                  criMap[ano]?.[m]
-                    ? criMap[ano][m].deficit.toLocaleString('pt-BR', { maximumFractionDigits: 0 })
-                    : '',
-                ),
-              ].join(';'),
-            )
-            const csv = [headerRow, ...rows].join('\n')
-            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-            const url = URL.createObjectURL(blob)
-            const a = document.createElement('a')
-            a.href = url
-            a.download = 'periodos_criticos_matriz.csv'
-            a.click()
-            URL.revokeObjectURL(url)
-          }
-          return (
-            <div className="bg-white p-5 shadow-sm rounded-xl border border-slate-200">
-              <div className="flex items-center justify-between border-b pb-3 mb-4">
-                <div>
-                  <h3 className="font-semibold text-primary text-sm uppercase tracking-wider">
-                    Cronograma de Períodos Críticos
-                  </h3>
-                  <p className="text-[11px] text-slate-400 mt-0.5">
-                    Células marcadas indicam meses com déficit hídrico — passe o mouse para ver o
-                    valor
-                  </p>
-                </div>
-                <button
-                  onClick={downloadCsv}
-                  title="Download CSV"
-                  className="p-1.5 rounded hover:bg-slate-100 text-slate-500 hover:text-primary transition-colors shrink-0 ml-4"
+          {secaoResultado === 'projecao_populacional' &&
+            temAutomatico &&
+            (() => {
+              const cdObj = cenario_demanda?.find(
+                (c: any) => c.id_cd === parseInt(filters.id_cd_auto),
+              )
+              const ccObj = cenario_consumo?.find(
+                (c: any) => c.id_cc === parseInt(filters.id_cc_auto),
+              )
+              return (
+                <ProjecaoPopulacional
+                  data={data}
+                  simObj={simObj}
+                  cenarioDemanda={cdObj}
+                  cenarioConsumo={ccObj}
+                  nomeCenarioDemanda={cdObj?.nome_cenario_demanda}
+                  nomeCenarioConsumo={ccObj?.nome_cenario_consumo}
+                />
+              )
+            })()}
+
+          {secaoResultado === 'indicadores_extras' && indicadoresCharts.length > 0 && (
+            <div className="space-y-6">
+              {indicadoresCharts.map(({ unidade, chartData, linhas, titulo }) => (
+                <ChartWrapper
+                  key={unidade}
+                  title={`Indicadores: ${titulo}`}
+                  chartData={chartData}
+                  height={320}
                 >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="w-4 h-4"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                    <polyline points="7 10 12 15 17 10" />
-                    <line x1="12" y1="15" x2="12" y2="3" />
-                  </svg>
-                </button>
-              </div>
-              <div className="flex flex-wrap gap-4 text-xs mb-4">
-                {(['alerta', 'crise', 'colapso'] as StatusSeg[]).map((s) => (
-                  <div key={s} className="flex items-center gap-1.5">
-                    <span
-                      className="w-3.5 h-3.5 rounded-sm inline-block border"
-                      style={{ backgroundColor: cellCss[s].bg, borderColor: cellCss[s].dot }}
+                  <LineChart data={chartData} margin={{ top: 4, right: 24, left: 8, bottom: 4 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                    <XAxis dataKey="tempo" tick={{ fontSize: 11 }} interval="preserveStartEnd" />
+                    <YAxis
+                      tick={{ fontSize: 11 }}
+                      label={{
+                        value: unidade,
+                        angle: -90,
+                        position: 'insideLeft',
+                        offset: 10,
+                        style: { fontSize: 11 },
+                      }}
                     />
-                    <span className="text-slate-600">{STATUS_LABEL[s]}</span>
-                  </div>
-                ))}
-                <div className="flex items-center gap-1.5">
-                  <span className="w-3.5 h-3.5 rounded-sm inline-block bg-slate-100 border border-slate-200" />
-                  <span className="text-slate-400">Sem ocorrência</span>
-                </div>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="border-collapse text-xs w-full">
-                  <thead>
-                    <tr>
-                      <th className="sticky left-0 z-10 bg-slate-100 px-3 py-2.5 text-left font-semibold text-slate-600 border border-slate-200 whitespace-nowrap min-w-[60px]">
-                        Ano
-                      </th>
-                      {MONTH_LABELS.map((m) => (
-                        <th
-                          key={m}
-                          className="bg-slate-100 px-0 py-2.5 text-center font-semibold text-slate-600 border border-slate-200 whitespace-nowrap w-[52px]"
-                        >
-                          {m}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {anos.map((ano) => (
-                      <tr key={ano} className="group">
-                        <td className="sticky left-0 z-10 bg-slate-50 group-hover:bg-slate-100 px-3 py-1.5 font-semibold text-slate-700 border border-slate-200 whitespace-nowrap transition-colors">
-                          {ano}
-                        </td>
-                        {MESES.map((m) => {
-                          const cell = criMap[ano]?.[m]
-                          if (!cell)
-                            return (
-                              <td
-                                key={m}
-                                className="border border-slate-100 w-[52px] py-1.5"
-                                style={{ backgroundColor: '#f8fafc' }}
-                              />
-                            )
-                          const css = cellCss[cell.status]
-                          return (
-                            <td
-                              key={m}
-                              className="border border-slate-200 w-[52px] py-1.5 text-center cursor-default"
-                              style={{ backgroundColor: css.bg }}
-                              title={`${MONTH_LABELS_FULL[m - 1]}/${ano} · ${STATUS_LABEL[cell.status]} · Déficit: ${fmt(cell.deficit)}`}
-                            >
-                              <div
-                                className="mx-auto rounded-sm flex items-center justify-center font-bold leading-none"
-                                style={{
-                                  width: 32,
-                                  height: 22,
-                                  backgroundColor: css.dot,
-                                  color: '#fff',
-                                  fontSize: 9,
-                                }}
-                              >
-                                {STATUS_LABEL[cell.status].slice(0, 3).toUpperCase()}
-                              </div>
-                            </td>
-                          )
-                        })}
-                      </tr>
+                    <Tooltip
+                      contentStyle={{ fontSize: 12 }}
+                      formatter={(value: any) =>
+                        typeof value === 'number'
+                          ? value.toLocaleString('pt-BR', { maximumFractionDigits: 2 })
+                          : value
+                      }
+                    />
+                    <Legend wrapperStyle={{ fontSize: 12 }} />
+                    {linhas.map((linha, idx) => (
+                      <Line
+                        key={linha}
+                        type="monotone"
+                        dataKey={linha}
+                        stroke={LINE_COLORS[idx % LINE_COLORS.length]}
+                        dot={false}
+                        strokeWidth={2}
+                      />
                     ))}
-                  </tbody>
-                </table>
-              </div>
+                  </LineChart>
+                </ChartWrapper>
+              ))}
             </div>
-          )
-        })()}
-
-      {data.length > 0 && (
-        <>
-          <CenariosDashboard data={data} fontesMap={fontesMap} />
-          <MatrizEficacia
-            data={data}
-            limiarAlerta={limiarAlerta}
-            limiarCrise={limiarCrise}
-            limiarColapso={limiarColapso}
-          />
-          {(() => {
-            const cdObj = cenario_demanda?.find(
-              (c: any) => c.id_cd === parseInt(filters.id_cd_auto),
-            )
-            const ccObj = cenario_consumo?.find(
-              (c: any) => c.id_cc === parseInt(filters.id_cc_auto),
-            )
-            return (
-              <ProjecaoPopulacional
-                data={data}
-                simObj={simObj}
-                cenarioDemanda={cdObj}
-                cenarioConsumo={ccObj}
-                nomeCenarioDemanda={cdObj?.nome_cenario_demanda}
-                nomeCenarioConsumo={ccObj?.nome_cenario_consumo}
-              />
-            )
-          })()}
+          )}
         </>
-      )}
-
-      {indicadoresCharts.length > 0 && (
-        <div className="space-y-6">
-          {indicadoresCharts.map(({ unidade, chartData, linhas, titulo }) => (
-            <ChartWrapper
-              key={unidade}
-              title={`Indicadores: ${titulo}`}
-              chartData={chartData}
-              height={320}
-            >
-              <LineChart data={chartData} margin={{ top: 4, right: 24, left: 8, bottom: 4 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="tempo" tick={{ fontSize: 11 }} interval="preserveStartEnd" />
-                <YAxis
-                  tick={{ fontSize: 11 }}
-                  label={{
-                    value: unidade,
-                    angle: -90,
-                    position: 'insideLeft',
-                    offset: 10,
-                    style: { fontSize: 11 },
-                  }}
-                />
-                <Tooltip
-                  contentStyle={{ fontSize: 12 }}
-                  formatter={(value: any) =>
-                    typeof value === 'number'
-                      ? value.toLocaleString('pt-BR', { maximumFractionDigits: 2 })
-                      : value
-                  }
-                />
-                <Legend wrapperStyle={{ fontSize: 12 }} />
-                {linhas.map((linha, idx) => (
-                  <Line
-                    key={linha}
-                    type="monotone"
-                    dataKey={linha}
-                    stroke={LINE_COLORS[idx % LINE_COLORS.length]}
-                    dot={false}
-                    strokeWidth={2}
-                  />
-                ))}
-              </LineChart>
-            </ChartWrapper>
-          ))}
-        </div>
       )}
     </div>
   )
