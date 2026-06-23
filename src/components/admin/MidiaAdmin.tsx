@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { Switch } from '@/components/ui/switch'
 import {
   Select,
   SelectContent,
@@ -29,6 +30,15 @@ import {
 import { useToast } from '@/hooks/use-toast'
 import { Pencil, Trash2, Plus, UploadCloud } from 'lucide-react'
 
+// Converte qualquer valor de data (timestamp, ISO, etc.) para o formato
+// aceito pelo <input type="date"> (YYYY-MM-DD)
+function toDateInputValue(value: any) {
+  if (!value) return ''
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) return ''
+  return d.toISOString().slice(0, 10)
+}
+
 export function MidiaAdmin() {
   const [items, setItems] = useState<any[]>([])
   const [open, setOpen] = useState(false)
@@ -48,6 +58,22 @@ export function MidiaAdmin() {
     if (data) setItems(data)
   }
 
+  const handleNovo = () => {
+    setFormData({
+      ativar: true,
+      data_pub: toDateInputValue(new Date()),
+    })
+    setOpen(true)
+  }
+
+  const handleEditar = (item: any) => {
+    setFormData({
+      ...item,
+      data_pub: toDateInputValue(item.data_pub),
+    })
+    setOpen(true)
+  }
+
   const handleSave = async () => {
     if (!formData.titulo || !formData.tipo)
       return toast({ title: 'Título e Tipo são obrigatórios', variant: 'destructive' })
@@ -59,6 +85,8 @@ export function MidiaAdmin() {
       link: formData.link,
       arq_imagem: formData.arq_imagem,
       arq_video: formData.arq_video,
+      ativar: formData.ativar ?? true,
+      data_pub: formData.data_pub || null,
     }
 
     if (formData.id_midia) {
@@ -101,7 +129,7 @@ export function MidiaAdmin() {
       <div className="flex justify-end">
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button onClick={() => setFormData({})}>
+            <Button onClick={handleNovo}>
               <Plus className="w-4 h-4 mr-2" /> Nova Mídia
             </Button>
           </DialogTrigger>
@@ -132,6 +160,30 @@ export function MidiaAdmin() {
                   </SelectContent>
                 </Select>
               </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Data de Publicação</Label>
+                  <Input
+                    type="date"
+                    value={formData.data_pub || ''}
+                    onChange={(e) => setFormData({ ...formData, data_pub: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Status</Label>
+                  <div className="flex items-center gap-2 h-10">
+                    <Switch
+                      checked={formData.ativar ?? true}
+                      onCheckedChange={(checked) => setFormData({ ...formData, ativar: checked })}
+                    />
+                    <span className="text-sm text-muted-foreground">
+                      {(formData.ativar ?? true) ? 'Ativo' : 'Inativo'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
               <div className="space-y-2">
                 <Label>Link Externo</Label>
                 <Input
@@ -179,6 +231,8 @@ export function MidiaAdmin() {
             <TableRow>
               <TableHead>Título</TableHead>
               <TableHead>Tipo</TableHead>
+              <TableHead>Publicação</TableHead>
+              <TableHead>Ativo</TableHead>
               <TableHead>Imagem</TableHead>
               <TableHead className="w-[100px]">Ações</TableHead>
             </TableRow>
@@ -188,17 +242,12 @@ export function MidiaAdmin() {
               <TableRow key={item.id_midia}>
                 <TableCell className="font-medium">{item.titulo}</TableCell>
                 <TableCell>{item.tipo}</TableCell>
+                <TableCell>{toDateInputValue(item.data_pub) || '-'}</TableCell>
+                <TableCell>{item.ativar ? 'Sim' : 'Não'}</TableCell>
                 <TableCell>{item.arq_imagem ? 'Sim' : 'Não'}</TableCell>
                 <TableCell>
                   <div className="flex gap-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => {
-                        setFormData(item)
-                        setOpen(true)
-                      }}
-                    >
+                    <Button variant="ghost" size="icon" onClick={() => handleEditar(item)}>
                       <Pencil className="w-4 h-4" />
                     </Button>
                     <Button
@@ -215,7 +264,7 @@ export function MidiaAdmin() {
             ))}
             {items.length === 0 && (
               <TableRow>
-                <TableCell colSpan={4} className="text-center py-4 text-muted-foreground">
+                <TableCell colSpan={6} className="text-center py-4 text-muted-foreground">
                   Nenhuma mídia encontrada.
                 </TableCell>
               </TableRow>
