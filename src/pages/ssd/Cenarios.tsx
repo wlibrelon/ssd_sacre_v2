@@ -1117,11 +1117,7 @@ export default function Cenarios() {
                             </th>
                             <th className="px-3 py-2.5 text-left font-semibold text-slate-600 whitespace-nowrap">
                               Data
-                            </th>
-                            //{' '}
-                            <th className="px-3 py-2.5 text-left font-semibold text-slate-600 whitespace-nowrap">
-                              // Usuário //{' '}
-                            </th>
+                            </th>{' '}
                             <th className="px-3 py-2.5 text-left font-semibold text-slate-600 whitespace-nowrap">
                               Fonte
                             </th>
@@ -1158,10 +1154,6 @@ export default function Cenarios() {
                                   : '-'}
                               </td>
                               //{' '}
-                              <td className="px-3 py-2.5 text-slate-600 whitespace-nowrap">
-                                // {sel._userLabel ?? sel.id_usuario?.slice(0, 8) + '…'}
-                                //{' '}
-                              </td>
                               <td className="px-3 py-2.5 font-medium text-slate-700 whitespace-nowrap">
                                 {sel.fonte_agua?.nome_fonte ?? `Fonte ${sel.id_fonte}`}
                               </td>
