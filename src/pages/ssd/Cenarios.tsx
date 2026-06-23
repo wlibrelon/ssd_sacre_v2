@@ -1153,7 +1153,6 @@ export default function Cenarios() {
                                     })
                                   : '-'}
                               </td>
-                              //{' '}
                               <td className="px-3 py-2.5 font-medium text-slate-700 whitespace-nowrap">
                                 {sel.fonte_agua?.nome_fonte ?? `Fonte ${sel.id_fonte}`}
                               </td>
