@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Activity, Building2, BarChart2, ArrowRight } from 'lucide-react'
 // Ajuste este caminho para o local real do seu client Supabase no projeto
-import { supabase } from '@/integrations/supabase/client'
+
+import { supabase } from '@/lib/supabase/client'
 
 // Configuração de cada tabela: nome de exibição + ícone usado no lugar da thumbnail
 const FONTES = [
