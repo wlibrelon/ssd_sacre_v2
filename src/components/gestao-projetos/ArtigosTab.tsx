@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { Switch } from '@/components/ui/switch'
 import {
   Select,
   SelectContent,
@@ -28,6 +29,15 @@ import {
 } from '@/components/ui/dialog'
 import { useToast } from '@/hooks/use-toast'
 import { Pencil, Trash2, Plus } from 'lucide-react'
+
+// Converte qualquer valor de data (timestamp, ISO, etc.) para o formato
+// aceito pelo <input type="date"> (YYYY-MM-DD)
+function toDateInputValue(value: any) {
+  if (!value) return ''
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) return ''
+  return d.toISOString().slice(0, 10)
+}
 
 export function ArtigosTab() {
   const [items, setItems] = useState<any[]>([])
@@ -55,6 +65,22 @@ export function ArtigosTab() {
     if (tRes.data) setTipos(tRes.data)
   }
 
+  const handleNovo = () => {
+    setFormData({
+      ativar: true,
+      data_pub: toDateInputValue(new Date()),
+    })
+    setOpen(true)
+  }
+
+  const handleEditar = (item: any) => {
+    setFormData({
+      ...item,
+      data_pub: toDateInputValue(item.data_pub),
+    })
+    setOpen(true)
+  }
+
   const handleSave = async () => {
     if (!formData.titulo) return toast({ title: 'Título é obrigatório', variant: 'destructive' })
 
@@ -66,6 +92,8 @@ export function ArtigosTab() {
       revista: formData.revista,
       id_projeto: formData.id_projeto ? parseInt(formData.id_projeto) : null,
       id_tipo_artigo: formData.id_tipo_artigo ? parseInt(formData.id_tipo_artigo) : null,
+      ativar: formData.ativar ?? true,
+      data_pub: formData.data_pub || null,
     }
 
     if (formData.id_artigo) {
@@ -92,7 +120,7 @@ export function ArtigosTab() {
       <div className="flex justify-end">
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button onClick={() => setFormData({})}>
+            <Button onClick={handleNovo}>
               <Plus className="w-4 h-4 mr-2" /> Novo Artigo
             </Button>
           </DialogTrigger>
@@ -164,6 +192,30 @@ export function ArtigosTab() {
                   />
                 </div>
               </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Data de Publicação</Label>
+                  <Input
+                    type="date"
+                    value={formData.data_pub || ''}
+                    onChange={(e) => setFormData({ ...formData, data_pub: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Status de Exibição</Label>
+                  <div className="flex items-center gap-2 h-10">
+                    <Switch
+                      checked={formData.ativar ?? true}
+                      onCheckedChange={(checked) => setFormData({ ...formData, ativar: checked })}
+                    />
+                    <span className="text-sm text-muted-foreground">
+                      {(formData.ativar ?? true) ? 'Ativo' : 'Inativo'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
               <div className="space-y-2">
                 <Label>Resumo (PT)</Label>
                 <Textarea
@@ -195,6 +247,8 @@ export function ArtigosTab() {
               <TableHead>Título</TableHead>
               <TableHead>Tipo</TableHead>
               <TableHead>Projeto</TableHead>
+              <TableHead>Publicação</TableHead>
+              <TableHead>Ativo</TableHead>
               <TableHead className="w-[100px]">Ações</TableHead>
             </TableRow>
           </TableHeader>
@@ -204,16 +258,11 @@ export function ArtigosTab() {
                 <TableCell className="font-medium">{item.titulo}</TableCell>
                 <TableCell>{item.tipo_artigo?.descricao || '-'}</TableCell>
                 <TableCell>{item.projetos_wps?.titulo || '-'}</TableCell>
+                <TableCell>{toDateInputValue(item.data_pub) || '-'}</TableCell>
+                <TableCell>{item.ativar ? 'Sim' : 'Não'}</TableCell>
                 <TableCell>
                   <div className="flex gap-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => {
-                        setFormData(item)
-                        setOpen(true)
-                      }}
-                    >
+                    <Button variant="ghost" size="icon" onClick={() => handleEditar(item)}>
                       <Pencil className="w-4 h-4" />
                     </Button>
                     <Button
@@ -230,7 +279,7 @@ export function ArtigosTab() {
             ))}
             {items.length === 0 && (
               <TableRow>
-                <TableCell colSpan={4} className="text-center py-4">
+                <TableCell colSpan={6} className="text-center py-4">
                   Nenhum artigo encontrado.
                 </TableCell>
               </TableRow>

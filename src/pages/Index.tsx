@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Activity, Building2, BarChart2, ArrowRight } from 'lucide-react'
-// Ajuste este caminho para o local real do seu client Supabase no projeto
 
 import { supabase } from '@/lib/supabase/client'
 
@@ -18,6 +17,20 @@ const MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'O
 
 function formatarData(dataPub) {
   if (!dataPub) return ''
+
+  // Quando o valor vem como 'YYYY-MM-DD' (coluna do tipo date, sem hora),
+  // o construtor Date() interpreta isso como meia-noite em UTC. Se usarmos
+  // depois getDate()/getMonth()/getFullYear() (que retornam no fuso LOCAL
+  // do navegador), em fusos atrás de UTC (como o Brasil) o dia "volta" um
+  // dia. Por isso extraímos o ano/mês/dia direto da string, sem passar
+  // por conversão de fuso horário.
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(dataPub)
+  if (match) {
+    const [, ano, mes, dia] = match
+    return `${dia} ${MESES[parseInt(mes, 10) - 1]} ${ano}`
+  }
+
+  // Fallback para outros formatos de data/hora
   const d = new Date(dataPub)
   if (Number.isNaN(d.getTime())) return ''
   return `${String(d.getDate()).padStart(2, '0')} ${MESES[d.getMonth()]} ${d.getFullYear()}`
