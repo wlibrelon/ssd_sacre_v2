@@ -63,18 +63,30 @@ const LINE_COLORS = ['#2563eb', '#16a34a', '#dc2626', '#d97706', '#7c3aed', '#08
 
 // ── Textos explicativos exibidos abaixo do título de cada aba de configuração ──
 const TEXTO_SELECAO_SIMULACAO =
-  'Você deverá configurar as fontes de água para o abastecimento, os cenários que afetam a disponibilidade de água e as estratégias ou intervenções para o sistema de abastecimento. Você pode selecionar uma ou mais fontes de água pré-configuradas no sistema. Cada fonte de água pode ter um ou mais tipos de cenários e estratégias disponíveis.'
+  'Selecione as fontes de água que farão parte da simulação, combinando cenários climáticos ou de demanda com estratégias de intervenção. Cada combinação corresponde a um conjunto de dados previamente importado na base — só é possível adicionar combinações que já possuam dados de simulação disponíveis.'
 
 const TEXTO_PARAMETROS_SISTEMA =
-  'Você deverá configurar as características do Sistema de Abastecimento: a população atendida e o índice de perdas na distribuição.'
+  'Defina os parâmetros gerais do modelo de abastecimento: o ponto de partida da população atendida, o comportamento das perdas no sistema ao longo do tempo e os limiares que classificam a situação de segurança hídrica da região (Seguro, Alerta, Crise ou Colapso).'
 
 const TEXTO_PROJECAO_DEMANDA =
   'Quando a demanda ou as perdas são calculadas automaticamente, selecione aqui os cenários de referência — crescimento populacional e consumo per capita — que serão usados para projetar a demanda futura.'
 
 // TODO: textos a serem definidos posteriormente — substituir pelo conteúdo final.
-const TEXTO_DEMANDA_AUTOMATICA =
-  'Se marcado a demanda é calculada em função da seleção. Caso contrário os dados virão de uma tabela importada para o sistema.'
-const TEXTO_PERDAS_AUTOMATICAS = ''
+const TEXTO_DEMANDA_AUTOMATICA = 'Texto explicativo a ser definido.'
+const TEXTO_PERDAS_AUTOMATICAS = 'Texto explicativo a ser definido.'
+
+// ── Tooltips (exibidos ao passar o mouse) dos campos da aba
+// "Parâmetros do Sistema de Abastecimento" ──
+const TOOLTIP_LIMIAR_ALERTA =
+  "Valor do Índice de Segurança Hídrica (volume distribuído ÷ demanda regional) a partir do qual a situação é classificada como 'Seguro'. Abaixo deste valor, o status passa para 'Alerta'."
+const TOOLTIP_LIMIAR_CRISE =
+  "Valor do Índice de Segurança Hídrica abaixo do qual a situação é classificada como 'Crise' — um déficit mais acentuado entre a demanda regional e o volume distribuído."
+const TOOLTIP_LIMIAR_COLAPSO =
+  "Valor do Índice de Segurança Hídrica abaixo do qual a situação é classificada como 'Colapso', o nível mais crítico de déficit entre a demanda regional e o volume distribuído."
+
+// TODO: tooltips a serem definidos posteriormente pelo usuário.
+const TOOLTIP_PERC_INICIAL_PERDAS = ''
+const TOOLTIP_INICIO_PERDAS = ''
 
 type StatusSeg = 'seguro' | 'alerta' | 'crise' | 'colapso'
 
@@ -342,6 +354,7 @@ function SimField({
   min,
   max,
   step,
+  tooltip,
 }: {
   label: string
   field: string
@@ -351,9 +364,10 @@ function SimField({
   min?: number
   max?: number
   step?: number
+  tooltip?: string
 }) {
   return (
-    <div className="space-y-1">
+    <div className="space-y-1" title={tooltip || undefined}>
       <label className="text-xs font-semibold text-muted-foreground">{label}</label>
       <Input
         type={type}
@@ -628,6 +642,17 @@ export default function Cenarios() {
   }
 
   const handleToggleSelecao = async (id: string, selecionado: boolean) => {
+    if (selecionado) {
+      const atual = selecoes.find((s) => s.id === id)
+      const jaExisteOutraAtiva =
+        atual && selecoes.some((s) => s.id !== id && s.id_fonte === atual.id_fonte && s.selecionado)
+      if (jaExisteOutraAtiva) {
+        toast.error(
+          'Já existe uma configuração ativa para esta fonte. Desmarque-a antes de selecionar outra.',
+        )
+        return
+      }
+    }
     setSelecoes((prev) => prev.map((s) => (s.id === id ? { ...s, selecionado } : s)))
     const { error } = await supabase.from('selecao_cenarios').update({ selecionado }).eq('id', id)
     if (error) {
@@ -1084,12 +1109,6 @@ export default function Cenarios() {
           <AccordionTrigger className="px-5 py-4 hover:no-underline">
             <div className="flex items-center gap-3">
               <span className="font-semibold text-primary text-base">Configurações</span>
-              {!selecaoLoading && (
-                <span className="text-xs text-muted-foreground">
-                  {selecoes.filter((s) => s.selecionado).length} de {selecoes.length} fontes
-                  selecionadas
-                </span>
-              )}
             </div>
           </AccordionTrigger>
           <AccordionContent className="px-5 pb-5">
@@ -1147,9 +1166,29 @@ export default function Cenarios() {
                                 checked={
                                   selecoes.length > 0 && selecoes.every((s) => s.selecionado)
                                 }
-                                onCheckedChange={(v) =>
-                                  selecoes.forEach((s) => handleToggleSelecao(s.id, !!v))
-                                }
+                                onCheckedChange={(v) => {
+                                  if (v) {
+                                    const fontesUsadas = new Set<number>()
+                                    let puladas = 0
+                                    selecoes.forEach((s) => {
+                                      if (fontesUsadas.has(s.id_fonte)) {
+                                        if (!s.selecionado) puladas += 1
+                                        return
+                                      }
+                                      fontesUsadas.add(s.id_fonte)
+                                      if (!s.selecionado) handleToggleSelecao(s.id, true)
+                                    })
+                                    if (puladas > 0) {
+                                      toast.error(
+                                        `${puladas} configuração(ões) não foram marcadas porque já existe uma seleção ativa para a mesma fonte.`,
+                                      )
+                                    }
+                                  } else {
+                                    selecoes.forEach((s) => {
+                                      if (s.selecionado) handleToggleSelecao(s.id, false)
+                                    })
+                                  }
+                                }}
                                 title="Marcar / desmarcar todos"
                               />
                             </th>
@@ -1293,6 +1332,17 @@ export default function Cenarios() {
                             ))}
                           </SelectContent>
                         </Select>
+                        {idC &&
+                          (() => {
+                            const cenarioSelecionado = refData.cenariosBd.find(
+                              (x: any) => x.id_cenarios.toString() === idC,
+                            )
+                            return cenarioSelecionado?.obs_cenario ? (
+                              <p className="text-xs text-muted-foreground bg-slate-50 border rounded-md p-2">
+                                {cenarioSelecionado.obs_cenario}
+                              </p>
+                            ) : null
+                          })()}
                         <Button
                           className="w-full"
                           size="sm"
@@ -1350,6 +1400,17 @@ export default function Cenarios() {
                             ))}
                           </SelectContent>
                         </Select>
+                        {idAcao &&
+                          (() => {
+                            const acaoSelecionada = refData.acoesBd.find(
+                              (x: any) => x.id_acao.toString() === idAcao,
+                            )
+                            return acaoSelecionada?.obs ? (
+                              <p className="text-xs text-muted-foreground bg-slate-50 border rounded-md p-2">
+                                {acaoSelecionada.obs}
+                              </p>
+                            ) : null
+                          })()}
                         <Button
                           className="w-full"
                           size="sm"
@@ -1429,6 +1490,7 @@ export default function Cenarios() {
                           label="Perc. Inicial de Perdas (%)"
                           field="perc_inicial_perdas"
                           type="number"
+                          tooltip={TOOLTIP_PERC_INICIAL_PERDAS}
                           simEdit={simEdit}
                           setSimEdit={setSimEdit}
                         />
@@ -1436,6 +1498,7 @@ export default function Cenarios() {
                           label="Início da Redução de Perdas"
                           field="inicio_perdas"
                           type="text"
+                          tooltip={TOOLTIP_INICIO_PERDAS}
                           simEdit={simEdit}
                           setSimEdit={setSimEdit}
                         />
@@ -1450,6 +1513,7 @@ export default function Cenarios() {
                           min={0}
                           max={1}
                           step={0.01}
+                          tooltip={TOOLTIP_LIMIAR_ALERTA}
                           simEdit={simEdit}
                           setSimEdit={setSimEdit}
                         />
@@ -1460,6 +1524,7 @@ export default function Cenarios() {
                           min={0}
                           max={1}
                           step={0.01}
+                          tooltip={TOOLTIP_LIMIAR_CRISE}
                           simEdit={simEdit}
                           setSimEdit={setSimEdit}
                         />
@@ -1470,6 +1535,7 @@ export default function Cenarios() {
                           min={0}
                           max={1}
                           step={0.01}
+                          tooltip={TOOLTIP_LIMIAR_COLAPSO}
                           simEdit={simEdit}
                           setSimEdit={setSimEdit}
                         />
