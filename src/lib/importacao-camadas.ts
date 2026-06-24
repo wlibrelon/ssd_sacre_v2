@@ -137,3 +137,27 @@ export async function estruturarImportacaoShapefile(
     throw error
   }
 }
+
+export async function importarCamadaVetorial(
+  camada: any,
+  onProgress?: (msg: string) => void,
+): Promise<{ total: number }> {
+  try {
+    if (onProgress) onProgress('Iniciando processamento vetorial...')
+    await estruturarImportacaoShapefile(camada.id_camada, `${camada.id_camada}/origem.shp`)
+    return { total: 0 }
+  } catch (error: any) {
+    throw error
+  }
+}
+
+export async function importarCamadaRaster(camada: any): Promise<void> {
+  try {
+    await atualizarStatusCamada(camada.id_camada, 'processando')
+    // A raster just needs its status updated to imported since the file is already in storage
+    await atualizarStatusCamada(camada.id_camada, 'importado')
+  } catch (error: any) {
+    await atualizarStatusCamada(camada.id_camada, 'erro', error.message)
+    throw error
+  }
+}
