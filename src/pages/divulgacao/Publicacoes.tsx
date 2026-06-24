@@ -23,7 +23,7 @@ export default function Publicacoes() {
           colaboradores (nome)
         )
       `)
-        .order('id_artigo', { ascending: false })
+        .order('titulo', { ascending: false })
 
       if (data) setPapers(data)
     }
