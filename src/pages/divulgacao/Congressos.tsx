@@ -76,7 +76,7 @@ export default function Congressos() {
                   </div>
 
                   {event.link && (
-                    
+                    <a
                       href={event.link}
                       target="_blank"
                       rel="noopener noreferrer"
