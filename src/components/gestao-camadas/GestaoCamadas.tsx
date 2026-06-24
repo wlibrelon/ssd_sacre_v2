@@ -20,8 +20,21 @@ import {
   DialogFooter,
   DialogDescription,
 } from '@/components/ui/dialog'
-import { Plus, Edit, Trash2, CheckCircle2, XCircle, FileArchive, ImageIcon } from 'lucide-react'
+import {
+  Plus,
+  Edit,
+  Trash2,
+  CheckCircle2,
+  XCircle,
+  FileArchive,
+  ImageIcon,
+  Upload,
+  Loader2,
+  AlertCircle,
+  Clock,
+} from 'lucide-react'
 import { CamadaFormModal } from './CamadaFormModal'
+import { importarCamadaVetorial, importarCamadaRaster } from '@/lib/importacao-camadas'
 
 export function GestaoCamadas() {
   const [camadas, setCamadas] = useState<any[]>([])
@@ -30,6 +43,8 @@ export function GestaoCamadas() {
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingCamada, setEditingCamada] = useState<any>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [importingId, setImportingId] = useState<string | null>(null)
+  const [progressMessage, setProgressMessage] = useState('')
   const { toast } = useToast()
 
   const fetchCamadas = async () => {
@@ -62,7 +77,14 @@ export function GestaoCamadas() {
   }, [])
 
   const toggleAtivo = async (id: string, curr: boolean) => {
-    await supabase.from('camadas_mapa').update({ ativo: !curr }).eq('id_camada', id)
+    const { error } = await supabase
+      .from('camadas_mapa')
+      .update({ ativo: !curr })
+      .eq('id_camada', id)
+    if (error) {
+      toast({ title: 'Erro ao atualizar', description: error.message, variant: 'destructive' })
+      return
+    }
     fetchCamadas()
   }
 
@@ -71,7 +93,12 @@ export function GestaoCamadas() {
     const camada = camadas.find((c) => c.id_camada === deletingId)
     if (camada) {
       const b = camada.tipo_dados === 'vetorial' ? 'camadas-vetor' : 'camadas-raster'
-      await supabase.from('camadas_mapa').delete().eq('id_camada', deletingId)
+      const { error } = await supabase.from('camadas_mapa').delete().eq('id_camada', deletingId)
+      if (error) {
+        toast({ title: 'Erro ao excluir', description: error.message, variant: 'destructive' })
+        setDeletingId(null)
+        return
+      }
       await supabase.storage
         .from(b)
         .remove([`${deletingId}/origem.${camada.tipo_dados === 'vetorial' ? 'zip' : 'tif'}`])
@@ -79,6 +106,89 @@ export function GestaoCamadas() {
       fetchCamadas()
     }
     setDeletingId(null)
+  }
+
+  const handleImportar = async (camada: any) => {
+    setImportingId(camada.id_camada)
+    setProgressMessage('Iniciando importação...')
+    try {
+      if (camada.tipo_dados === 'vetorial') {
+        const resultado = await importarCamadaVetorial(camada, (msg) => setProgressMessage(msg))
+        toast({
+          title: 'Importação concluída',
+          description: `${resultado.total} feições importadas com sucesso.`,
+        })
+      } else {
+        await importarCamadaRaster(camada)
+        toast({
+          title: 'Importação concluída',
+          description: 'Arquivo raster vinculado com sucesso à camada.',
+        })
+      }
+    } catch (err: any) {
+      toast({
+        title: 'Erro na importação',
+        description: err.message || 'Erro desconhecido.',
+        variant: 'destructive',
+      })
+    } finally {
+      setImportingId(null)
+      setProgressMessage('')
+      fetchCamadas()
+    }
+  }
+
+  const renderStatus = (c: any) => {
+    if (importingId === c.id_camada) {
+      return (
+        <span className="flex items-center gap-1.5 text-blue-600 text-sm font-medium">
+          <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+          <span className="truncate max-w-[220px]">{progressMessage || 'Importando...'}</span>
+        </span>
+      )
+    }
+
+    switch (c.status_importacao) {
+      case 'importando':
+        return (
+          <span className="flex items-center gap-1.5 text-blue-600 text-sm font-medium">
+            <Loader2 className="w-3.5 h-3.5 animate-spin" /> Importando...
+          </span>
+        )
+      case 'importado':
+        return (
+          <span
+            className="flex items-center gap-1.5 text-green-600 text-sm font-medium"
+            title={
+              c.importado_em
+                ? `Importado em ${new Date(c.importado_em).toLocaleString('pt-BR')}`
+                : undefined
+            }
+          >
+            <CheckCircle2 className="w-4 h-4" />
+            Importado{c.tipo_dados === 'vetorial' ? ` (${c.total_feicoes ?? 0} feições)` : ''}
+          </span>
+        )
+      case 'erro':
+        return (
+          <span
+            className="flex items-center gap-1.5 text-destructive text-sm font-medium"
+            title={c.mensagem_erro || 'Erro desconhecido'}
+          >
+            <AlertCircle className="w-4 h-4" /> Erro
+          </span>
+        )
+      default:
+        return fileStatuses[c.id_camada] ? (
+          <span className="flex items-center gap-1.5 text-amber-600 text-sm font-medium">
+            <Clock className="w-4 h-4" /> Pronto para importar
+          </span>
+        ) : (
+          <span className="flex items-center gap-1.5 text-muted-foreground text-sm font-medium">
+            <XCircle className="w-4 h-4" /> Aguardando arquivo
+          </span>
+        )
+    }
   }
 
   return (
@@ -102,60 +212,71 @@ export function GestaoCamadas() {
               <TableHead>Nome</TableHead>
               <TableHead>Categoria</TableHead>
               <TableHead>Tipo</TableHead>
-              <TableHead>Arquivo</TableHead>
+              <TableHead>Status</TableHead>
               <TableHead>Ativo</TableHead>
               <TableHead className="text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {camadas.map((c) => (
-              <TableRow key={c.id_camada}>
-                <TableCell className="font-medium">{c.nome}</TableCell>
-                <TableCell>{c.categoria}</TableCell>
-                <TableCell>
-                  <Badge variant={c.tipo_dados === 'vetorial' ? 'default' : 'secondary'}>
-                    {c.tipo_dados === 'vetorial' ? (
-                      <FileArchive className="w-3 h-3 mr-1" />
-                    ) : (
-                      <ImageIcon className="w-3 h-3 mr-1" />
-                    )}
-                    {c.tipo_dados === 'vetorial' ? 'Vetorial' : 'Raster'}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  {fileStatuses[c.id_camada] ? (
-                    <span className="flex items-center text-green-600 text-sm font-medium">
-                      <CheckCircle2 className="w-4 h-4 mr-1" /> Enviado
-                    </span>
-                  ) : (
-                    <span className="flex items-center text-amber-600 text-sm font-medium">
-                      <XCircle className="w-4 h-4 mr-1" /> Aguardando
-                    </span>
-                  )}
-                </TableCell>
-                <TableCell>
-                  <Switch
-                    checked={c.ativo}
-                    onCheckedChange={() => toggleAtivo(c.id_camada, c.ativo)}
-                  />
-                </TableCell>
-                <TableCell className="text-right">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => {
-                      setEditingCamada(c)
-                      setIsFormOpen(true)
-                    }}
-                  >
-                    <Edit className="w-4 h-4" />
-                  </Button>
-                  <Button variant="ghost" size="icon" onClick={() => setDeletingId(c.id_camada)}>
-                    <Trash2 className="w-4 h-4 text-destructive" />
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
+            {camadas.map((c) => {
+              const estaImportando =
+                importingId === c.id_camada || c.status_importacao === 'importando'
+              const podeImportar = fileStatuses[c.id_camada] && !estaImportando
+
+              return (
+                <TableRow key={c.id_camada}>
+                  <TableCell className="font-medium">{c.nome}</TableCell>
+                  <TableCell>{c.categoria}</TableCell>
+                  <TableCell>
+                    <Badge variant={c.tipo_dados === 'vetorial' ? 'default' : 'secondary'}>
+                      {c.tipo_dados === 'vetorial' ? (
+                        <FileArchive className="w-3 h-3 mr-1" />
+                      ) : (
+                        <ImageIcon className="w-3 h-3 mr-1" />
+                      )}
+                      {c.tipo_dados === 'vetorial' ? 'Vetorial' : 'Raster'}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>{renderStatus(c)}</TableCell>
+                  <TableCell>
+                    <Switch
+                      checked={c.ativo}
+                      onCheckedChange={() => toggleAtivo(c.id_camada, c.ativo)}
+                    />
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      disabled={!podeImportar}
+                      title={
+                        podeImportar ? 'Importar dados' : 'Envie o arquivo fonte antes de importar'
+                      }
+                      onClick={() => handleImportar(c)}
+                    >
+                      {estaImportando ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Upload className="w-4 h-4" />
+                      )}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => {
+                        setEditingCamada(c)
+                        setIsFormOpen(true)
+                      }}
+                    >
+                      <Edit className="w-4 h-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={() => setDeletingId(c.id_camada)}>
+                      <Trash2 className="w-4 h-4 text-destructive" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              )
+            })}
             {camadas.length === 0 && (
               <TableRow>
                 <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">

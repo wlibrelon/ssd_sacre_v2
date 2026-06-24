@@ -110,6 +110,13 @@ export function CamadaFormModal({ open, onOpenChange, camada, categorias, onSucc
           .upload(`${id}/origem.${ext}`, file, { upsert: true })
         if (error) throw error
         setProgress(100)
+
+        // Se um novo arquivo foi enviado (cadastro ou substituição), a importação
+        // anterior (se houver) não é mais válida até que o usuário importe de novo.
+        await supabase
+          .from('camadas_mapa')
+          .update({ status_importacao: 'pendente', mensagem_erro: null })
+          .eq('id_camada', id)
       }
 
       toast({ title: 'Sucesso', description: 'Camada salva com sucesso.' })
@@ -217,22 +224,6 @@ export function CamadaFormModal({ open, onOpenChange, camada, categorias, onSucc
                 </div>
               </div>
 
-              {form.tipo_dados === 'vetorial' && (
-                <div className="col-span-2 space-y-2">
-                  <Label>EPSG de Origem</Label>
-                  <Input
-                    type="number"
-                    value={form.epsg_origem}
-                    onChange={(e) => setForm({ ...form, epsg_origem: Number(e.target.value) })}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Sistema de coordenadas do shapefile original. 4674 = SIRGAS 2000 (padrão IBGE).
-                    4326 = WGS84/GPS. Se o shapefile estiver em UTM, use o EPSG da zona (ex: 31983
-                    para a zona 23S).
-                  </p>
-                </div>
-              )}
-
               <div className="space-y-2 col-span-2">
                 <Label>
                   Arquivo fonte (
@@ -247,46 +238,62 @@ export function CamadaFormModal({ open, onOpenChange, camada, categorias, onSucc
               </div>
 
               {form.tipo_dados === 'vetorial' && (
-                <div className="col-span-2 grid grid-cols-4 gap-4 p-4 border rounded-md">
-                  <div className="space-y-2">
-                    <Label>Cor Preench.</Label>
-                    <Input
-                      type="color"
-                      className="h-10 w-full"
-                      value={estilo.fillColor}
-                      onChange={(e) => setEstilo({ ...estilo, fillColor: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Cor Borda</Label>
-                    <Input
-                      type="color"
-                      className="h-10 w-full"
-                      value={estilo.color}
-                      onChange={(e) => setEstilo({ ...estilo, color: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Espessura (px)</Label>
+                <>
+                  <div className="space-y-2 col-span-2">
+                    <Label>EPSG de Origem</Label>
                     <Input
                       type="number"
-                      min={0}
-                      value={estilo.weight}
-                      onChange={(e) => setEstilo({ ...estilo, weight: Number(e.target.value) })}
+                      value={form.epsg_origem}
+                      onChange={(e) => setForm({ ...form, epsg_origem: Number(e.target.value) })}
                     />
+                    <p className="text-xs text-muted-foreground">
+                      Sistema de coordenadas do shapefile original. 4674 = SIRGAS 2000 (padrão
+                      IBGE). 4326 = WGS84/GPS. Se o shapefile estiver em UTM, use o EPSG da zona
+                      (ex: 31983 para a zona 23S).
+                    </p>
                   </div>
-                  <div className="space-y-2">
-                    <Label>Opacidade (0-1)</Label>
-                    <Input
-                      type="number"
-                      step={0.1}
-                      min={0}
-                      max={1}
-                      value={estilo.opacity}
-                      onChange={(e) => setEstilo({ ...estilo, opacity: Number(e.target.value) })}
-                    />
+
+                  <div className="col-span-2 grid grid-cols-4 gap-4 p-4 border rounded-md">
+                    <div className="space-y-2">
+                      <Label>Cor Preench.</Label>
+                      <Input
+                        type="color"
+                        className="h-10 w-full"
+                        value={estilo.fillColor}
+                        onChange={(e) => setEstilo({ ...estilo, fillColor: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Cor Borda</Label>
+                      <Input
+                        type="color"
+                        className="h-10 w-full"
+                        value={estilo.color}
+                        onChange={(e) => setEstilo({ ...estilo, color: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Espessura (px)</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        value={estilo.weight}
+                        onChange={(e) => setEstilo({ ...estilo, weight: Number(e.target.value) })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Opacidade (0-1)</Label>
+                      <Input
+                        type="number"
+                        step={0.1}
+                        min={0}
+                        max={1}
+                        value={estilo.opacity}
+                        onChange={(e) => setEstilo({ ...estilo, opacity: Number(e.target.value) })}
+                      />
+                    </div>
                   </div>
-                </div>
+                </>
               )}
 
               <div className="col-span-2 p-4 border rounded-md space-y-4">
