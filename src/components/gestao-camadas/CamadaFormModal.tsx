@@ -34,6 +34,7 @@ export function CamadaFormModal({ open, onOpenChange, camada, categorias, onSucc
     zoom_max: 22,
     ativo: true,
     visivel: false,
+    epsg_origem: 4674,
   })
   const [estilo, setEstilo] = useState({
     fillColor: '#3388ff',
@@ -55,6 +56,7 @@ export function CamadaFormModal({ open, onOpenChange, camada, categorias, onSucc
         zoom_max: camada?.zoom_max || 22,
         ativo: camada?.ativo ?? true,
         visivel: camada?.visivel_por_padrao ?? false,
+        epsg_origem: camada?.epsg_origem || 4674,
       })
       setEstilo(
         camada?.estilo || { fillColor: '#3388ff', color: '#3388ff', weight: 2, opacity: 0.5 },
@@ -82,6 +84,7 @@ export function CamadaFormModal({ open, onOpenChange, camada, categorias, onSucc
         visivel_por_padrao: form.visivel,
         estilo: form.tipo_dados === 'vetorial' ? estilo : {},
         legenda,
+        epsg_origem: form.tipo_dados === 'vetorial' ? form.epsg_origem : null,
       }
 
       let id = camada?.id_camada
@@ -213,6 +216,22 @@ export function CamadaFormModal({ open, onOpenChange, camada, categorias, onSucc
                   <Label>Visível por Padrão</Label>
                 </div>
               </div>
+
+              {form.tipo_dados === 'vetorial' && (
+                <div className="col-span-2 space-y-2">
+                  <Label>EPSG de Origem</Label>
+                  <Input
+                    type="number"
+                    value={form.epsg_origem}
+                    onChange={(e) => setForm({ ...form, epsg_origem: Number(e.target.value) })}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Sistema de coordenadas do shapefile original. 4674 = SIRGAS 2000 (padrão IBGE).
+                    4326 = WGS84/GPS. Se o shapefile estiver em UTM, use o EPSG da zona (ex: 31983
+                    para a zona 23S).
+                  </p>
+                </div>
+              )}
 
               <div className="space-y-2 col-span-2">
                 <Label>
