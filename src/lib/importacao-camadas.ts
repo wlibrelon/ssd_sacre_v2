@@ -1,159 +1,243 @@
 import { supabase } from '@/lib/supabase/client'
-import type { Feature } from 'shapefile'
+import { unzipSync } from 'fflate'
+// @ts-expect-error - a lib 'shapefile' não publica tipos oficiais (ver src/types/shapefile.d.ts)
+import * as shapefile from 'shapefile'
+import proj4 from 'proj4'
 
-const BATCH_SIZE = 100
+// ---------------------------------------------------------------------------
+// Projeções (PROJ4) — sistemas de coordenadas comuns em dados geoespaciais do Brasil
+// ---------------------------------------------------------------------------
 
-export async function baixarArquivoCamada(bucket: string, caminho: string): Promise<ArrayBuffer> {
-  const { data, error } = await supabase.storage.from(bucket).download(caminho)
+let projecoesRegistradas = false
 
-  if (error || !data) {
-    throw new Error(`Falha ao baixar arquivo ${caminho} do bucket ${bucket}: ${error?.message}`)
+function registrarDefinicoesProj4() {
+  if (projecoesRegistradas) return
+
+  // SIRGAS 2000 geográfico (datum oficial do IBGE)
+  proj4.defs('EPSG:4674', '+proj=longlat +ellps=GRS80 +no_defs +type=crs')
+  // WGS84 geográfico (GPS / padrão web)
+  proj4.defs('EPSG:4326', '+proj=longlat +datum=WGS84 +no_defs +type=crs')
+
+  // UTM SIRGAS 2000, zonas 18S a 25S (cobre todo o território brasileiro)
+  const zonasUtmSirgas: Record<number, number> = {
+    31978: 18,
+    31979: 19,
+    31980: 20,
+    31981: 21,
+    31982: 22,
+    31983: 23,
+    31984: 24,
+    31985: 25,
   }
-
-  return await data.arrayBuffer()
-}
-
-export async function atualizarStatusCamada(
-  idCamada: string,
-  status: 'pendente' | 'processando' | 'importado' | 'erro',
-  mensagemErro: string | null = null,
-) {
-  const { error } = await supabase
-    .from('camadas_mapa')
-    .update({
-      status_importacao: status,
-      mensagem_erro: mensagemErro,
-    })
-    .eq('id_camada', idCamada)
-
-  if (error) {
-    console.error(`Erro ao atualizar status da camada ${idCamada}:`, error)
-  }
-}
-
-export async function finalizarImportacaoVetorial(idCamada: string, totalFeicoes: number) {
-  const { error } = await supabase.rpc('finalizar_importacao_vetorial', {
-    p_id_camada: idCamada,
-    p_total: totalFeicoes,
+  Object.entries(zonasUtmSirgas).forEach(([codigo, zona]) => {
+    proj4.defs(
+      `EPSG:${codigo}`,
+      `+proj=utm +zone=${zona} +south +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs +type=crs`,
+    )
   })
 
-  if (error) {
-    throw new Error(`Erro ao finalizar importação: ${error.message}`)
-  }
+  projecoesRegistradas = true
 }
 
-export async function processarFeicoesLote(idCamada: string, feicoes: Feature[]): Promise<number> {
-  let totalProcessado = 0
+type ParCoordenadas = [number, number] | [number, number, number]
 
-  try {
-    await atualizarStatusCamada(idCamada, 'processando')
+function reprojetarCoordenadas(
+  coords: any,
+  transformar: (xy: [number, number]) => [number, number],
+): any {
+  if (typeof coords[0] === 'number') {
+    const [x, y] = transformar([coords[0], coords[1]])
+    return coords.length > 2 ? [x, y, coords[2]] : [x, y]
+  }
+  return coords.map((c: any) => reprojetarCoordenadas(c, transformar))
+}
 
-    for (let i = 0; i < feicoes.length; i += BATCH_SIZE) {
-      const lote = feicoes.slice(i, i + BATCH_SIZE)
+/** Reprojeta uma geometria GeoJSON inteira de um EPSG de origem para EPSG:4326 (WGS84). */
+export function reprojetarGeometria(geometria: any, epsgOrigem: number): any {
+  if (!geometria) return geometria
+  if (epsgOrigem === 4326) return geometria
 
-      const payload = lote.map((feature, index) => ({
-        geom: feature.geometry,
-        nome:
-          feature.properties?.name ||
-          feature.properties?.nome ||
-          feature.properties?.NOME ||
-          `Feição ${i + index + 1}`,
-        propriedades: feature.properties || {},
-      }))
+  registrarDefinicoesProj4()
+  const fromDef = `EPSG:${epsgOrigem}`
+  const transformar = (xy: [number, number]) => proj4(fromDef, 'EPSG:4326', xy) as [number, number]
 
-      const { error } = await supabase.rpc('importar_feicoes_lote', {
-        p_id_camada: idCamada,
-        p_feicoes: payload as any,
-      })
-
-      if (error) {
-        throw new Error(`Falha na inserção do lote ${i}: ${error.message}`)
-      }
-
-      totalProcessado += lote.length
+  if (geometria.type === 'GeometryCollection') {
+    return {
+      ...geometria,
+      geometries: geometria.geometries.map((g: any) => reprojetarGeometria(g, epsgOrigem)),
     }
+  }
 
-    await finalizarImportacaoVetorial(idCamada, totalProcessado)
-    return totalProcessado
-  } catch (error: any) {
-    console.error('Erro durante a importação em lote:', error)
-    await atualizarStatusCamada(idCamada, 'erro', error.message || 'Erro desconhecido')
-    throw error
+  return {
+    ...geometria,
+    coordinates: reprojetarCoordenadas(geometria.coordinates, transformar),
   }
 }
 
-export async function estruturarImportacaoShapefile(
-  idCamada: string,
-  shpCaminho: string,
-  dbfCaminho?: string,
-) {
-  try {
-    await atualizarStatusCamada(idCamada, 'processando')
+// ---------------------------------------------------------------------------
+// Leitura do shapefile (.zip contendo .shp + .dbf)
+// ---------------------------------------------------------------------------
 
-    // 1. Download do shapefile do storage (bucket 'camadas-vetor')
-    const _shpBuffer = await baixarArquivoCamada('camadas-vetor', shpCaminho)
-    let _dbfBuffer: ArrayBuffer | undefined
+function encontrarArquivoNoZip(
+  arquivos: Record<string, Uint8Array>,
+  extensao: string,
+): Uint8Array | null {
+  const chave = Object.keys(arquivos).find((k) => k.toLowerCase().endsWith(`.${extensao}`))
+  return chave ? arquivos[chave] : null
+}
 
-    if (dbfCaminho) {
-      try {
-        _dbfBuffer = await baixarArquivoCamada('camadas-vetor', dbfCaminho)
-      } catch (e) {
-        console.warn(
-          'DBF não encontrado ou erro ao baixar, prosseguindo com dados apenas geométricos...',
-        )
-      }
+async function lerFeaturesDoShapefile(shpBytes: Uint8Array, dbfBytes: Uint8Array): Promise<any[]> {
+  const source = await shapefile.open(shpBytes, dbfBytes)
+  const features: any[] = []
+  let resultado = await source.read()
+  while (!resultado.done) {
+    features.push(resultado.value)
+    resultado = await source.read()
+  }
+  return features
+}
+
+const CHAVES_NOME_CANDIDATAS = ['nome', 'name', 'rotulo', 'label', 'ds_nome', 'nm_nome']
+
+function extrairNome(propriedades: Record<string, any> | null | undefined): string | null {
+  if (!propriedades) return null
+  const entradas = Object.entries(propriedades)
+  for (const candidata of CHAVES_NOME_CANDIDATAS) {
+    const encontrada = entradas.find(([chave]) => chave.toLowerCase() === candidata)
+    if (encontrada && encontrada[1] != null && String(encontrada[1]).trim() !== '') {
+      return String(encontrada[1])
     }
-
-    // 2. Integração com biblioteca 'shapefile':
-    // O parser shapefile leria o source através da função open():
-    // const source = await shapefile.open(_shpBuffer, _dbfBuffer, { encoding: 'utf-8' });
-
-    // let feicoesAcumuladas: Feature[] = [];
-    // let totalGeral = 0;
-
-    // while (true) {
-    //   const result = await source.read();
-    //   if (result.done) break;
-    //   feicoesAcumuladas.push(result.value);
-    //
-    //   if (feicoesAcumuladas.length >= BATCH_SIZE) {
-    //     await processarFeicoesLote(idCamada, feicoesAcumuladas);
-    //     totalGeral += feicoesAcumuladas.length;
-    //     feicoesAcumuladas = [];
-    //   }
-    // }
-    //
-    // if (feicoesAcumuladas.length > 0) {
-    //   await processarFeicoesLote(idCamada, feicoesAcumuladas);
-    //   totalGeral += feicoesAcumuladas.length;
-    // }
-    // await finalizarImportacaoVetorial(idCamada, totalGeral);
-
-    throw new Error(
-      'Processamento nativo de Shapefiles aguardando implementação da lib correspondente',
-    )
-  } catch (error: any) {
-    await atualizarStatusCamada(idCamada, 'erro', error.message)
-    throw error
   }
+  return null
 }
+
+// ---------------------------------------------------------------------------
+// Fluxo de importação — camadas vetoriais
+// ---------------------------------------------------------------------------
+
+const TAMANHO_LOTE = 500
 
 export async function importarCamadaVetorial(
   camada: any,
-  onProgress?: (msg: string) => void,
-): Promise<{ total: number }> {
-  if (onProgress) onProgress('Iniciando processamento vetorial...')
-  await estruturarImportacaoShapefile(camada.id_camada, `${camada.id_camada}/origem.shp`)
-  return { total: 0 }
+  onProgress?: (mensagem: string) => void,
+): Promise<{ sucesso: true; total: number }> {
+  await supabase
+    .from('camadas_mapa')
+    .update({ status_importacao: 'importando', mensagem_erro: null })
+    .eq('id_camada', camada.id_camada)
+
+  try {
+    onProgress?.('Baixando arquivo .zip...')
+    const { data: blob, error: downloadError } = await supabase.storage
+      .from('camadas-vetor')
+      .download(`${camada.id_camada}/origem.zip`)
+    if (downloadError || !blob) {
+      throw new Error('Não foi possível baixar o arquivo .zip do storage.')
+    }
+
+    onProgress?.('Descompactando arquivo...')
+    const zipBytes = new Uint8Array(await blob.arrayBuffer())
+    const arquivos = unzipSync(zipBytes)
+    const shpBytes = encontrarArquivoNoZip(arquivos, 'shp')
+    const dbfBytes = encontrarArquivoNoZip(arquivos, 'dbf')
+    if (!shpBytes || !dbfBytes) {
+      throw new Error('O .zip não contém os arquivos .shp e .dbf esperados.')
+    }
+
+    onProgress?.('Lendo feições do shapefile...')
+    const features = await lerFeaturesDoShapefile(shpBytes, dbfBytes)
+    if (features.length === 0) {
+      throw new Error('Nenhuma feição encontrada no shapefile.')
+    }
+
+    const epsgOrigem = camada.epsg_origem || 4674
+    let totalImportado = 0
+
+    for (let i = 0; i < features.length; i += TAMANHO_LOTE) {
+      const lote = features.slice(i, i + TAMANHO_LOTE)
+      onProgress?.(
+        `Processando feição ${Math.min(i + TAMANHO_LOTE, features.length)} de ${features.length}...`,
+      )
+
+      const payload = lote.map((feature: any) => ({
+        geometria: reprojetarGeometria(feature.geometry, epsgOrigem),
+        nome: extrairNome(feature.properties),
+        propriedades: feature.properties || {},
+      }))
+
+      const { error: rpcError } = await supabase.rpc('importar_feicoes_lote', {
+        p_id_camada: camada.id_camada,
+        p_feicoes: payload,
+      })
+      if (rpcError) {
+        throw new Error(`Erro ao gravar lote de feições: ${rpcError.message}`)
+      }
+      totalImportado += lote.length
+    }
+
+    onProgress?.('Finalizando importação...')
+    const { error: finalError } = await supabase.rpc('finalizar_importacao_vetorial', {
+      p_id_camada: camada.id_camada,
+      p_total: totalImportado,
+    })
+    if (finalError) throw new Error(finalError.message)
+
+    return { sucesso: true, total: totalImportado }
+  } catch (err: any) {
+    await supabase
+      .from('camadas_mapa')
+      .update({
+        status_importacao: 'erro',
+        mensagem_erro: err?.message || 'Erro desconhecido na importação.',
+      })
+      .eq('id_camada', camada.id_camada)
+    throw err
+  }
 }
 
-export async function importarCamadaRaster(camada: any): Promise<void> {
+// ---------------------------------------------------------------------------
+// Fluxo de importação — camadas raster
+// ---------------------------------------------------------------------------
+
+export async function importarCamadaRaster(camada: any): Promise<{ sucesso: true }> {
+  await supabase
+    .from('camadas_mapa')
+    .update({ status_importacao: 'importando', mensagem_erro: null })
+    .eq('id_camada', camada.id_camada)
+
   try {
-    await atualizarStatusCamada(camada.id_camada, 'processando')
-    // A raster just needs its status updated to imported since the file is already in storage
-    await atualizarStatusCamada(camada.id_camada, 'importado')
-  } catch (error: any) {
-    await atualizarStatusCamada(camada.id_camada, 'erro', error.message)
-    throw error
+    const caminho = `${camada.id_camada}/origem.tif`
+    // Bucket é privado: gera uma URL assinada de longa duração.
+    // OBS: essa URL expira (aqui, em ~1 ano). Quando a etapa de geração de
+    // tiles/COG for implementada, fonte_raster_url deve passar a apontar
+    // para esses tiles processados em vez do .tif assinado.
+    const { data: urlData, error: urlError } = await supabase.storage
+      .from('camadas-raster')
+      .createSignedUrl(caminho, 60 * 60 * 24 * 365)
+    if (urlError || !urlData) {
+      throw new Error('Não foi possível gerar a URL do arquivo raster.')
+    }
+
+    const { error: updateError } = await supabase
+      .from('camadas_mapa')
+      .update({
+        fonte_raster_url: urlData.signedUrl,
+        status_importacao: 'importado',
+        importado_em: new Date().toISOString(),
+        mensagem_erro: null,
+      })
+      .eq('id_camada', camada.id_camada)
+    if (updateError) throw updateError
+
+    return { sucesso: true }
+  } catch (err: any) {
+    await supabase
+      .from('camadas_mapa')
+      .update({
+        status_importacao: 'erro',
+        mensagem_erro: err?.message || 'Erro desconhecido na importação.',
+      })
+      .eq('id_camada', camada.id_camada)
+    throw err
   }
 }
