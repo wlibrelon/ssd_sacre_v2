@@ -11,7 +11,7 @@ export default function Congressos() {
       const { data } = await supabase
         .from('congressos')
         .select('*')
-        .order('data', { ascending: false })
+        .order('data', { ascending: true })
       if (data) setEvents(data)
     }
     fetchEvents()
@@ -46,18 +46,7 @@ export default function Congressos() {
                 <CardContent className="p-5">
                   <div className="flex justify-between items-start mb-3">
                     <h3 className="text-xl font-bold text-primary leading-tight pr-4">
-                      {event.link ? (
-                        <a
-                          href={event.link}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="hover:text-secondary flex items-center gap-2"
-                        >
-                          {event.titulo} <ExternalLink className="h-4 w-4 shrink-0" />
-                        </a>
-                      ) : (
-                        event.titulo
-                      )}
+                      {event.titulo}
                     </h3>
                     <span
                       className={`text-xs font-semibold px-2 py-1 rounded-full shrink-0 ${
@@ -85,6 +74,18 @@ export default function Congressos() {
                       </span>
                     )}
                   </div>
+
+                  {event.link && (
+                    
+                      href={event.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 mt-4 text-sm font-medium text-secondary hover:text-secondary/80 hover:underline"
+                    >
+                      Acessar página do evento
+                      <ExternalLink className="h-4 w-4" />
+                    </a>
+                  )}
                 </CardContent>
               </Card>
             </div>
