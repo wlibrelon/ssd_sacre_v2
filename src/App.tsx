@@ -12,6 +12,7 @@ import AreaEstudoObjetivos from './pages/area-estudo/Objetivos'
 import AreaEstudoDocumentos from './pages/area-estudo/Documentos'
 import Camadas from './pages/area-estudo/Camadas'
 import Projeto from './pages/institucional/Projeto'
+import { GestaoCamadas } from '@/components/gestao-camadas/GestaoCamadas'
 import Equipe from './pages/institucional/Equipe'
 import Parceiros from './pages/institucional/Parceiros'
 import ObjetivosInstitucionais from './pages/institucional/Objetivos'
@@ -59,6 +60,7 @@ const App = () => (
             />
             <Route path="/restrito" element={<Dashboard />} />
             <Route path="/restrito/projetos" element={<GestaoProjetos />} />
+            <Route path="/restrito/camadas" element={<GestaoCamadas />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>

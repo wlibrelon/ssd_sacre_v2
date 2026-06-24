@@ -103,6 +103,7 @@ export const AppSidebar = ({ onOpenSobre }: { onOpenSobre: () => void }) => {
       items: [
         { title: 'Painel Administrativo', url: '/restrito' },
         { title: 'Gestão de Projetos', url: '/restrito/projetos' },
+        { title: 'Gestão de Camadas', url: '/restrito/camadas' },
       ],
     },
   ]
