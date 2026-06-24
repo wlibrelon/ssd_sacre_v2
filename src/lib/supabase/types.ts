@@ -1,11 +1,17 @@
 // AVOID UPDATING THIS FILE DIRECTLY. It is automatically generated.
-export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
 
 export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: '14.5'
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
@@ -45,18 +51,18 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'acoes_fonte_id_acao_fkey'
-            columns: ['id_acao']
+            foreignKeyName: "acoes_fonte_id_acao_fkey"
+            columns: ["id_acao"]
             isOneToOne: false
-            referencedRelation: 'acoes'
-            referencedColumns: ['id_acao']
+            referencedRelation: "acoes"
+            referencedColumns: ["id_acao"]
           },
           {
-            foreignKeyName: 'estrategias_fonte_id_fonte_fkey'
-            columns: ['id_fonte']
+            foreignKeyName: "estrategias_fonte_id_fonte_fkey"
+            columns: ["id_fonte"]
             isOneToOne: false
-            referencedRelation: 'fonte_agua'
-            referencedColumns: ['id_fonte']
+            referencedRelation: "fonte_agua"
+            referencedColumns: ["id_fonte"]
           },
         ]
       }
@@ -81,11 +87,11 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'arq_resultados_id_projeto_fkey'
-            columns: ['id_projeto']
+            foreignKeyName: "arq_resultados_id_projeto_fkey"
+            columns: ["id_projeto"]
             isOneToOne: false
-            referencedRelation: 'projetos_wps'
-            referencedColumns: ['id_projeto']
+            referencedRelation: "projetos_wps"
+            referencedColumns: ["id_projeto"]
           },
         ]
       }
@@ -131,18 +137,18 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'artigos_id_projeto_fkey'
-            columns: ['id_projeto']
+            foreignKeyName: "artigos_id_projeto_fkey"
+            columns: ["id_projeto"]
             isOneToOne: false
-            referencedRelation: 'projetos_wps'
-            referencedColumns: ['id_projeto']
+            referencedRelation: "projetos_wps"
+            referencedColumns: ["id_projeto"]
           },
           {
-            foreignKeyName: 'artigos_id_tipo_artigo_fkey'
-            columns: ['id_tipo_artigo']
+            foreignKeyName: "artigos_id_tipo_artigo_fkey"
+            columns: ["id_tipo_artigo"]
             isOneToOne: false
-            referencedRelation: 'tipo_artigo'
-            referencedColumns: ['id_tipo']
+            referencedRelation: "tipo_artigo"
+            referencedColumns: ["id_tipo"]
           },
         ]
       }
@@ -167,18 +173,18 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'artigos_autores_id_artigo_fkey'
-            columns: ['id_artigo']
+            foreignKeyName: "artigos_autores_id_artigo_fkey"
+            columns: ["id_artigo"]
             isOneToOne: false
-            referencedRelation: 'artigos'
-            referencedColumns: ['id_artigo']
+            referencedRelation: "artigos"
+            referencedColumns: ["id_artigo"]
           },
           {
-            foreignKeyName: 'artigos_autores_id_autor_fkey'
-            columns: ['id_autor']
+            foreignKeyName: "artigos_autores_id_autor_fkey"
+            columns: ["id_autor"]
             isOneToOne: false
-            referencedRelation: 'colaboradores'
-            referencedColumns: ['id_colaborador']
+            referencedRelation: "colaboradores"
+            referencedColumns: ["id_colaborador"]
           },
         ]
       }
@@ -275,11 +281,11 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'capex_acao_id_acao_fkey'
-            columns: ['id_acao']
+            foreignKeyName: "capex_acao_id_acao_fkey"
+            columns: ["id_acao"]
             isOneToOne: false
-            referencedRelation: 'acoes'
-            referencedColumns: ['id_acao']
+            referencedRelation: "acoes"
+            referencedColumns: ["id_acao"]
           },
         ]
       }
@@ -388,39 +394,39 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'cenario_simulacao_id_acao_fkey'
-            columns: ['id_acao']
+            foreignKeyName: "cenario_simulacao_id_acao_fkey"
+            columns: ["id_acao"]
             isOneToOne: false
-            referencedRelation: 'acoes'
-            referencedColumns: ['id_acao']
+            referencedRelation: "acoes"
+            referencedColumns: ["id_acao"]
           },
           {
-            foreignKeyName: 'cenario_simulacao_id_c_fkey'
-            columns: ['id_c']
+            foreignKeyName: "cenario_simulacao_id_c_fkey"
+            columns: ["id_c"]
             isOneToOne: false
-            referencedRelation: 'cenarios'
-            referencedColumns: ['id_cenarios']
+            referencedRelation: "cenarios"
+            referencedColumns: ["id_cenarios"]
           },
           {
-            foreignKeyName: 'cenario_simulacao_id_fonte_fkey'
-            columns: ['id_fonte']
+            foreignKeyName: "cenario_simulacao_id_fonte_fkey"
+            columns: ["id_fonte"]
             isOneToOne: false
-            referencedRelation: 'fonte_agua'
-            referencedColumns: ['id_fonte']
+            referencedRelation: "fonte_agua"
+            referencedColumns: ["id_fonte"]
           },
           {
-            foreignKeyName: 'cenario_simulacao_id_s_fkey'
-            columns: ['id_s']
+            foreignKeyName: "cenario_simulacao_id_s_fkey"
+            columns: ["id_s"]
             isOneToOne: false
-            referencedRelation: 'simulacao_ssd'
-            referencedColumns: ['id_s']
+            referencedRelation: "simulacao_ssd"
+            referencedColumns: ["id_s"]
           },
           {
-            foreignKeyName: 'cenario_simulacao_id_tc_fkey'
-            columns: ['id_tc']
+            foreignKeyName: "cenario_simulacao_id_tc_fkey"
+            columns: ["id_tc"]
             isOneToOne: false
-            referencedRelation: 'tipos_cenarios'
-            referencedColumns: ['id_tc']
+            referencedRelation: "tipos_cenarios"
+            referencedColumns: ["id_tc"]
           },
         ]
       }
@@ -460,18 +466,18 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'cenarios_fonte_id_fonte_fkey'
-            columns: ['id_fonte']
+            foreignKeyName: "cenarios_fonte_id_fonte_fkey"
+            columns: ["id_fonte"]
             isOneToOne: false
-            referencedRelation: 'fonte_agua'
-            referencedColumns: ['id_fonte']
+            referencedRelation: "fonte_agua"
+            referencedColumns: ["id_fonte"]
           },
           {
-            foreignKeyName: 'cenarios_fonte_id_tc_fkey'
-            columns: ['id_tc']
+            foreignKeyName: "cenarios_fonte_id_tc_fkey"
+            columns: ["id_tc"]
             isOneToOne: false
-            referencedRelation: 'tipos_cenarios'
-            referencedColumns: ['id_tc']
+            referencedRelation: "tipos_cenarios"
+            referencedColumns: ["id_tc"]
           },
         ]
       }
@@ -505,11 +511,11 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'fk_colaboradores_grupo'
-            columns: ['id_grupo']
+            foreignKeyName: "fk_colaboradores_grupo"
+            columns: ["id_grupo"]
             isOneToOne: false
-            referencedRelation: 'grupo_colaboradores'
-            referencedColumns: ['id_grupo']
+            referencedRelation: "grupo_colaboradores"
+            referencedColumns: ["id_grupo"]
           },
         ]
       }
@@ -630,32 +636,32 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'dados_simulacao_id_acao_fkey'
-            columns: ['id_acao']
+            foreignKeyName: "dados_simulacao_id_acao_fkey"
+            columns: ["id_acao"]
             isOneToOne: false
-            referencedRelation: 'acoes'
-            referencedColumns: ['id_acao']
+            referencedRelation: "acoes"
+            referencedColumns: ["id_acao"]
           },
           {
-            foreignKeyName: 'dados_simulacao_id_fonte_fkey'
-            columns: ['id_fonte']
+            foreignKeyName: "dados_simulacao_id_fonte_fkey"
+            columns: ["id_fonte"]
             isOneToOne: false
-            referencedRelation: 'fonte_agua'
-            referencedColumns: ['id_fonte']
+            referencedRelation: "fonte_agua"
+            referencedColumns: ["id_fonte"]
           },
           {
-            foreignKeyName: 'dados_simulacao_id_mod_fkey'
-            columns: ['id_mod']
+            foreignKeyName: "dados_simulacao_id_mod_fkey"
+            columns: ["id_mod"]
             isOneToOne: false
-            referencedRelation: 'modelos'
-            referencedColumns: ['id_mod']
+            referencedRelation: "modelos"
+            referencedColumns: ["id_mod"]
           },
           {
-            foreignKeyName: 'dados_simulacao_id_s_fkey'
-            columns: ['id_s']
+            foreignKeyName: "dados_simulacao_id_s_fkey"
+            columns: ["id_s"]
             isOneToOne: false
-            referencedRelation: 'simulacao_ssd'
-            referencedColumns: ['id_s']
+            referencedRelation: "simulacao_ssd"
+            referencedColumns: ["id_s"]
           },
         ]
       }
@@ -707,11 +713,11 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'feicoes_geoespaciais_id_camada_fkey'
-            columns: ['id_camada']
+            foreignKeyName: "feicoes_geoespaciais_id_camada_fkey"
+            columns: ["id_camada"]
             isOneToOne: false
-            referencedRelation: 'camadas_mapa'
-            referencedColumns: ['id_camada']
+            referencedRelation: "camadas_mapa"
+            referencedColumns: ["id_camada"]
           },
         ]
       }
@@ -787,11 +793,11 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'indicadores_id_fonte_fkey'
-            columns: ['id_fonte']
+            foreignKeyName: "indicadores_id_fonte_fkey"
+            columns: ["id_fonte"]
             isOneToOne: false
-            referencedRelation: 'fonte_agua'
-            referencedColumns: ['id_fonte']
+            referencedRelation: "fonte_agua"
+            referencedColumns: ["id_fonte"]
           },
         ]
       }
@@ -816,18 +822,18 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'indicadores_aplicado_id_indicador_fkey'
-            columns: ['id_indicador']
+            foreignKeyName: "indicadores_aplicado_id_indicador_fkey"
+            columns: ["id_indicador"]
             isOneToOne: false
-            referencedRelation: 'indicadores'
-            referencedColumns: ['id_indicador']
+            referencedRelation: "indicadores"
+            referencedColumns: ["id_indicador"]
           },
           {
-            foreignKeyName: 'indicadores_aplicado_id_s_fkey'
-            columns: ['id_s']
+            foreignKeyName: "indicadores_aplicado_id_s_fkey"
+            columns: ["id_s"]
             isOneToOne: false
-            referencedRelation: 'simulacao_ssd'
-            referencedColumns: ['id_s']
+            referencedRelation: "simulacao_ssd"
+            referencedColumns: ["id_s"]
           },
         ]
       }
@@ -849,18 +855,18 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'lista_colab_id_colaborador_fkey'
-            columns: ['id_colaborador']
+            foreignKeyName: "lista_colab_id_colaborador_fkey"
+            columns: ["id_colaborador"]
             isOneToOne: false
-            referencedRelation: 'colaboradores'
-            referencedColumns: ['id_colaborador']
+            referencedRelation: "colaboradores"
+            referencedColumns: ["id_colaborador"]
           },
           {
-            foreignKeyName: 'lista_colab_id_wp_fkey'
-            columns: ['id_wp']
+            foreignKeyName: "lista_colab_id_wp_fkey"
+            columns: ["id_wp"]
             isOneToOne: false
-            referencedRelation: 'wps'
-            referencedColumns: ['id_wp']
+            referencedRelation: "wps"
+            referencedColumns: ["id_wp"]
           },
         ]
       }
@@ -942,11 +948,11 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'modelos_id_fonte_fkey'
-            columns: ['id_fonte']
+            foreignKeyName: "modelos_id_fonte_fkey"
+            columns: ["id_fonte"]
             isOneToOne: false
-            referencedRelation: 'fonte_agua'
-            referencedColumns: ['id_fonte']
+            referencedRelation: "fonte_agua"
+            referencedColumns: ["id_fonte"]
           },
         ]
       }
@@ -1004,11 +1010,11 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'perfis_usuarios_id_ga_fkey'
-            columns: ['id_ga']
+            foreignKeyName: "perfis_usuarios_id_ga_fkey"
+            columns: ["id_ga"]
             isOneToOne: false
-            referencedRelation: 'grupo_acesso'
-            referencedColumns: ['id_ga']
+            referencedRelation: "grupo_acesso"
+            referencedColumns: ["id_ga"]
           },
         ]
       }
@@ -1039,11 +1045,11 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'projetos_wps_id_wp_fkey'
-            columns: ['id_wp']
+            foreignKeyName: "projetos_wps_id_wp_fkey"
+            columns: ["id_wp"]
             isOneToOne: false
-            referencedRelation: 'wps'
-            referencedColumns: ['id_wp']
+            referencedRelation: "wps"
+            referencedColumns: ["id_wp"]
           },
         ]
       }
@@ -1065,11 +1071,11 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'recursos_app_id_ga_fkey'
-            columns: ['id_ga']
+            foreignKeyName: "recursos_app_id_ga_fkey"
+            columns: ["id_ga"]
             isOneToOne: false
-            referencedRelation: 'grupo_acesso'
-            referencedColumns: ['id_ga']
+            referencedRelation: "grupo_acesso"
+            referencedColumns: ["id_ga"]
           },
         ]
       }
@@ -1112,32 +1118,32 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'selecao_cenarios_id_acao_fkey'
-            columns: ['id_acao']
+            foreignKeyName: "selecao_cenarios_id_acao_fkey"
+            columns: ["id_acao"]
             isOneToOne: false
-            referencedRelation: 'acoes'
-            referencedColumns: ['id_acao']
+            referencedRelation: "acoes"
+            referencedColumns: ["id_acao"]
           },
           {
-            foreignKeyName: 'selecao_cenarios_id_c_fkey'
-            columns: ['id_c']
+            foreignKeyName: "selecao_cenarios_id_c_fkey"
+            columns: ["id_c"]
             isOneToOne: false
-            referencedRelation: 'cenarios'
-            referencedColumns: ['id_cenarios']
+            referencedRelation: "cenarios"
+            referencedColumns: ["id_cenarios"]
           },
           {
-            foreignKeyName: 'selecao_cenarios_id_fonte_fkey'
-            columns: ['id_fonte']
+            foreignKeyName: "selecao_cenarios_id_fonte_fkey"
+            columns: ["id_fonte"]
             isOneToOne: false
-            referencedRelation: 'fonte_agua'
-            referencedColumns: ['id_fonte']
+            referencedRelation: "fonte_agua"
+            referencedColumns: ["id_fonte"]
           },
           {
-            foreignKeyName: 'selecao_cenarios_id_tc_fkey'
-            columns: ['id_tc']
+            foreignKeyName: "selecao_cenarios_id_tc_fkey"
+            columns: ["id_tc"]
             isOneToOne: false
-            referencedRelation: 'tipos_cenarios'
-            referencedColumns: ['id_tc']
+            referencedRelation: "tipos_cenarios"
+            referencedColumns: ["id_tc"]
           },
         ]
       }
@@ -1243,18 +1249,18 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'tipo_cenario_cenario_id_c_fkey'
-            columns: ['id_c']
+            foreignKeyName: "tipo_cenario_cenario_id_c_fkey"
+            columns: ["id_c"]
             isOneToOne: false
-            referencedRelation: 'cenarios'
-            referencedColumns: ['id_cenarios']
+            referencedRelation: "cenarios"
+            referencedColumns: ["id_cenarios"]
           },
           {
-            foreignKeyName: 'tipo_cenario_cenario_id_tc_fkey'
-            columns: ['id_tc']
+            foreignKeyName: "tipo_cenario_cenario_id_tc_fkey"
+            columns: ["id_tc"]
             isOneToOne: false
-            referencedRelation: 'tipos_cenarios'
-            referencedColumns: ['id_tc']
+            referencedRelation: "tipos_cenarios"
+            referencedColumns: ["id_tc"]
           },
         ]
       }
@@ -1303,11 +1309,11 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'wps_id_gerente_fkey'
-            columns: ['id_gerente']
+            foreignKeyName: "wps_id_gerente_fkey"
+            columns: ["id_gerente"]
             isOneToOne: false
-            referencedRelation: 'colaboradores'
-            referencedColumns: ['id_colaborador']
+            referencedRelation: "colaboradores"
+            referencedColumns: ["id_colaborador"]
           },
         ]
       }
@@ -1372,7 +1378,7 @@ export type Database = {
         Returns: number
       }
       _postgis_stats: {
-        Args: { ''?: string; att_name: string; tbl: unknown }
+        Args: { ""?: string; att_name: string; tbl: unknown }
         Returns: string
       }
       _st_3dintersects: {
@@ -1446,7 +1452,7 @@ export type Database = {
         Returns: unknown
       }
       _st_within: { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
-      addauth: { Args: { '': string }; Returns: boolean }
+      addauth: { Args: { "": string }; Returns: boolean }
       addgeometrycolumn:
         | {
             Args: {
@@ -1521,7 +1527,7 @@ export type Database = {
         Args: { p_id_camada: string; p_total: number }
         Returns: undefined
       }
-      geometry: { Args: { '': string }; Returns: unknown }
+      geometry: { Args: { "": string }; Returns: unknown }
       geometry_above: {
         Args: { geom1: unknown; geom2: unknown }
         Returns: boolean
@@ -1618,7 +1624,7 @@ export type Database = {
         Args: { geom1: unknown; geom2: unknown }
         Returns: boolean
       }
-      geomfromewkt: { Args: { '': string }; Returns: unknown }
+      geomfromewkt: { Args: { "": string }; Returns: unknown }
       gettransactionid: { Args: never; Returns: unknown }
       importar_feicoes_lote: {
         Args: { p_feicoes: Json; p_id_camada: string }
@@ -1717,12 +1723,12 @@ export type Database = {
           }
       st_area:
         | { Args: { geog: unknown; use_spheroid?: boolean }; Returns: number }
-        | { Args: { '': string }; Returns: number }
+        | { Args: { "": string }; Returns: number }
       st_asencodedpolyline: {
         Args: { geom: unknown; nprecision?: number }
         Returns: string
       }
-      st_asewkt: { Args: { '': string }; Returns: string }
+      st_asewkt: { Args: { "": string }; Returns: string }
       st_asgeojson:
         | {
             Args: { geog: unknown; maxdecimaldigits?: number; options?: number }
@@ -1741,7 +1747,7 @@ export type Database = {
             }
             Returns: string
           }
-        | { Args: { '': string }; Returns: string }
+        | { Args: { "": string }; Returns: string }
       st_asgml:
         | {
             Args: {
@@ -1757,7 +1763,7 @@ export type Database = {
             Args: { geom: unknown; maxdecimaldigits?: number; options?: number }
             Returns: string
           }
-        | { Args: { '': string }; Returns: string }
+        | { Args: { "": string }; Returns: string }
         | {
             Args: {
               geog: unknown
@@ -1789,7 +1795,7 @@ export type Database = {
             Args: { geom: unknown; maxdecimaldigits?: number; nprefix?: string }
             Returns: string
           }
-        | { Args: { '': string }; Returns: string }
+        | { Args: { "": string }; Returns: string }
       st_aslatlontext: {
         Args: { geom: unknown; tmpl?: string }
         Returns: string
@@ -1814,8 +1820,8 @@ export type Database = {
             Args: { geom: unknown; maxdecimaldigits?: number; rel?: number }
             Returns: string
           }
-        | { Args: { '': string }; Returns: string }
-      st_astext: { Args: { '': string }; Returns: string }
+        | { Args: { "": string }; Returns: string }
+      st_astext: { Args: { "": string }; Returns: string }
       st_astwkb:
         | {
             Args: {
@@ -1860,7 +1866,7 @@ export type Database = {
             Args: { geom: unknown; quadsegs: number; radius: number }
             Returns: unknown
           }
-      st_centroid: { Args: { '': string }; Returns: unknown }
+      st_centroid: { Args: { "": string }; Returns: unknown }
       st_clipbybox2d: {
         Args: { box: unknown; geom: unknown }
         Returns: unknown
@@ -1971,12 +1977,12 @@ export type Database = {
             Args: { area: unknown; npoints: number; seed: number }
             Returns: unknown
           }
-      st_geogfromtext: { Args: { '': string }; Returns: unknown }
-      st_geographyfromtext: { Args: { '': string }; Returns: unknown }
+      st_geogfromtext: { Args: { "": string }; Returns: unknown }
+      st_geographyfromtext: { Args: { "": string }; Returns: unknown }
       st_geohash:
         | { Args: { geog: unknown; maxchars?: number }; Returns: string }
         | { Args: { geom: unknown; maxchars?: number }; Returns: string }
-      st_geomcollfromtext: { Args: { '': string }; Returns: unknown }
+      st_geomcollfromtext: { Args: { "": string }; Returns: unknown }
       st_geometricmedian: {
         Args: {
           fail_if_not_converged?: boolean
@@ -1986,17 +1992,17 @@ export type Database = {
         }
         Returns: unknown
       }
-      st_geometryfromtext: { Args: { '': string }; Returns: unknown }
-      st_geomfromewkt: { Args: { '': string }; Returns: unknown }
+      st_geometryfromtext: { Args: { "": string }; Returns: unknown }
+      st_geomfromewkt: { Args: { "": string }; Returns: unknown }
       st_geomfromgeojson:
-        | { Args: { '': Json }; Returns: unknown }
-        | { Args: { '': Json }; Returns: unknown }
-        | { Args: { '': string }; Returns: unknown }
-      st_geomfromgml: { Args: { '': string }; Returns: unknown }
-      st_geomfromkml: { Args: { '': string }; Returns: unknown }
+        | { Args: { "": Json }; Returns: unknown }
+        | { Args: { "": Json }; Returns: unknown }
+        | { Args: { "": string }; Returns: unknown }
+      st_geomfromgml: { Args: { "": string }; Returns: unknown }
+      st_geomfromkml: { Args: { "": string }; Returns: unknown }
       st_geomfrommarc21: { Args: { marc21xml: string }; Returns: unknown }
-      st_geomfromtext: { Args: { '': string }; Returns: unknown }
-      st_gmltosql: { Args: { '': string }; Returns: unknown }
+      st_geomfromtext: { Args: { "": string }; Returns: unknown }
+      st_gmltosql: { Args: { "": string }; Returns: unknown }
       st_hasarc: { Args: { geometry: unknown }; Returns: boolean }
       st_hausdorffdistance: {
         Args: { geom1: unknown; geom2: unknown }
@@ -2023,17 +2029,17 @@ export type Database = {
         | { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
       st_isvaliddetail: {
         Args: { flags?: number; geom: unknown }
-        Returns: Database['public']['CompositeTypes']['valid_detail']
+        Returns: Database["public"]["CompositeTypes"]["valid_detail"]
         SetofOptions: {
-          from: '*'
-          to: 'valid_detail'
+          from: "*"
+          to: "valid_detail"
           isOneToOne: true
           isSetofReturn: false
         }
       }
       st_length:
         | { Args: { geog: unknown; use_spheroid?: boolean }; Returns: number }
-        | { Args: { '': string }; Returns: number }
+        | { Args: { "": string }; Returns: number }
       st_letters: { Args: { font?: Json; letters: string }; Returns: unknown }
       st_linecrossingdirection: {
         Args: { line1: unknown; line2: unknown }
@@ -2043,7 +2049,7 @@ export type Database = {
         Args: { nprecision?: number; txtin: string }
         Returns: unknown
       }
-      st_linefromtext: { Args: { '': string }; Returns: unknown }
+      st_linefromtext: { Args: { "": string }; Returns: unknown }
       st_linelocatepoint: {
         Args: { geom1: unknown; geom2: unknown }
         Returns: number
@@ -2090,12 +2096,12 @@ export type Database = {
         Args: { inputgeom: unknown; segs_per_quarter?: number }
         Returns: unknown
       }
-      st_mlinefromtext: { Args: { '': string }; Returns: unknown }
-      st_mpointfromtext: { Args: { '': string }; Returns: unknown }
-      st_mpolyfromtext: { Args: { '': string }; Returns: unknown }
-      st_multilinestringfromtext: { Args: { '': string }; Returns: unknown }
-      st_multipointfromtext: { Args: { '': string }; Returns: unknown }
-      st_multipolygonfromtext: { Args: { '': string }; Returns: unknown }
+      st_mlinefromtext: { Args: { "": string }; Returns: unknown }
+      st_mpointfromtext: { Args: { "": string }; Returns: unknown }
+      st_mpolyfromtext: { Args: { "": string }; Returns: unknown }
+      st_multilinestringfromtext: { Args: { "": string }; Returns: unknown }
+      st_multipointfromtext: { Args: { "": string }; Returns: unknown }
+      st_multipolygonfromtext: { Args: { "": string }; Returns: unknown }
       st_node: { Args: { g: unknown }; Returns: unknown }
       st_normalize: { Args: { geom: unknown }; Returns: unknown }
       st_offsetcurve: {
@@ -2114,7 +2120,7 @@ export type Database = {
         Args: { geog: unknown; use_spheroid?: boolean }
         Returns: number
       }
-      st_pointfromtext: { Args: { '': string }; Returns: unknown }
+      st_pointfromtext: { Args: { "": string }; Returns: unknown }
       st_pointm: {
         Args: {
           mcoordinate: number
@@ -2143,8 +2149,8 @@ export type Database = {
         }
         Returns: unknown
       }
-      st_polyfromtext: { Args: { '': string }; Returns: unknown }
-      st_polygonfromtext: { Args: { '': string }; Returns: unknown }
+      st_polyfromtext: { Args: { "": string }; Returns: unknown }
+      st_polygonfromtext: { Args: { "": string }; Returns: unknown }
       st_project: {
         Args: { azimuth: number; distance: number; geog: unknown }
         Returns: unknown
@@ -2253,12 +2259,12 @@ export type Database = {
       }
       st_within: { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
       st_wkbtosql: { Args: { wkb: string }; Returns: unknown }
-      st_wkttosql: { Args: { '': string }; Returns: unknown }
+      st_wkttosql: { Args: { "": string }; Returns: unknown }
       st_wrapx: {
         Args: { geom: unknown; move: number; wrap: number }
         Returns: unknown
       }
-      unlockrows: { Args: { '': string }; Returns: number }
+      unlockrows: { Args: { "": string }; Returns: number }
       updategeometrysrid: {
         Args: {
           catalogn_name: string
@@ -2287,31 +2293,33 @@ export type Database = {
   }
 }
 
-type DatabaseWithoutInternals = Omit<Database, '__InternalSupabase'>
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
 
-type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, 'public'>]
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
-    | keyof (DefaultSchema['Tables'] & DefaultSchema['Views'])
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'] &
-        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Views'])
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'] &
-      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Views'])[TableName] extends {
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
     ? R
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema['Tables'] & DefaultSchema['Views'])
-    ? (DefaultSchema['Tables'] & DefaultSchema['Views'])[DefaultSchemaTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
         Row: infer R
       }
       ? R
@@ -2320,23 +2328,23 @@ export type Tables<
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema['Tables']
+    | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables']
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'][TableName] extends {
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Insert: infer I
     }
     ? I
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema['Tables']
-    ? DefaultSchema['Tables'][DefaultSchemaTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
         Insert: infer I
       }
       ? I
@@ -2345,23 +2353,23 @@ export type TablesInsert<
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema['Tables']
+    | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables']
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'][TableName] extends {
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Update: infer U
     }
     ? U
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema['Tables']
-    ? DefaultSchema['Tables'][DefaultSchemaTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
         Update: infer U
       }
       ? U
@@ -2370,36 +2378,36 @@ export type TablesUpdate<
 
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
-    | keyof DefaultSchema['Enums']
+    | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions['schema']]['Enums']
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
     : never = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions['schema']]['Enums'][EnumName]
-  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema['Enums']
-    ? DefaultSchema['Enums'][DefaultSchemaEnumNameOrOptions]
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
     : never
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
-    | keyof DefaultSchema['CompositeTypes']
+    | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions['schema']]['CompositeTypes']
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
     : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions['schema']]['CompositeTypes'][CompositeTypeName]
-  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema['CompositeTypes']
-    ? DefaultSchema['CompositeTypes'][PublicCompositeTypeNameOrOptions]
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
 
 export const Constants = {
@@ -2407,3 +2415,4 @@ export const Constants = {
     Enums: {},
   },
 } as const
+
