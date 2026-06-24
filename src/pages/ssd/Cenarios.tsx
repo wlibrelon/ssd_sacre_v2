@@ -63,17 +63,18 @@ const LINE_COLORS = ['#2563eb', '#16a34a', '#dc2626', '#d97706', '#7c3aed', '#08
 
 // ── Textos explicativos exibidos abaixo do título de cada aba de configuração ──
 const TEXTO_SELECAO_SIMULACAO =
-  'Selecione as fontes de água que farão parte da simulação, combinando cenários climáticos ou de demanda com estratégias de intervenção. Cada combinação corresponde a um conjunto de dados previamente importado na base — só é possível adicionar combinações que já possuam dados de simulação disponíveis.'
+  'Você deverá configurar as fontes de água para o abastecimento, os cenários que afetam a disponibilidade de água e as estratégias ou intervenções para o sistema de abastecimento. Você pode selecionar uma ou mais fontes de água pré-configuradas no sistema. Cada fonte de água pode ter um ou mais tipos de cenários e estratégias disponíveis.'
 
 const TEXTO_PARAMETROS_SISTEMA =
-  'Defina os parâmetros gerais do modelo de abastecimento: o ponto de partida da população atendida, o comportamento das perdas no sistema ao longo do tempo e os limiares que classificam a situação de segurança hídrica da região (Seguro, Alerta, Crise ou Colapso).'
+  'Você deverá configurar as características do Sistema de Abastecimento: a população atendida e o índice de perdas na distribuição.'
 
 const TEXTO_PROJECAO_DEMANDA =
   'Quando a demanda ou as perdas são calculadas automaticamente, selecione aqui os cenários de referência — crescimento populacional e consumo per capita — que serão usados para projetar a demanda futura.'
 
 // TODO: textos a serem definidos posteriormente — substituir pelo conteúdo final.
-const TEXTO_DEMANDA_AUTOMATICA = 'Texto explicativo a ser definido.'
-const TEXTO_PERDAS_AUTOMATICAS = 'Texto explicativo a ser definido.'
+const TEXTO_DEMANDA_AUTOMATICA =
+  'Se marcado a demanda é calculada em função da seleção. Caso contrário os dados virão de uma tabela importada para o sistema.'
+const TEXTO_PERDAS_AUTOMATICAS = ''
 
 type StatusSeg = 'seguro' | 'alerta' | 'crise' | 'colapso'
 
