@@ -93,6 +93,8 @@ export type Database = {
         Row: {
           abstract: string | null
           arquivo: string | null
+          ativar: boolean
+          data_pub: string | null
           doi: string | null
           id_artigo: number
           id_projeto: number | null
@@ -104,6 +106,8 @@ export type Database = {
         Insert: {
           abstract?: string | null
           arquivo?: string | null
+          ativar?: boolean
+          data_pub?: string | null
           doi?: string | null
           id_artigo?: number
           id_projeto?: number | null
@@ -115,6 +119,8 @@ export type Database = {
         Update: {
           abstract?: string | null
           arquivo?: string | null
+          ativar?: boolean
+          data_pub?: string | null
           doi?: string | null
           id_artigo?: number
           id_projeto?: number | null
@@ -437,7 +443,9 @@ export type Database = {
       }
       congressos: {
         Row: {
+          ativar: boolean
           data: string | null
+          data_pub: string | null
           id_congresso: number
           link: string | null
           local: string | null
@@ -447,7 +455,9 @@ export type Database = {
           titulo: string
         }
         Insert: {
+          ativar?: boolean
           data?: string | null
+          data_pub?: string | null
           id_congresso?: number
           link?: string | null
           local?: string | null
@@ -457,7 +467,9 @@ export type Database = {
           titulo: string
         }
         Update: {
+          ativar?: boolean
           data?: string | null
+          data_pub?: string | null
           id_congresso?: number
           link?: string | null
           local?: string | null
@@ -752,6 +764,8 @@ export type Database = {
         Row: {
           arq_imagem: string | null
           arq_video: string | null
+          ativar: boolean
+          data_pub: string | null
           descricao: string | null
           id_midia: number
           link: string | null
@@ -761,6 +775,8 @@ export type Database = {
         Insert: {
           arq_imagem?: string | null
           arq_video?: string | null
+          ativar?: boolean
+          data_pub?: string | null
           descricao?: string | null
           id_midia?: number
           link?: string | null
@@ -770,6 +786,8 @@ export type Database = {
         Update: {
           arq_imagem?: string | null
           arq_video?: string | null
+          ativar?: boolean
+          data_pub?: string | null
           descricao?: string | null
           id_midia?: number
           link?: string | null

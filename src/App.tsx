@@ -10,6 +10,7 @@ import Dashboard from './pages/restrito/Dashboard'
 import ResetPassword from './pages/auth/ResetPassword'
 import AreaEstudoObjetivos from './pages/area-estudo/Objetivos'
 import AreaEstudoDocumentos from './pages/area-estudo/Documentos'
+import Camadas from './pages/area-estudo/Camadas'
 import Projeto from './pages/institucional/Projeto'
 import Equipe from './pages/institucional/Equipe'
 import Parceiros from './pages/institucional/Parceiros'
@@ -44,7 +45,7 @@ const App = () => (
             <Route path="/area-estudo/contexto" element={<Contexto />} />
             <Route path="/area-estudo/objetivos" element={<AreaEstudoObjetivos />} />
             <Route path="/area-estudo/documentos" element={<AreaEstudoDocumentos />} />
-            <Route path="/area-estudo/camadas" element={<Placeholder title="Camadas (Mapas)" />} />
+            <Route path="/area-estudo/camadas" element={<Camadas />} />
             <Route path="/projetos/objetivos" element={<ObjetivosProjetos />} />
             <Route path="/projetos/resultados" element={<ResultadosProjetos />} />
             <Route path="/ssd/cenarios" element={<Cenarios />} />
