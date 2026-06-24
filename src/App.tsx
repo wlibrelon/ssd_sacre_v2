@@ -23,6 +23,7 @@ import Configuracoes from './pages/ssd/Configuracoes'
 import Publicacoes from './pages/divulgacao/Publicacoes'
 import Midia from './pages/divulgacao/Midia'
 import Congressos from './pages/divulgacao/Congressos'
+import AtividadesSociais from './pages/divulgacao/AtividadesSociais'
 import NotFound from './pages/NotFound'
 import Placeholder from './pages/Placeholder'
 import Contexto from './pages/area-estudo/Contexto'
@@ -54,10 +55,7 @@ const App = () => (
             <Route path="/divulgacao/publicacoes" element={<Publicacoes />} />
             <Route path="/divulgacao/midia" element={<Midia />} />
             <Route path="/divulgacao/congressos" element={<Congressos />} />
-            <Route
-              path="/divulgacao/atividades-sociais"
-              element={<Placeholder title="Atividades Sociais" />}
-            />
+            <Route path="/divulgacao/atividades-sociais" element={<AtividadesSociais />} />
             <Route path="/restrito" element={<Dashboard />} />
             <Route path="/restrito/projetos" element={<GestaoProjetos />} />
             <Route path="/restrito/camadas" element={<GestaoCamadas />} />

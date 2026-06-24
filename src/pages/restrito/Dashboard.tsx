@@ -120,6 +120,13 @@ export default function Dashboard() {
     loadData()
   }
 
+  const [AtividadesAdmin, setAtividadesAdmin] = useState<any>(null)
+  useEffect(() => {
+    import('@/components/admin/AtividadesSociaisAdmin').then((m) =>
+      setAtividadesAdmin(() => m.AtividadesSociaisAdmin),
+    )
+  }, [])
+
   if (!isAuthenticated) return <Navigate to="/auth" replace />
 
   const isAdmin = profile?.id_ga === 4
@@ -172,9 +179,13 @@ export default function Dashboard() {
                 <AccordionItem value="atividades">
                   <AccordionTrigger className="text-lg">Atividades Sociais</AccordionTrigger>
                   <AccordionContent className="pt-4 border-t">
-                    <p className="text-muted-foreground p-4 bg-muted/20 rounded-md text-center">
-                      Área reservada para gestão de atividades sociais. Em desenvolvimento.
-                    </p>
+                    {AtividadesAdmin ? (
+                      <AtividadesAdmin />
+                    ) : (
+                      <p className="text-sm text-muted-foreground p-4 bg-muted/20 text-center rounded-md">
+                        Carregando...
+                      </p>
+                    )}
                   </AccordionContent>
                 </AccordionItem>
               </Accordion>
