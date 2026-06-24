@@ -2,15 +2,16 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Activity, Building2, BarChart2, ArrowRight } from 'lucide-react'
+import { Activity, Building2, BarChart2, ArrowRight, ExternalLink } from 'lucide-react'
 
 import { supabase } from '@/lib/supabase/client'
 
-// Configuração de cada tabela: nome de exibição + ícone usado no lugar da thumbnail
+// Configuração de cada tabela: nome de exibição, ícone usado no lugar da thumbnail
+// e nome do campo que guarda o link de acesso (varia por tabela)
 const FONTES = [
-  { tabela: 'artigos', label: 'Artigos', icon: BarChart2 },
-  { tabela: 'midia', label: 'Mídia', icon: Activity },
-  { tabela: 'congressos', label: 'Congresso', icon: Building2 },
+  { tabela: 'artigos', label: 'Artigos', icon: BarChart2, campoLink: 'doi' },
+  { tabela: 'midia', label: 'Mídia', icon: Activity, campoLink: 'link' },
+  { tabela: 'congressos', label: 'Congresso', icon: Building2, campoLink: 'link' },
 ]
 
 const MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
@@ -36,6 +37,15 @@ function formatarData(dataPub) {
   return `${String(d.getDate()).padStart(2, '0')} ${MESES[d.getMonth()]} ${d.getFullYear()}`
 }
 
+// Monta a URL de acesso de cada item de acordo com a tabela de origem.
+// Artigos usa o campo 'doi' (precisa do prefixo https://doi.org/), as
+// demais tabelas já guardam a URL completa no campo 'link'.
+function obterLink(item) {
+  const valor = item[item.fonte.campoLink]
+  if (!valor) return null
+  return item.fonte.tabela === 'artigos' ? `https://doi.org/${valor}` : valor
+}
+
 const Index = () => {
   const [atualizacoes, setAtualizacoes] = useState([])
   const [carregando, setCarregando] = useState(true)
@@ -50,8 +60,8 @@ const Index = () => {
         setErro(null)
 
         const resultados = await Promise.all(
-          FONTES.map(({ tabela }) =>
-            supabase.from(tabela).select('titulo, data_pub').eq('ativar', true),
+          FONTES.map(({ tabela, campoLink }) =>
+            supabase.from(tabela).select(`titulo, data_pub, ${campoLink}`).eq('ativar', true),
           ),
         )
 
@@ -126,23 +136,45 @@ const Index = () => {
           <div className="grid sm:grid-cols-2 gap-4">
             {atualizacoes.map((item, index) => {
               const Icon = item.fonte.icon
-              return (
-                <div
-                  key={`${item.fonte.tabela}-${index}`}
-                  className="flex gap-4 p-4 bg-white rounded-lg shadow-sm"
-                >
+              const link = obterLink(item)
+
+              const conteudoCard = (
+                <>
                   <div className="h-16 w-16 bg-slate-200 rounded-md overflow-hidden shrink-0 flex items-center justify-center">
                     <Icon className="h-7 w-7 text-primary" />
                   </div>
-                  <div>
-                    <p className="text-xs text-secondary font-semibold mb-1">
-                      {item.fonte.label.toUpperCase()}
-                    </p>
+                  <div className="flex-1">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="text-xs text-secondary font-semibold mb-1">
+                        {item.fonte.label.toUpperCase()}
+                      </p>
+                      {link && (
+                        <ExternalLink className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                      )}
+                    </div>
                     <h3 className="text-sm font-medium leading-tight">{item.titulo}</h3>
                     <p className="text-xs text-muted-foreground mt-1">
                       Publicado em {formatarData(item.data_pub)}
                     </p>
                   </div>
+                </>
+              )
+
+              const classeBase = 'flex gap-4 p-4 bg-white rounded-lg shadow-sm'
+
+              return link ? (
+                <a
+                  key={`${item.fonte.tabela}-${index}`}
+                  href={link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`${classeBase} hover:shadow-md hover:bg-slate-50 transition-shadow`}
+                >
+                  {conteudoCard}
+                </a>
+              ) : (
+                <div key={`${item.fonte.tabela}-${index}`} className={classeBase}>
+                  {conteudoCard}
                 </div>
               )
             })}
