@@ -142,13 +142,9 @@ export async function importarCamadaVetorial(
   camada: any,
   onProgress?: (msg: string) => void,
 ): Promise<{ total: number }> {
-  try {
-    if (onProgress) onProgress('Iniciando processamento vetorial...')
-    await estruturarImportacaoShapefile(camada.id_camada, `${camada.id_camada}/origem.shp`)
-    return { total: 0 }
-  } catch (error: any) {
-    throw error
-  }
+  if (onProgress) onProgress('Iniciando processamento vetorial...')
+  await estruturarImportacaoShapefile(camada.id_camada, `${camada.id_camada}/origem.shp`)
+  return { total: 0 }
 }
 
 export async function importarCamadaRaster(camada: any): Promise<void> {
