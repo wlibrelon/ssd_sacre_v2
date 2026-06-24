@@ -11,7 +11,7 @@ export default function Congressos() {
       const { data } = await supabase
         .from('congressos')
         .select('*')
-        .order('data', { ascending: true })
+        .order('data', { ascending: true }) 
       if (data) setEvents(data)
     }
     fetchEvents()
