@@ -65,7 +65,20 @@ export default function Camadas() {
             supabase
               .rpc('obter_extensao_camada', { p_id_camada: primeiraAtiva.id_camada })
               .then(({ data: extensao, error }) => {
-                if (extensao && !error) setExtensaoInicial(extensao as number[])
+                if (extensao && !error) {
+                  setExtensaoInicial(extensao as number[])
+                } else {
+                  // Não é um erro fatal (o mapa só abre na visão padrão em
+                  // vez de ajustada à camada), mas avisa no console para
+                  // facilitar o diagnóstico: ou a função RPC não existe
+                  // (recarregue o schema cache do Supabase), ou a coluna
+                  // 'bbox' dessa camada está nula (a importação não a
+                  // calculou).
+                  console.warn(
+                    '[Camadas] Não foi possível obter a extensão da camada para zoom inicial:',
+                    { id_camada: primeiraAtiva.id_camada, error },
+                  )
+                }
               })
           }
         }
@@ -190,9 +203,10 @@ export default function Camadas() {
 
           {activeCamadas
             .filter((c) => c.tipo_dados === 'raster')
-            .map((c) => (
-              <TileLayer key={c.id_camada} urlTemplate={c.fonte_raster_url} />
-            ))}
+            .map((c) => {
+              if (zoom < c.zoom_min || zoom > c.zoom_max) return null
+              return <TileLayer key={c.id_camada} urlTemplate={c.fonte_raster_url} />
+            })}
 
           {activeCamadas
             .filter((c) => c.tipo_dados === 'vetorial')

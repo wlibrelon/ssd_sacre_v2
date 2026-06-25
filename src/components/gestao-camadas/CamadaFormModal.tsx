@@ -43,7 +43,9 @@ export function CamadaFormModal({ open, onOpenChange, camada, categorias, onSucc
     weight: 2,
     opacity: 0.5,
   })
-  const [legenda, setLegenda] = useState<{ color: string; label: string }[]>([])
+  const [legenda, setLegenda] = useState<
+    { color: string; label: string; type: 'point' | 'line' | 'polygon' }[]
+  >([])
 
   useEffect(() => {
     if (open) {
@@ -63,7 +65,7 @@ export function CamadaFormModal({ open, onOpenChange, camada, categorias, onSucc
       setEstilo(
         camada?.estilo || { fillColor: '#3388ff', color: '#3388ff', weight: 2, opacity: 0.5 },
       )
-      setLegenda(camada?.legenda || [])
+      setLegenda((camada?.legenda || []).map((l: any) => ({ type: 'point', ...l })))
       setFile(null)
       setProgress(0)
     }
@@ -320,7 +322,9 @@ export function CamadaFormModal({ open, onOpenChange, camada, categorias, onSucc
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => setLegenda([...legenda, { color: '#000000', label: '' }])}
+                    onClick={() =>
+                      setLegenda([...legenda, { color: '#000000', label: '', type: 'point' }])
+                    }
                   >
                     <Plus className="w-4 h-4 mr-2" /> Adicionar
                   </Button>
@@ -337,6 +341,23 @@ export function CamadaFormModal({ open, onOpenChange, camada, categorias, onSucc
                         setLegenda(n)
                       }}
                     />
+                    <Select
+                      value={l.type}
+                      onValueChange={(v) => {
+                        const n = [...legenda]
+                        n[i].type = v as 'point' | 'line' | 'polygon'
+                        setLegenda(n)
+                      }}
+                    >
+                      <SelectTrigger className="w-32 shrink-0">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="point">Ponto</SelectItem>
+                        <SelectItem value="line">Linha</SelectItem>
+                        <SelectItem value="polygon">Polígono</SelectItem>
+                      </SelectContent>
+                    </Select>
                     <Input
                       placeholder="Rótulo"
                       value={l.label}
