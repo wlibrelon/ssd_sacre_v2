@@ -11,6 +11,49 @@ export const y2lat = (y: number) => {
   return (180 / Math.PI) * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n)))
 }
 
+// Calcula o center/zoom necessários para enquadrar uma extensão
+// [minLon, minLat, maxLon, maxLat] dentro do container atual, com uma
+// margem de respiro (PADDING). Usada para "zoom to extent" de uma camada.
+function calcularViewParaExtensao(
+  boundsValue: [number, number, number, number],
+  containerWidth: number,
+  containerHeight: number,
+): { center: [number, number]; zoom: number } {
+  const [minLon, minLat, maxLon, maxLat] = boundsValue
+  const center: [number, number] = [(minLon + maxLon) / 2, (minLat + maxLat) / 2]
+
+  // Container ainda não foi medido (size 0) — usa um zoom neutro; o efeito
+  // que chama esta função roda de novo quando o tamanho for conhecido.
+  if (containerWidth <= 0 || containerHeight <= 0) {
+    return { center, zoom: 10 }
+  }
+
+  const PADDING = 0.85 // usa 85% da área disponível, deixando margem nas bordas
+  const xRangeNorm = Math.abs(lon2x(maxLon) - lon2x(minLon))
+  const yRangeNorm = Math.abs(lat2y(minLat) - lat2y(maxLat))
+
+  // Extensão de um único ponto (ou quase) — não há área para "preencher";
+  // usa um zoom alto fixo, em vez de um cálculo que tenderia ao infinito.
+  if (xRangeNorm < 1e-9 && yRangeNorm < 1e-9) {
+    return { center, zoom: 15 }
+  }
+
+  const zoomCandidatos: number[] = []
+  if (xRangeNorm > 1e-9) {
+    const scaleX = (containerWidth * PADDING) / xRangeNorm
+    zoomCandidatos.push(Math.log2(scaleX / 256))
+  }
+  if (yRangeNorm > 1e-9) {
+    const scaleY = (containerHeight * PADDING) / yRangeNorm
+    zoomCandidatos.push(Math.log2(scaleY / 256))
+  }
+
+  const zoomCalculado = Math.min(...zoomCandidatos)
+  const zoom = Math.max(2, Math.min(18, zoomCalculado))
+
+  return { center, zoom }
+}
+
 type MapContextType = {
   zoom: number
   center: [number, number]
@@ -26,11 +69,17 @@ export const MapContext = React.createContext<MapContextType | null>(null)
 export const SimpleMap = ({
   defaultCenter = [-46.6333, -23.5505],
   defaultZoom = 10,
+  bounds = null,
   onBoundsChange,
   children,
 }: {
   defaultCenter?: [number, number]
   defaultZoom?: number
+  /** Extensão [minLon, minLat, maxLon, maxLat] para enquadrar automaticamente.
+   * Quando fornecida (ou alterada para um novo valor), o mapa recalcula
+   * center/zoom para exibir essa área por completo. Útil para abrir o mapa
+   * já ajustado à extensão de uma camada específica. */
+  bounds?: [number, number, number, number] | null
   onBoundsChange?: (bbox: number[], zoom: number) => void
   children?: React.ReactNode
 }) => {
@@ -47,6 +96,24 @@ export const SimpleMap = ({
     obs.observe(containerRef.current)
     return () => obs.disconnect()
   }, [])
+
+  // Reaplica center/zoom sempre que uma nova extensão for fornecida (ou
+  // quando o tamanho do container for medido após receber uma extensão
+  // antes da primeira medição). boundsKey evita reexecuções desnecessárias
+  // causadas por uma nova referência de array com os mesmos valores.
+  const boundsKey = bounds ? bounds.join(',') : null
+  useEffect(() => {
+    if (!bounds) return
+    const { center: novoCenter, zoom: novoZoom } = calcularViewParaExtensao(
+      bounds,
+      size.width,
+      size.height,
+    )
+    setCenter(novoCenter)
+    setZoom(novoZoom)
+    // boundsKey representa o conteúdo de `bounds`; size.width/height
+    // disparam um recálculo quando o container ainda não tinha sido medido.
+  }, [boundsKey, size.width, size.height])
 
   const scale = 256 * Math.pow(2, zoom)
 
@@ -72,7 +139,7 @@ export const SimpleMap = ({
     [center, scale, size],
   )
 
-  const bbox = useMemo(() => {
+  const bboxAtual = useMemo(() => {
     if (size.width === 0) return [0, 0, 0, 0] as [number, number, number, number]
     const [minLon, maxLat] = unproject(0, 0)
     const [maxLon, minLat] = unproject(size.width, size.height)
@@ -81,9 +148,9 @@ export const SimpleMap = ({
 
   useEffect(() => {
     if (size.width > 0) {
-      onBoundsChange?.(bbox, zoom)
+      onBoundsChange?.(bboxAtual, zoom)
     }
-  }, [bbox[0], bbox[1], bbox[2], bbox[3], zoom, size.width, onBoundsChange])
+  }, [bboxAtual[0], bboxAtual[1], bboxAtual[2], bboxAtual[3], zoom, size.width, onBoundsChange])
 
   const isDragging = useRef(false)
   const lastPos = useRef([0, 0])
@@ -125,7 +192,9 @@ export const SimpleMap = ({
       onPointerCancel={handlePointerUp}
       onWheel={handleWheel}
     >
-      <MapContext.Provider value={{ zoom, center, size, scale, project, unproject, bbox }}>
+      <MapContext.Provider
+        value={{ zoom, center, size, scale, project, unproject, bbox: bboxAtual }}
+      >
         {size.width > 0 && children}
       </MapContext.Provider>
     </div>
