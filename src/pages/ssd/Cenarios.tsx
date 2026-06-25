@@ -72,8 +72,9 @@ const TEXTO_PROJECAO_DEMANDA =
   'Quando a demanda ou as perdas são calculadas automaticamente, selecione aqui os cenários de referência — crescimento populacional e consumo per capita — que serão usados para projetar a demanda futura.'
 
 // TODO: textos a serem definidos posteriormente — substituir pelo conteúdo final.
-const TEXTO_DEMANDA_AUTOMATICA = 'Texto explicativo a ser definido.'
-const TEXTO_PERDAS_AUTOMATICAS = 'Texto explicativo a ser definido.'
+const TEXTO_DEMANDA_AUTOMATICA =
+  'Determina que a demanda será ou não calculada automaticamente com base na seleção de cenários de população e consumo. Caso contrário os dados serão importados'
+const TEXTO_PERDAS_AUTOMATICAS = 'O mesmo para Perdas.'
 
 // ── Tooltips (exibidos ao passar o mouse) dos campos da aba
 // "Parâmetros do Sistema de Abastecimento" ──
