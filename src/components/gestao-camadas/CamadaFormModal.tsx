@@ -35,6 +35,7 @@ export function CamadaFormModal({ open, onOpenChange, camada, categorias, onSucc
     ativo: true,
     visivel: false,
     epsg_origem: 4674,
+    campo_nome: '',
   })
   const [estilo, setEstilo] = useState({
     fillColor: '#3388ff',
@@ -57,6 +58,7 @@ export function CamadaFormModal({ open, onOpenChange, camada, categorias, onSucc
         ativo: camada?.ativo ?? true,
         visivel: camada?.visivel_por_padrao ?? false,
         epsg_origem: camada?.epsg_origem || 4674,
+        campo_nome: camada?.campo_nome || '',
       })
       setEstilo(
         camada?.estilo || { fillColor: '#3388ff', color: '#3388ff', weight: 2, opacity: 0.5 },
@@ -85,6 +87,7 @@ export function CamadaFormModal({ open, onOpenChange, camada, categorias, onSucc
         estilo: form.tipo_dados === 'vetorial' ? estilo : {},
         legenda,
         epsg_origem: form.tipo_dados === 'vetorial' ? form.epsg_origem : null,
+        campo_nome: form.tipo_dados === 'vetorial' ? form.campo_nome.trim() || null : null,
       }
 
       let id = camada?.id_camada
@@ -250,6 +253,20 @@ export function CamadaFormModal({ open, onOpenChange, camada, categorias, onSucc
                       Sistema de coordenadas do shapefile original. 4674 = SIRGAS 2000 (padrão
                       IBGE). 4326 = WGS84/GPS. Se o shapefile estiver em UTM, use o EPSG da zona
                       (ex: 31983 para a zona 23S).
+                    </p>
+                  </div>
+
+                  <div className="space-y-2 col-span-2">
+                    <Label>Campo de Nome da Feição (opcional)</Label>
+                    <Input
+                      placeholder="ex: id_sacre, nm_municip, codigo..."
+                      value={form.campo_nome}
+                      onChange={(e) => setForm({ ...form, campo_nome: e.target.value })}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Nome exato da coluna de atributo do shapefile (.dbf) que deve ser usada como
+                      identificação/rótulo de cada feição ao importar. Se deixar em branco, a
+                      importação tenta adivinhar usando nomes comuns (nome, name, rotulo...).
                     </p>
                   </div>
 

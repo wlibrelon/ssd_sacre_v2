@@ -95,11 +95,28 @@ async function lerFeaturesDoShapefile(shpBytes: Uint8Array, dbfBytes: Uint8Array
   return features
 }
 
-const CHAVES_NOME_CANDIDATAS = ['nome', 'name', 'rotulo', 'label', 'ds_nome', 'nm_nome']
+const CHAVES_NOME_CANDIDATAS = ['nome', 'name', 'rotulo', 'label', 'ds_nome', 'nm_nome', 'id_sacre']
 
-function extrairNome(propriedades: Record<string, any> | null | undefined): string | null {
+function extrairNome(
+  propriedades: Record<string, any> | null | undefined,
+  campoConfigurado?: string | null,
+): string | null {
   if (!propriedades) return null
   const entradas = Object.entries(propriedades)
+
+  // 1. Campo configurado manualmente na camada (camadas_mapa.campo_nome) —
+  // tem prioridade sobre a lista de candidatos abaixo.
+  if (campoConfigurado) {
+    const encontrada = entradas.find(
+      ([chave]) => chave.toLowerCase() === campoConfigurado.toLowerCase(),
+    )
+    if (encontrada && encontrada[1] != null && String(encontrada[1]).trim() !== '') {
+      return String(encontrada[1])
+    }
+  }
+
+  // 2. Fallback: lista de nomes comuns, usada quando não há campo
+  // configurado (ou o campo configurado não existe nesta feição específica).
   for (const candidata of CHAVES_NOME_CANDIDATAS) {
     const encontrada = entradas.find(([chave]) => chave.toLowerCase() === candidata)
     if (encontrada && encontrada[1] != null && String(encontrada[1]).trim() !== '') {
@@ -173,7 +190,7 @@ export async function importarCamadaVetorial(
       // a função importar_feicoes_lote() lê no banco (item->>'geom').
       const payload = lote.map((feature: any) => ({
         geom: reprojetarGeometria(feature.geometry, epsgOrigem),
-        nome: extrairNome(feature.properties),
+        nome: extrairNome(feature.properties, camada.campo_nome),
         propriedades: feature.properties || {},
       }))
 
