@@ -47,6 +47,15 @@ function reprojetarCoordenadas(
 ): any {
   if (typeof coords[0] === 'number') {
     const [x, y] = transformar([coords[0], coords[1]])
+    // Diagnóstico: proj4 pode devolver NaN se a definição de origem/destino
+    // estiver incorreta. NaN é serializado como `null` pelo JSON.stringify,
+    // o que silenciosamente apaga a geometria sem lançar erro.
+    if (Number.isNaN(x) || Number.isNaN(y)) {
+      console.warn('[importacao-camadas] Coordenada reprojetada resultou em NaN:', {
+        original: coords,
+        resultado: [x, y],
+      })
+    }
     return coords.length > 2 ? [x, y, coords[2]] : [x, y]
   }
   return coords.map((c: any) => reprojetarCoordenadas(c, transformar))
@@ -54,7 +63,10 @@ function reprojetarCoordenadas(
 
 /** Reprojeta uma geometria GeoJSON inteira de um EPSG de origem para EPSG:4326 (WGS84). */
 export function reprojetarGeometria(geometria: any, epsgOrigem: number): any {
-  if (!geometria) return geometria
+  if (!geometria) {
+    console.warn('[importacao-camadas] reprojetarGeometria recebeu geometria vazia/nula.')
+    return geometria
+  }
   if (epsgOrigem === 4326) return geometria
 
   registrarDefinicoesProj4()
@@ -143,12 +155,26 @@ export async function importarCamadaVetorial(
     if (!shpBytes || !dbfBytes) {
       throw new Error('O .zip não contém os arquivos .shp e .dbf esperados.')
     }
+    // Diagnóstico: confirma que os dois arquivos extraídos do zip têm
+    // conteúdo real (tamanho > 0). Um .shp de poucos bytes geralmente
+    // significa arquivo vazio/corrompido (só o cabeçalho, sem geometrias).
+    console.info(
+      '[importacao-camadas] Tamanho .shp:',
+      shpBytes.length,
+      'bytes | .dbf:',
+      dbfBytes.length,
+      'bytes',
+    )
 
     onProgress?.('Lendo feições do shapefile...')
     const features = await lerFeaturesDoShapefile(shpBytes, dbfBytes)
     if (features.length === 0) {
       throw new Error('Nenhuma feição encontrada no shapefile.')
     }
+    // Diagnóstico: mostra a primeira feição bruta, exatamente como veio do
+    // shapefile.open(), ANTES de qualquer reprojeção — confirma se a
+    // geometria e as propriedades já chegam corretas nesse ponto.
+    console.info('[importacao-camadas] Primeira feição bruta (antes da reprojeção):', features[0])
 
     const epsgOrigem = camada.epsg_origem || 4674
     let totalImportado = 0
@@ -164,6 +190,16 @@ export async function importarCamadaVetorial(
         nome: extrairNome(feature.properties),
         propriedades: feature.properties || {},
       }))
+
+      if (i === 0) {
+        // Diagnóstico: mostra o primeiro item do payload exatamente como
+        // será enviado ao RPC — compare com a feição bruta acima.
+        console.info('[importacao-camadas] Primeiro item do payload enviado ao RPC:', payload[0])
+        console.info(
+          '[importacao-camadas] payload[0] serializado (como vai pela rede):',
+          JSON.stringify(payload[0]),
+        )
+      }
 
       const { error: rpcError } = await supabase.rpc('importar_feicoes_lote', {
         p_id_camada: camada.id_camada,
