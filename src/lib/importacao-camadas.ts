@@ -39,23 +39,12 @@ function registrarDefinicoesProj4() {
   projecoesRegistradas = true
 }
 
-type ParCoordenadas = [number, number] | [number, number, number]
-
 function reprojetarCoordenadas(
   coords: any,
   transformar: (xy: [number, number]) => [number, number],
 ): any {
   if (typeof coords[0] === 'number') {
     const [x, y] = transformar([coords[0], coords[1]])
-    // Diagnóstico: proj4 pode devolver NaN se a definição de origem/destino
-    // estiver incorreta. NaN é serializado como `null` pelo JSON.stringify,
-    // o que silenciosamente apaga a geometria sem lançar erro.
-    if (Number.isNaN(x) || Number.isNaN(y)) {
-      console.warn('[importacao-camadas] Coordenada reprojetada resultou em NaN:', {
-        original: coords,
-        resultado: [x, y],
-      })
-    }
     return coords.length > 2 ? [x, y, coords[2]] : [x, y]
   }
   return coords.map((c: any) => reprojetarCoordenadas(c, transformar))
@@ -63,10 +52,7 @@ function reprojetarCoordenadas(
 
 /** Reprojeta uma geometria GeoJSON inteira de um EPSG de origem para EPSG:4326 (WGS84). */
 export function reprojetarGeometria(geometria: any, epsgOrigem: number): any {
-  if (!geometria) {
-    console.warn('[importacao-camadas] reprojetarGeometria recebeu geometria vazia/nula.')
-    return geometria
-  }
+  if (!geometria) return geometria
   if (epsgOrigem === 4326) return geometria
 
   registrarDefinicoesProj4()
@@ -139,6 +125,18 @@ export async function importarCamadaVetorial(
     .eq('id_camada', camada.id_camada)
 
   try {
+    // Reimportação é substitutiva: remove feições de uma tentativa anterior
+    // (inclusive as gravadas com geom nulo) antes de inserir as novas, para
+    // evitar duplicar registros a cada nova tentativa.
+    onProgress?.('Limpando importação anterior, se houver...')
+    const { error: deleteError } = await supabase
+      .from('feicoes_geoespaciais')
+      .delete()
+      .eq('id_camada', camada.id_camada)
+    if (deleteError) {
+      throw new Error(`Erro ao limpar feições anteriores: ${deleteError.message}`)
+    }
+
     onProgress?.('Baixando arquivo .zip...')
     const { data: blob, error: downloadError } = await supabase.storage
       .from('camadas-vetor')
@@ -155,26 +153,12 @@ export async function importarCamadaVetorial(
     if (!shpBytes || !dbfBytes) {
       throw new Error('O .zip não contém os arquivos .shp e .dbf esperados.')
     }
-    // Diagnóstico: confirma que os dois arquivos extraídos do zip têm
-    // conteúdo real (tamanho > 0). Um .shp de poucos bytes geralmente
-    // significa arquivo vazio/corrompido (só o cabeçalho, sem geometrias).
-    console.info(
-      '[importacao-camadas] Tamanho .shp:',
-      shpBytes.length,
-      'bytes | .dbf:',
-      dbfBytes.length,
-      'bytes',
-    )
 
     onProgress?.('Lendo feições do shapefile...')
     const features = await lerFeaturesDoShapefile(shpBytes, dbfBytes)
     if (features.length === 0) {
       throw new Error('Nenhuma feição encontrada no shapefile.')
     }
-    // Diagnóstico: mostra a primeira feição bruta, exatamente como veio do
-    // shapefile.open(), ANTES de qualquer reprojeção — confirma se a
-    // geometria e as propriedades já chegam corretas nesse ponto.
-    console.info('[importacao-camadas] Primeira feição bruta (antes da reprojeção):', features[0])
 
     const epsgOrigem = camada.epsg_origem || 4674
     let totalImportado = 0
@@ -185,21 +169,13 @@ export async function importarCamadaVetorial(
         `Processando feição ${Math.min(i + TAMANHO_LOTE, features.length)} de ${features.length}...`,
       )
 
+      // IMPORTANTE: a chave 'geom' abaixo precisa bater exatamente com a que
+      // a função importar_feicoes_lote() lê no banco (item->>'geom').
       const payload = lote.map((feature: any) => ({
-        geometria: reprojetarGeometria(feature.geometry, epsgOrigem),
+        geom: reprojetarGeometria(feature.geometry, epsgOrigem),
         nome: extrairNome(feature.properties),
         propriedades: feature.properties || {},
       }))
-
-      if (i === 0) {
-        // Diagnóstico: mostra o primeiro item do payload exatamente como
-        // será enviado ao RPC — compare com a feição bruta acima.
-        console.info('[importacao-camadas] Primeiro item do payload enviado ao RPC:', payload[0])
-        console.info(
-          '[importacao-camadas] payload[0] serializado (como vai pela rede):',
-          JSON.stringify(payload[0]),
-        )
-      }
 
       const { error: rpcError } = await supabase.rpc('importar_feicoes_lote', {
         p_id_camada: camada.id_camada,
@@ -243,10 +219,6 @@ export async function importarCamadaRaster(camada: any): Promise<{ sucesso: true
 
   try {
     const caminho = `${camada.id_camada}/origem.tif`
-    // Bucket é privado: gera uma URL assinada de longa duração.
-    // OBS: essa URL expira (aqui, em ~1 ano). Quando a etapa de geração de
-    // tiles/COG for implementada, fonte_raster_url deve passar a apontar
-    // para esses tiles processados em vez do .tif assinado.
     const { data: urlData, error: urlError } = await supabase.storage
       .from('camadas-raster')
       .createSignedUrl(caminho, 60 * 60 * 24 * 365)
