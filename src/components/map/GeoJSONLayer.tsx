@@ -9,6 +9,11 @@ export const GeoJSONLayer = ({ data, style }: { data: any; style?: any }) => {
   const renderGeometry = (geom: any, featureStyle: any, key: string) => {
     if (!geom) return null
 
+    // O formulário de cadastro salva a opacidade como `opacity`; aceitamos
+    // também `fillOpacity` por compatibilidade com qualquer estilo salvo
+    // diretamente nesse formato.
+    const opacidade = featureStyle.fillOpacity ?? featureStyle.opacity
+
     if (geom.type === 'LineString') {
       const pts = geom.coordinates.map((c: any) => project(c[0], c[1]))
       const d = 'M' + pts.map((p: any) => `${p[0]},${p[1]}`).join('L')
@@ -19,6 +24,26 @@ export const GeoJSONLayer = ({ data, style }: { data: any; style?: any }) => {
           fill="none"
           stroke={featureStyle.color || '#3b82f6'}
           strokeWidth={featureStyle.weight || 2}
+          strokeOpacity={opacidade ?? 1}
+        />
+      )
+    }
+
+    if (geom.type === 'MultiLineString') {
+      const d = geom.coordinates
+        .map((line: any) => {
+          const pts = line.map((c: any) => project(c[0], c[1]))
+          return 'M' + pts.map((p: any) => `${p[0]},${p[1]}`).join('L')
+        })
+        .join(' ')
+      return (
+        <path
+          key={key}
+          d={d}
+          fill="none"
+          stroke={featureStyle.color || '#3b82f6'}
+          strokeWidth={featureStyle.weight || 2}
+          strokeOpacity={opacidade ?? 1}
         />
       )
     }
@@ -33,7 +58,7 @@ export const GeoJSONLayer = ({ data, style }: { data: any; style?: any }) => {
           key={key}
           d={paths.join(' ')}
           fill={featureStyle.fillColor || featureStyle.color || '#3b82f6'}
-          fillOpacity={featureStyle.fillOpacity ?? 0.2}
+          fillOpacity={opacidade ?? 0.2}
           stroke={featureStyle.color || '#2563eb'}
           strokeWidth={featureStyle.weight || 1}
         />
@@ -54,7 +79,7 @@ export const GeoJSONLayer = ({ data, style }: { data: any; style?: any }) => {
           key={key}
           d={paths.join(' ')}
           fill={featureStyle.fillColor || featureStyle.color || '#3b82f6'}
-          fillOpacity={featureStyle.fillOpacity ?? 0.2}
+          fillOpacity={opacidade ?? 0.2}
           stroke={featureStyle.color || '#2563eb'}
           strokeWidth={featureStyle.weight || 1}
         />
@@ -70,10 +95,32 @@ export const GeoJSONLayer = ({ data, style }: { data: any; style?: any }) => {
           cy={y}
           r={featureStyle.radius || 5}
           fill={featureStyle.fillColor || featureStyle.color || '#3b82f6'}
-          fillOpacity={featureStyle.fillOpacity ?? 1}
+          fillOpacity={opacidade ?? 1}
           stroke={featureStyle.color || '#fff'}
           strokeWidth={featureStyle.weight || 1}
         />
+      )
+    }
+
+    if (geom.type === 'MultiPoint') {
+      return (
+        <g key={key}>
+          {geom.coordinates.map((c: any, i: number) => {
+            const [x, y] = project(c[0], c[1])
+            return (
+              <circle
+                key={`${key}-${i}`}
+                cx={x}
+                cy={y}
+                r={featureStyle.radius || 5}
+                fill={featureStyle.fillColor || featureStyle.color || '#3b82f6'}
+                fillOpacity={opacidade ?? 1}
+                stroke={featureStyle.color || '#fff'}
+                strokeWidth={featureStyle.weight || 1}
+              />
+            )
+          })}
+        </g>
       )
     }
 
