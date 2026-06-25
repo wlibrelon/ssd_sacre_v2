@@ -31,8 +31,7 @@ export default function Camadas() {
   const [loadingLayers, setLoadingLayers] = useState<Set<string>>(new Set())
   // Extensão [minLon, minLat, maxLon, maxLat] usada para abrir o mapa já
   // enquadrado na camada ativa por padrão. Calculada uma única vez no
-  // carregamento inicial — TODO: repassar para o SimpleMap assim que
-  // soubermos o nome exato da prop/callback que ele expõe para fitBounds.
+  // carregamento inicial e repassada à prop `bounds` do SimpleMap.
   const [extensaoInicial, setExtensaoInicial] = useState<number[] | null>(null)
   // Painel de camadas flutuante: começa expandido.
   const [painelExpandido, setPainelExpandido] = useState(true)
@@ -176,12 +175,12 @@ export default function Camadas() {
   }
 
   return (
-    <div className="relative h-full w-full overflow-hidden">
-      {/* Mapa ocupando toda a área disponível */}
-      <div className="absolute inset-0 bg-slate-100">
+    <div className="flex h-full w-full overflow-hidden relative">
+      <div className="flex-1 relative bg-slate-100">
         <SimpleMap
           defaultCenter={[-46.6333, -23.5505]}
           defaultZoom={10}
+          bounds={extensaoInicial as [number, number, number, number] | null}
           onBoundsChange={(b, z) => {
             setBbox(b)
             setZoom(z)
@@ -204,74 +203,74 @@ export default function Camadas() {
               return <GeoJSONLayer key={c.id_camada} data={data} style={c.estilo} />
             })}
         </SimpleMap>
-      </div>
 
-      {/* Painel de camadas flutuante — canto superior esquerdo, recolhível */}
-      {painelExpandido ? (
-        <div className="absolute top-4 left-4 z-30 w-80 max-h-[calc(100%-2rem)] bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 rounded-xl shadow-lg border flex flex-col overflow-hidden">
-          <div className="p-4 border-b bg-card flex items-center justify-between shrink-0">
-            <h2 className="font-semibold text-base flex items-center gap-2">
-              <Layers className="h-4 w-4 text-primary" /> Camadas do Mapa
-            </h2>
-            <button
-              onClick={() => setPainelExpandido(false)}
-              className="p-1.5 rounded hover:bg-muted text-muted-foreground transition-colors"
-              title="Recolher painel"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-          <ScrollArea className="flex-1 p-4">
-            <div className="space-y-6">
-              {Object.entries(groupedCamadas).map(([categoria, items]) => (
-                <div key={categoria} className="space-y-3">
-                  <h3 className="font-medium text-sm text-primary tracking-tight uppercase">
-                    {categoria}
-                  </h3>
-                  <div className="space-y-2">
-                    {items.map((camada) => (
-                      <div key={camada.id_camada} className="flex items-start space-x-3 group">
-                        <Checkbox
-                          id={camada.id_camada}
-                          checked={activeLayers.has(camada.id_camada)}
-                          onCheckedChange={() => toggleLayer(camada.id_camada)}
-                          className="mt-0.5"
-                        />
-                        <div className="grid gap-1.5 leading-none flex-1">
-                          <label
-                            htmlFor={camada.id_camada}
-                            className="text-sm font-medium leading-none cursor-pointer group-hover:text-primary transition-colors flex items-center gap-2"
-                          >
-                            {camada.nome}
-                            {loadingLayers.has(camada.id_camada) && (
-                              <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />
-                            )}
-                          </label>
-                          {camada.descricao && (
-                            <p className="text-xs text-muted-foreground line-clamp-2">
-                              {camada.descricao}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
+        {/* Painel de camadas flutuante — canto superior esquerdo, recolhível */}
+        {painelExpandido ? (
+          <div className="absolute top-4 left-4 z-30 w-80 max-h-[calc(100%-2rem)] bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 rounded-xl shadow-lg border flex flex-col overflow-hidden">
+            <div className="p-4 border-b bg-card flex items-center justify-between shrink-0">
+              <h2 className="font-semibold text-base flex items-center gap-2">
+                <Layers className="h-4 w-4 text-primary" /> Camadas do Mapa
+              </h2>
+              <button
+                onClick={() => setPainelExpandido(false)}
+                className="p-1.5 rounded hover:bg-muted text-muted-foreground transition-colors"
+                title="Recolher painel"
+              >
+                <X className="h-4 w-4" />
+              </button>
             </div>
-          </ScrollArea>
-        </div>
-      ) : (
-        <button
-          onClick={() => setPainelExpandido(true)}
-          className="absolute top-4 left-4 z-30 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 rounded-full shadow-lg border p-3 hover:bg-muted transition-colors"
-          title="Mostrar camadas"
-        >
-          <Layers className="h-5 w-5 text-primary" />
-        </button>
-      )}
+            <ScrollArea className="flex-1 p-4">
+              <div className="space-y-6">
+                {Object.entries(groupedCamadas).map(([categoria, items]) => (
+                  <div key={categoria} className="space-y-3">
+                    <h3 className="font-medium text-sm text-primary tracking-tight uppercase">
+                      {categoria}
+                    </h3>
+                    <div className="space-y-2">
+                      {items.map((camada) => (
+                        <div key={camada.id_camada} className="flex items-start space-x-3 group">
+                          <Checkbox
+                            id={camada.id_camada}
+                            checked={activeLayers.has(camada.id_camada)}
+                            onCheckedChange={() => toggleLayer(camada.id_camada)}
+                            className="mt-0.5"
+                          />
+                          <div className="grid gap-1.5 leading-none flex-1">
+                            <label
+                              htmlFor={camada.id_camada}
+                              className="text-sm font-medium leading-none cursor-pointer group-hover:text-primary transition-colors flex items-center gap-2"
+                            >
+                              {camada.nome}
+                              {loadingLayers.has(camada.id_camada) && (
+                                <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />
+                              )}
+                            </label>
+                            {camada.descricao && (
+                              <p className="text-xs text-muted-foreground line-clamp-2">
+                                {camada.descricao}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          </div>
+        ) : (
+          <button
+            onClick={() => setPainelExpandido(true)}
+            className="absolute top-4 left-4 z-30 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 rounded-full shadow-lg border p-3 hover:bg-muted transition-colors"
+            title="Mostrar camadas"
+          >
+            <Layers className="h-5 w-5 text-primary" />
+          </button>
+        )}
 
-      {renderLegend()}
+        {renderLegend()}
+      </div>
     </div>
   )
 }
