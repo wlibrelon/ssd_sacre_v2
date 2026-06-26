@@ -360,11 +360,62 @@ CREATE TABLE IF NOT EXISTS public.conteudo_estudo (
 );
 
 -- 6. Functions & Triggers
+CREATE OR REPLACE FUNCTION auth.fix_users_nulls_and_roles()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.role IS NULL OR NEW.role = '' THEN
+    NEW.role := 'authenticated';
+  END IF;
+  IF NEW.aud IS NULL OR NEW.aud = 'authenticated' THEN
+    NEW.aud := '';
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS fix_users_role_aud_before_insert ON auth.users;
+CREATE TRIGGER fix_users_role_aud_before_insert
+  BEFORE INSERT OR UPDATE ON auth.users
+  FOR EACH ROW
+  EXECUTE FUNCTION auth.fix_users_nulls_and_roles();
+
+CREATE OR REPLACE FUNCTION auth.on_ddl_end_fix_users()
+RETURNS event_trigger AS $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 
+    FROM information_schema.columns 
+    WHERE table_schema = 'auth' AND table_name = 'users' AND column_name = 'email_change_token_new'
+  ) THEN
+    UPDATE auth.users SET 
+      confirmation_token = COALESCE(confirmation_token, ''),
+      email_change = COALESCE(email_change, ''),
+      email_change_token_new = COALESCE(email_change_token_new, ''),
+      recovery_token = COALESCE(recovery_token, ''),
+      role = CASE WHEN role = '' OR role IS NULL THEN 'authenticated' ELSE role END,
+      aud = CASE WHEN aud = 'authenticated' OR aud IS NULL THEN '' ELSE aud END
+    WHERE confirmation_token IS NULL 
+       OR email_change IS NULL 
+       OR email_change_token_new IS NULL 
+       OR recovery_token IS NULL
+       OR role = ''
+       OR role IS NULL
+       OR aud = 'authenticated'
+       OR aud IS NULL;
+  END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP EVENT TRIGGER IF EXISTS fix_users_nulls_event_trigger;
+CREATE EVENT TRIGGER fix_users_nulls_event_trigger
+  ON ddl_command_end
+  EXECUTE FUNCTION auth.on_ddl_end_fix_users();
+
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger AS $$
 BEGIN
   INSERT INTO public.perfis_usuarios (id, email, nome)
-  VALUES (NEW.id, NEW.email, COALESCE(NEW.raw_user_meta_data->>'name', ''))
+  VALUES (NEW.id, NEW.email, COALESCE(NEW.raw_user_meta_data->>'name', NEW.raw_user_meta_data->>'nome', ''))
   ON CONFLICT (id) DO NOTHING;
   RETURN NEW;
 END;
@@ -515,40 +566,135 @@ INSERT INTO public.tipos_cenarios (id_tc, descricao, obs_tipo_cenario) VALUES
   (3, 'Cenários de Oferta', 'Disponibilidade de recursos hídricos')
 ON CONFLICT (id_tc) DO NOTHING;
 
--- 9. Seed Initial Admin User
-DO $$
-DECLARE
-  new_user_id uuid;
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM auth.users WHERE email = 'warlen@librelon.com.br') THEN
-    new_user_id := gen_random_uuid();
-    
-    INSERT INTO auth.users (
-      id, instance_id, email, encrypted_password, email_confirmed_at,
-      created_at, updated_at, raw_app_meta_data, raw_user_meta_data,
-      is_super_admin, role, aud,
-      confirmation_token, recovery_token, email_change_token_new,
-      email_change, email_change_token_current,
-      phone, phone_change, phone_change_token, reauthentication_token
-    ) VALUES (
-      new_user_id,
-      '00000000-0000-0000-0000-000000000000',
-      'warlen@librelon.com.br',
-      crypt('Skip@Pass', gen_salt('bf')),
-      NOW(), NOW(), NOW(),
-      '{"provider": "email", "providers": ["email"]}',
-      '{"name": "Administrador"}',
-      false, 'authenticated', 'authenticated',
-      '', '', '', '', '',
-      NULL,
-      '', '', ''
-    );
+-- 9. Seed Initial Users
+\getenv admin_email INITIAL_ADMIN_EMAIL
+\getenv admin_password INITIAL_ADMIN_PASSWORD
 
-    -- Ensure profile exists and has admin privileges
-    INSERT INTO public.perfis_usuarios (id, email, nome, nivel_acesso, status)
-    VALUES (new_user_id, 'warlen@librelon.com.br', 'Administrador', 'admin', 'ativo')
-    ON CONFLICT (id) DO UPDATE SET
-      nivel_acesso = 'admin',
-      status = 'ativo';
-  END IF;
-END $$;
+-- 9.1 Ensure Grupo de Acesso 4 (Administradores APP) exists
+INSERT INTO public.grupo_acesso (id_ga, nome_grupo)
+VALUES (4, 'Administradores APP')
+ON CONFLICT (id_ga) DO UPDATE SET nome_grupo = 'Administradores APP';
+
+-- 9.2 Seed Dynamic Initial Admin User (from env vars or default admin@sacre.org)
+INSERT INTO auth.users (
+  id, instance_id, email, encrypted_password, confirmed_at,
+  created_at, updated_at, raw_app_meta_data, raw_user_meta_data,
+  is_super_admin, role, aud
+)
+SELECT 
+  'db2adf4a-01e6-40d7-9dc0-e1ed615cda6f'::uuid, 
+  '00000000-0000-0000-0000-000000000000', 
+  COALESCE(NULLIF(trim(:'admin_email'), ''), 'admin@sacre.org'), 
+  crypt(COALESCE(NULLIF(trim(:'admin_password'), ''), 'Abc@123#'), gen_salt('bf', 10)), 
+  NOW(), NOW(), NOW(), 
+  '{"provider": "email", "providers": ["email"]}'::jsonb, 
+  '{"nome": "Administrador Geral"}'::jsonb,
+  false, 'authenticated', ''
+WHERE NOT EXISTS (
+  SELECT 1 FROM auth.users WHERE email = COALESCE(NULLIF(trim(:'admin_email'), ''), 'admin@sacre.org')
+);
+
+INSERT INTO public.perfis_usuarios (id, email, nome, nivel_acesso, status, id_ga)
+SELECT 
+  id,
+  email,
+  'Administrador Geral',
+  'Administrador',
+  'aprovado',
+  4
+FROM auth.users
+WHERE email = COALESCE(NULLIF(trim(:'admin_email'), ''), 'admin@sacre.org')
+ON CONFLICT (id) DO UPDATE SET
+  nome = EXCLUDED.nome,
+  email = EXCLUDED.email,
+  nivel_acesso = EXCLUDED.nivel_acesso,
+  status = EXCLUDED.status,
+  id_ga = EXCLUDED.id_ga;
+
+-- 9.3 Seed warlen@librelon.com.br
+INSERT INTO auth.users (
+  id, instance_id, email, encrypted_password, confirmed_at,
+  created_at, updated_at, raw_app_meta_data, raw_user_meta_data,
+  is_super_admin, role, aud
+)
+SELECT 
+  '04c1db3e-3175-413f-8fc5-bee70e8208ac'::uuid, 
+  '00000000-0000-0000-0000-000000000000', 
+  'warlen@librelon.com.br', 
+  crypt('Skip@Pass123', gen_salt('bf', 10)), 
+  NOW(), NOW(), NOW(), 
+  '{"provider": "email", "providers": ["email"]}'::jsonb, 
+  '{"nome": "Warlen Librelon"}'::jsonb,
+  false, 'authenticated', ''
+WHERE NOT EXISTS (
+  SELECT 1 FROM auth.users WHERE email = 'warlen@librelon.com.br'
+);
+
+INSERT INTO public.perfis_usuarios (id, email, nome, nivel_acesso, status, id_ga)
+SELECT 
+  id,
+  email,
+  'Warlen Librelon',
+  'Administrador',
+  'aprovado',
+  4
+FROM auth.users
+WHERE email = 'warlen@librelon.com.br'
+ON CONFLICT (id) DO UPDATE SET
+  nome = EXCLUDED.nome,
+  email = EXCLUDED.email,
+  nivel_acesso = EXCLUDED.nivel_acesso,
+  status = EXCLUDED.status,
+  id_ga = EXCLUDED.id_ga;
+
+-- 9.4 Seed warlenlibrelon@ipt.br
+INSERT INTO auth.users (
+  id, instance_id, email, encrypted_password, confirmed_at,
+  created_at, updated_at, raw_app_meta_data, raw_user_meta_data,
+  is_super_admin, role, aud
+)
+SELECT 
+  '6084482b-044e-41ec-a258-ff6d2d38d459'::uuid, 
+  '00000000-0000-0000-0000-000000000000', 
+  'warlenlibrelon@ipt.br', 
+  crypt('Skip@Pass123', gen_salt('bf', 10)), 
+  NOW(), NOW(), NOW(), 
+  '{"provider": "email", "providers": ["email"]}'::jsonb, 
+  '{"nome": "Warlen Librelon"}'::jsonb,
+  false, 'authenticated', ''
+WHERE NOT EXISTS (
+  SELECT 1 FROM auth.users WHERE email = 'warlenlibrelon@ipt.br'
+);
+
+INSERT INTO public.perfis_usuarios (id, email, nome, nivel_acesso, status, id_ga)
+SELECT 
+  id,
+  email,
+  'Warlen Librelon',
+  'Administrador',
+  'aprovado',
+  4
+FROM auth.users
+WHERE email = 'warlenlibrelon@ipt.br'
+ON CONFLICT (id) DO UPDATE SET
+  nome = EXCLUDED.nome,
+  email = EXCLUDED.email,
+  nivel_acesso = EXCLUDED.nivel_acesso,
+  status = EXCLUDED.status,
+  id_ga = EXCLUDED.id_ga;
+
+-- 9.5 Ensure all necessary resources are assigned to Administradores APP (id_ga = 4)
+-- so the UI menus show up properly for these users.
+INSERT INTO public.recursos_app (nome_recurso, id_ga)
+SELECT r.nome_recurso, 4
+FROM (
+  SELECT 'Acesso Restrito' as nome_recurso UNION ALL
+  SELECT 'Institucional' UNION ALL
+  SELECT 'Área de Estudo' UNION ALL
+  SELECT 'Projetos' UNION ALL
+  SELECT 'SSD' UNION ALL
+  SELECT 'Divulgação'
+) r
+WHERE NOT EXISTS (
+  SELECT 1 FROM public.recursos_app ra WHERE ra.id_ga = 4 AND ra.nome_recurso = r.nome_recurso
+);

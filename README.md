@@ -16,13 +16,54 @@ Este projeto foi criado de ponta a ponta com o [Skip](https://goskip.dev).
 
 ## 📋 Pré-requisitos
 
-- Node.js 18+
-- npm
+- Docker e Docker Compose
 
-## 🔧 Instalação
+## 🚀 Instalação e Desenvolvimento (via Docker)
 
+Este projeto foi projetado para ser executado via Docker, garantindo que todo o ambiente (Frontend, Banco de Dados, Auth) esteja configurado corretamente.
+
+### 1. Configuração da Rede
+O Docker Compose espera uma rede externa chamada `sacre`. Se ainda não a criou:
 ```bash
-npm install
+docker network create sacre
+```
+
+### 2. Configuração de Variáveis de Ambiente
+Crie o arquivo `.env` dentro da pasta `devops/`. Você pode fazer isso de forma automática com o script utilitário:
+```bash
+./devops/generate-env.sh
+```
+O script guiará você pela configuração (como domínio, dados SMTP, etc.) e gerará automaticamente chaves JWT e senhas altamente seguras e perfeitamente compatíveis com o Supabase.
+
+Caso prefira configurar manualmente:
+```bash
+cp devops/.env.example devops/.env
+```
+Edite o arquivo `devops/.env` e preencha as variáveis.
+- **APP_DOMAIN**: O domínio onde a aplicação rodará (padrão: `https://localhost`).
+- **VITE_SUPABASE_PUBLISHABLE_KEY**: Sua chave anônima do Supabase. **(Obrigatório)**
+
+### 3. Execução
+Para iniciar o ambiente completo:
+```bash
+cd devops
+docker-compose up -d --build
+```
+
+> **Dica**: O parâmetro `--build` é fundamental sempre que você alterar chaves no seu arquivo `.env`, pois o Vite injeta essas variáveis no código durante o build da imagem.
+
+### Serviços Disponíveis
+- **Frontend App**: [https://localhost](https://localhost) (ou seu `APP_DOMAIN`)
+- **Supabase Studio**: [http://localhost:8082](http://localhost:8082)
+- **Banco de Dados**: Porta `5432`
+
+---
+
+## 💻 Scripts de Desenvolvimento (Dentro do Container)
+
+Se precisar rodar comandos dentro do container da aplicação:
+```bash
+docker exec -it sacre.app sh
 ```
 
 ## 💻 Scripts Disponíveis
@@ -112,13 +153,13 @@ Este template inclui uma biblioteca completa de componentes Shadcn UI baseados e
 
 ## 🔄 Workflow de Desenvolvimento
 
-1. Instale as dependências: `npm install`
-2. Inicie o servidor de desenvolvimento: `npm start`
+1. Instale as dependências: `pnpm install` ou `npm install`
+2. Inicie o servidor de desenvolvimento: `pnpm start` ou `npm start`
 3. Faça suas alterações
-4. Verifique o código: `npm run lint`
-5. Formate o código: `npm run format`
-6. Crie a build: `npm run build`
-7. Visualize a build: `npm run preview`
+4. Verifique o código: `pnpm run lint` ou `npm run lint`
+5. Formate o código: `pnpm run format` ou `npm run format`
+6. Crie a build: `pnpm run build` ou `npm run build`
+7. Visualize a build: `pnpm run preview` ou `npm run preview`
 
 ## 📦 Build e Deploy
 
