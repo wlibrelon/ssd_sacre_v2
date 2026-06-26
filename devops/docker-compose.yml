@@ -42,7 +42,7 @@ services:
     image: postgrest/postgrest:v10.1.2
     container_name: sacre.postgrest
     environment:
-      PGRST_DB_URI: postgres://postgres:postgres@sacre.db:5432/postgres
+      PGRST_DB_URI: postgres://postgres:${POSTGRES_PASSWORD:-postgres}@sacre.db:5432/postgres
       PGRST_DB_SCHEMA: public
       PGRST_DB_ANON_ROLE: anon
       PGRST_JWT_SECRET: ${JWT_SECRET:-1aduOYIcIG2/UPJyaF/LdVYQQKoiX5SW+HBO7zHSk+k=}
@@ -58,7 +58,7 @@ services:
     container_name: sacre.auth
     environment:
       GOTRUE_DB_DRIVER: postgres
-      GOTRUE_DB_DATABASE_URL: postgres://postgres:postgres@sacre.db:5432/postgres?search_path=auth,public
+      GOTRUE_DB_DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD:-postgres}@sacre.db:5432/postgres?search_path=auth,public
       GOTRUE_JWT_SECRET: ${JWT_SECRET:-1aduOYIcIG2/UPJyaF/LdVYQQKoiX5SW+HBO7zHSk+k=}
       GOTRUE_JWT_EXP: 3600
       GOTRUE_EXTERNAL_EMAIL_ENABLED: "true"
@@ -85,7 +85,7 @@ services:
     image: supabase/postgres-meta:v0.68.0
     container_name: sacre.pg-meta
     environment:
-      PG_META_DB_URL: postgres://postgres:postgres@sacre.db:5432/postgres
+      PG_META_DB_URL: postgres://postgres:${POSTGRES_PASSWORD:-postgres}@sacre.db:5432/postgres
     depends_on:
       db:
         condition: service_healthy
@@ -102,6 +102,7 @@ services:
       STUDIO_PG_META_URL: http://sacre.pg-meta:8080
       SUPABASE_ANON_KEY: ${VITE_SUPABASE_PUBLISHABLE_KEY}
       SUPABASE_SERVICE_KEY: ${SERVICE_ROLE_KEY}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       # Variáveis para a versão 'latest' do Studio
       STUDIO_DEFAULT_ORGANIZATION: "Default Organization"
       STUDIO_DEFAULT_PROJECT: "Default Project"
