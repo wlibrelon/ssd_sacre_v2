@@ -28,6 +28,8 @@ services:
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: postgres
+      INITIAL_ADMIN_EMAIL: ${INITIAL_ADMIN_EMAIL:-admin@sacre.org}
+      INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:-Abc@123#}
     volumes:
       - ../supabase/migrations:/docker-entrypoint-initdb.d/migrations
     healthcheck:
