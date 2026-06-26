@@ -35,6 +35,7 @@ export function CamadaFormModal({ open, onOpenChange, camada, categorias, onSucc
     ativo: true,
     visivel: false,
     epsg_origem: 4674,
+    campo_nome: '',
   })
   const [estilo, setEstilo] = useState({
     fillColor: '#3388ff',
@@ -42,7 +43,9 @@ export function CamadaFormModal({ open, onOpenChange, camada, categorias, onSucc
     weight: 2,
     opacity: 0.5,
   })
-  const [legenda, setLegenda] = useState<{ color: string; label: string }[]>([])
+  const [legenda, setLegenda] = useState<
+    { color: string; label: string; type: 'point' | 'line' | 'polygon' }[]
+  >([])
 
   useEffect(() => {
     if (open) {
@@ -57,11 +60,12 @@ export function CamadaFormModal({ open, onOpenChange, camada, categorias, onSucc
         ativo: camada?.ativo ?? true,
         visivel: camada?.visivel_por_padrao ?? false,
         epsg_origem: camada?.epsg_origem || 4674,
+        campo_nome: camada?.campo_nome || '',
       })
       setEstilo(
         camada?.estilo || { fillColor: '#3388ff', color: '#3388ff', weight: 2, opacity: 0.5 },
       )
-      setLegenda(camada?.legenda || [])
+      setLegenda((camada?.legenda || []).map((l: any) => ({ type: 'point', ...l })))
       setFile(null)
       setProgress(0)
     }
@@ -85,6 +89,7 @@ export function CamadaFormModal({ open, onOpenChange, camada, categorias, onSucc
         estilo: form.tipo_dados === 'vetorial' ? estilo : {},
         legenda,
         epsg_origem: form.tipo_dados === 'vetorial' ? form.epsg_origem : null,
+        campo_nome: form.tipo_dados === 'vetorial' ? form.campo_nome.trim() || null : null,
       }
 
       let id = camada?.id_camada
@@ -253,6 +258,20 @@ export function CamadaFormModal({ open, onOpenChange, camada, categorias, onSucc
                     </p>
                   </div>
 
+                  <div className="space-y-2 col-span-2">
+                    <Label>Campo de Nome da Feição (opcional)</Label>
+                    <Input
+                      placeholder="ex: id_sacre, nm_municip, codigo..."
+                      value={form.campo_nome}
+                      onChange={(e) => setForm({ ...form, campo_nome: e.target.value })}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Nome exato da coluna de atributo do shapefile (.dbf) que deve ser usada como
+                      identificação/rótulo de cada feição ao importar. Se deixar em branco, a
+                      importação tenta adivinhar usando nomes comuns (nome, name, rotulo...).
+                    </p>
+                  </div>
+
                   <div className="col-span-2 grid grid-cols-4 gap-4 p-4 border rounded-md">
                     <div className="space-y-2">
                       <Label>Cor Preench.</Label>
@@ -303,7 +322,9 @@ export function CamadaFormModal({ open, onOpenChange, camada, categorias, onSucc
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => setLegenda([...legenda, { color: '#000000', label: '' }])}
+                    onClick={() =>
+                      setLegenda([...legenda, { color: '#000000', label: '', type: 'point' }])
+                    }
                   >
                     <Plus className="w-4 h-4 mr-2" /> Adicionar
                   </Button>
@@ -320,6 +341,23 @@ export function CamadaFormModal({ open, onOpenChange, camada, categorias, onSucc
                         setLegenda(n)
                       }}
                     />
+                    <Select
+                      value={l.type}
+                      onValueChange={(v) => {
+                        const n = [...legenda]
+                        n[i].type = v as 'point' | 'line' | 'polygon'
+                        setLegenda(n)
+                      }}
+                    >
+                      <SelectTrigger className="w-32 shrink-0">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="point">Ponto</SelectItem>
+                        <SelectItem value="line">Linha</SelectItem>
+                        <SelectItem value="polygon">Polígono</SelectItem>
+                      </SelectContent>
+                    </Select>
                     <Input
                       placeholder="Rótulo"
                       value={l.label}

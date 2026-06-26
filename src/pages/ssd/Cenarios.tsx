@@ -41,22 +41,53 @@ import {
   ReferenceArea,
 } from 'recharts'
 
-const MONTHS = [
-  { v: '1', l: 'Janeiro' },
-  { v: '2', l: 'Fevereiro' },
-  { v: '3', l: 'Março' },
-  { v: '4', l: 'Abril' },
-  { v: '5', l: 'Maio' },
-  { v: '6', l: 'Junho' },
-  { v: '7', l: 'Julho' },
-  { v: '8', l: 'Agosto' },
-  { v: '9', l: 'Setembro' },
-  { v: '10', l: 'Outubro' },
-  { v: '11', l: 'Novembro' },
-  { v: '12', l: 'Dezembro' },
-]
+// Seleção de meses desativada temporariamente — a simulação passa a
+// considerar todos os meses por padrão. Mantido comentado (em vez de
+// removido) para facilitar o retorno futuro desse recurso.
+// const MONTHS = [
+//   { v: '1', l: 'Janeiro' },
+//   { v: '2', l: 'Fevereiro' },
+//   { v: '3', l: 'Março' },
+//   { v: '4', l: 'Abril' },
+//   { v: '5', l: 'Maio' },
+//   { v: '6', l: 'Junho' },
+//   { v: '7', l: 'Julho' },
+//   { v: '8', l: 'Agosto' },
+//   { v: '9', l: 'Setembro' },
+//   { v: '10', l: 'Outubro' },
+//   { v: '11', l: 'Novembro' },
+//   { v: '12', l: 'Dezembro' },
+// ]
 
 const LINE_COLORS = ['#2563eb', '#16a34a', '#dc2626', '#d97706', '#7c3aed', '#0891b2', '#be185d']
+
+// ── Textos explicativos exibidos abaixo do título de cada aba de configuração ──
+const TEXTO_SELECAO_SIMULACAO =
+  'Selecione as fontes de água que farão parte da simulação, combinando cenários climáticos ou de demanda com estratégias de intervenção. Cada combinação corresponde a um conjunto de dados previamente importado na base — só é possível adicionar combinações que já possuam dados de simulação disponíveis.'
+
+const TEXTO_PARAMETROS_SISTEMA =
+  'Defina os parâmetros gerais do modelo de abastecimento: o ponto de partida da população atendida, o comportamento das perdas no sistema ao longo do tempo e os limiares que classificam a situação de segurança hídrica da região (Seguro, Alerta, Crise ou Colapso).'
+
+const TEXTO_PROJECAO_DEMANDA =
+  'Quando a demanda ou as perdas são calculadas automaticamente, selecione aqui os cenários de referência — crescimento populacional e consumo per capita — que serão usados para projetar a demanda futura.'
+
+// TODO: textos a serem definidos posteriormente — substituir pelo conteúdo final.
+const TEXTO_DEMANDA_AUTOMATICA =
+  'Determina que a demanda será ou não calculada automaticamente com base na seleção de cenários de população e consumo. Caso contrário os dados serão importados'
+const TEXTO_PERDAS_AUTOMATICAS = 'O mesmo para Perdas.'
+
+// ── Tooltips (exibidos ao passar o mouse) dos campos da aba
+// "Parâmetros do Sistema de Abastecimento" ──
+const TOOLTIP_LIMIAR_ALERTA =
+  "Valor do Índice de Segurança Hídrica (volume distribuído ÷ demanda regional) a partir do qual a situação é classificada como 'Seguro'. Abaixo deste valor, o status passa para 'Alerta'."
+const TOOLTIP_LIMIAR_CRISE =
+  "Valor do Índice de Segurança Hídrica abaixo do qual a situação é classificada como 'Crise' — um déficit mais acentuado entre a demanda regional e o volume distribuído."
+const TOOLTIP_LIMIAR_COLAPSO =
+  "Valor do Índice de Segurança Hídrica abaixo do qual a situação é classificada como 'Colapso', o nível mais crítico de déficit entre a demanda regional e o volume distribuído."
+
+// TODO: tooltips a serem definidos posteriormente pelo usuário.
+const TOOLTIP_PERC_INICIAL_PERDAS = ''
+const TOOLTIP_INICIO_PERDAS = ''
 
 type StatusSeg = 'seguro' | 'alerta' | 'crise' | 'colapso'
 
@@ -321,30 +352,47 @@ function SimField({
   type = 'text',
   simEdit,
   setSimEdit,
+  min,
+  max,
+  step,
+  tooltip,
 }: {
   label: string
   field: string
   type?: string
   simEdit: any
   setSimEdit: React.Dispatch<React.SetStateAction<any>>
+  min?: number
+  max?: number
+  step?: number
+  tooltip?: string
 }) {
   return (
-    <div className="space-y-1">
+    <div className="space-y-1" title={tooltip || undefined}>
       <label className="text-xs font-semibold text-muted-foreground">{label}</label>
       <Input
         type={type}
+        min={min}
+        max={max}
+        step={step}
         value={simEdit?.[field] ?? ''}
         className="h-8 text-sm"
         onChange={(e) =>
-          setSimEdit((prev: any) => ({
-            ...prev,
-            [field]:
+          setSimEdit((prev: any) => {
+            let valor: any =
               type === 'number'
                 ? e.target.value === ''
                   ? ''
                   : Number(e.target.value)
-                : e.target.value,
-          }))
+                : e.target.value
+            // Limita o valor ao intervalo [min, max] quando informado —
+            // usado pelos limiares de segurança hídrica, restritos a 0–1.
+            if (type === 'number' && valor !== '' && !Number.isNaN(valor)) {
+              if (min !== undefined && valor < min) valor = min
+              if (max !== undefined && valor > max) valor = max
+            }
+            return { ...prev, [field]: valor }
+          })
         }
       />
     </div>
@@ -595,6 +643,17 @@ export default function Cenarios() {
   }
 
   const handleToggleSelecao = async (id: string, selecionado: boolean) => {
+    if (selecionado) {
+      const atual = selecoes.find((s) => s.id === id)
+      const jaExisteOutraAtiva =
+        atual && selecoes.some((s) => s.id !== id && s.id_fonte === atual.id_fonte && s.selecionado)
+      if (jaExisteOutraAtiva) {
+        toast.error(
+          'Já existe uma configuração ativa para esta fonte. Desmarque-a antes de selecionar outra.',
+        )
+        return
+      }
+    }
     setSelecoes((prev) => prev.map((s) => (s.id === id ? { ...s, selecionado } : s)))
     const { error } = await supabase.from('selecao_cenarios').update({ selecionado }).eq('id', id)
     if (error) {
@@ -1034,10 +1093,12 @@ export default function Cenarios() {
   return (
     <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
       <div>
-        <h1 className="text-3xl font-bold text-primary mb-2">Simulação de Cenários</h1>
+        <h1 className="text-3xl font-bold text-primary mb-2">
+          Sistema de Suporte à Decisão para Abastecimento de Água
+        </h1>
         <p className="text-muted-foreground">
-          Configure as fontes, cenários e estratégias para simular o comportamento do sistema
-          hídrico.
+          Esse sistema permite avaliar estratégias de abastecimento de água a partir de diversas
+          fontes de água, intervenções e cenários de clima e demanda.
         </p>
       </div>
 
@@ -1049,27 +1110,24 @@ export default function Cenarios() {
           <AccordionTrigger className="px-5 py-4 hover:no-underline">
             <div className="flex items-center gap-3">
               <span className="font-semibold text-primary text-base">Configurações</span>
-              {!selecaoLoading && (
-                <span className="text-xs text-muted-foreground">
-                  {selecoes.filter((s) => s.selecionado).length} de {selecoes.length} fontes
-                  selecionadas
-                </span>
-              )}
             </div>
           </AccordionTrigger>
           <AccordionContent className="px-5 pb-5">
             <Tabs defaultValue="fontes" className="w-full">
               <TabsList className="flex-wrap h-auto">
                 <TabsTrigger value="fontes">Seleção da Simulação</TabsTrigger>
-                <TabsTrigger value="parametros">Parâmetros do Modelo</TabsTrigger>
+                <TabsTrigger value="parametros">Parâmetros do Sistema de Abastecimento</TabsTrigger>
                 <TabsTrigger value="automaticos" disabled={!temAutomatico}>
-                  Demandas e Perdas
+                  Projeção da demanda urbana
                 </TabsTrigger>
                 <TabsTrigger value="periodo">Período</TabsTrigger>
               </TabsList>
 
               {/* ── TAB: Seleção da Simulação ── */}
               <TabsContent value="fontes" className="space-y-4 pt-4">
+                <p className="text-xs text-muted-foreground -mt-1 mb-2">
+                  {TEXTO_SELECAO_SIMULACAO}
+                </p>
                 {selecaoLoading && (
                   <div className="flex items-center gap-2 py-4 text-sm text-muted-foreground">
                     <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
@@ -1109,9 +1167,29 @@ export default function Cenarios() {
                                 checked={
                                   selecoes.length > 0 && selecoes.every((s) => s.selecionado)
                                 }
-                                onCheckedChange={(v) =>
-                                  selecoes.forEach((s) => handleToggleSelecao(s.id, !!v))
-                                }
+                                onCheckedChange={(v) => {
+                                  if (v) {
+                                    const fontesUsadas = new Set<number>()
+                                    let puladas = 0
+                                    selecoes.forEach((s) => {
+                                      if (fontesUsadas.has(s.id_fonte)) {
+                                        if (!s.selecionado) puladas += 1
+                                        return
+                                      }
+                                      fontesUsadas.add(s.id_fonte)
+                                      if (!s.selecionado) handleToggleSelecao(s.id, true)
+                                    })
+                                    if (puladas > 0) {
+                                      toast.error(
+                                        `${puladas} configuração(ões) não foram marcadas porque já existe uma seleção ativa para a mesma fonte.`,
+                                      )
+                                    }
+                                  } else {
+                                    selecoes.forEach((s) => {
+                                      if (s.selecionado) handleToggleSelecao(s.id, false)
+                                    })
+                                  }
+                                }}
                                 title="Marcar / desmarcar todos"
                               />
                             </th>
@@ -1255,6 +1333,17 @@ export default function Cenarios() {
                             ))}
                           </SelectContent>
                         </Select>
+                        {idC &&
+                          (() => {
+                            const cenarioSelecionado = refData.cenariosBd.find(
+                              (x: any) => x.id_cenarios.toString() === idC,
+                            )
+                            return cenarioSelecionado?.obs_cenario ? (
+                              <p className="text-xs text-muted-foreground bg-slate-50 border rounded-md p-2">
+                                {cenarioSelecionado.obs_cenario}
+                              </p>
+                            ) : null
+                          })()}
                         <Button
                           className="w-full"
                           size="sm"
@@ -1312,6 +1401,17 @@ export default function Cenarios() {
                             ))}
                           </SelectContent>
                         </Select>
+                        {idAcao &&
+                          (() => {
+                            const acaoSelecionada = refData.acoesBd.find(
+                              (x: any) => x.id_acao.toString() === idAcao,
+                            )
+                            return acaoSelecionada?.obs ? (
+                              <p className="text-xs text-muted-foreground bg-slate-50 border rounded-md p-2">
+                                {acaoSelecionada.obs}
+                              </p>
+                            ) : null
+                          })()}
                         <Button
                           className="w-full"
                           size="sm"
@@ -1372,64 +1472,100 @@ export default function Cenarios() {
 
               {/* ── TAB: Parâmetros do Modelo ── */}
               <TabsContent value="parametros" className="space-y-4 pt-4">
+                <p className="text-xs text-muted-foreground -mt-1 mb-2">
+                  {TEXTO_PARAMETROS_SISTEMA}
+                </p>
                 {simEdit && (
                   <>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                      <SimField
-                        label="População Inicial"
-                        field="pop_inicial"
-                        type="number"
-                        simEdit={simEdit}
-                        setSimEdit={setSimEdit}
-                      />
-                      <SimField
-                        label="Perc. Inicial de Perdas (%)"
-                        field="perc_inicial_perdas"
-                        type="number"
-                        simEdit={simEdit}
-                        setSimEdit={setSimEdit}
-                      />
-                      <SimField
-                        label="Início da Redução de Perdas"
-                        field="inicio_perdas"
-                        type="text"
-                        simEdit={simEdit}
-                        setSimEdit={setSimEdit}
-                      />
-                      <SimField
-                        label="Limiar de Alerta (0–1)"
-                        field="limiar_alerta"
-                        type="number"
-                        simEdit={simEdit}
-                        setSimEdit={setSimEdit}
-                      />
-                      <SimField
-                        label="Limiar de Crise (0–1)"
-                        field="limiar_crise"
-                        type="number"
-                        simEdit={simEdit}
-                        setSimEdit={setSimEdit}
-                      />
-                      <SimField
-                        label="Limiar de Colapso (0–1)"
-                        field="limiar_colapso"
-                        type="number"
-                        simEdit={simEdit}
-                        setSimEdit={setSimEdit}
-                      />
-                      <div className="flex flex-col gap-3 pt-1">
-                        <SimToggle
-                          label="Demanda automática"
-                          field="demanda_auto"
+                    <div className="space-y-6">
+                      {/* Parâmetros gerais do modelo */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <SimField
+                          label="População Inicial (hab.)"
+                          field="pop_inicial"
+                          type="number"
                           simEdit={simEdit}
                           setSimEdit={setSimEdit}
                         />
-                        <SimToggle
-                          label="Perdas automáticas"
-                          field="perdas_auto"
+                        <SimField
+                          label="Perc. Inicial de Perdas (%)"
+                          field="perc_inicial_perdas"
+                          type="number"
+                          tooltip={TOOLTIP_PERC_INICIAL_PERDAS}
                           simEdit={simEdit}
                           setSimEdit={setSimEdit}
                         />
+                        <SimField
+                          label="Início da Redução de Perdas"
+                          field="inicio_perdas"
+                          type="text"
+                          tooltip={TOOLTIP_INICIO_PERDAS}
+                          simEdit={simEdit}
+                          setSimEdit={setSimEdit}
+                        />
+                      </div>
+
+                      {/* Limiares de segurança hídrica — restritos ao intervalo 0–1 */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <SimField
+                          label="Limiar de Alerta (0–1)"
+                          field="limiar_alerta"
+                          type="number"
+                          min={0}
+                          max={1}
+                          step={0.01}
+                          tooltip={TOOLTIP_LIMIAR_ALERTA}
+                          simEdit={simEdit}
+                          setSimEdit={setSimEdit}
+                        />
+                        <SimField
+                          label="Limiar de Crise (0–1)"
+                          field="limiar_crise"
+                          type="number"
+                          min={0}
+                          max={1}
+                          step={0.01}
+                          tooltip={TOOLTIP_LIMIAR_CRISE}
+                          simEdit={simEdit}
+                          setSimEdit={setSimEdit}
+                        />
+                        <SimField
+                          label="Limiar de Colapso (0–1)"
+                          field="limiar_colapso"
+                          type="number"
+                          min={0}
+                          max={1}
+                          step={0.01}
+                          tooltip={TOOLTIP_LIMIAR_COLAPSO}
+                          simEdit={simEdit}
+                          setSimEdit={setSimEdit}
+                        />
+                      </div>
+
+                      {/* Opções automáticas — cada uma em linha separada, com texto explicativo */}
+                      <div className="space-y-4 pt-2 border-t">
+                        <div className="pt-4">
+                          <SimToggle
+                            label="Demanda automática"
+                            field="demanda_auto"
+                            simEdit={simEdit}
+                            setSimEdit={setSimEdit}
+                          />
+                          <p className="text-xs text-muted-foreground mt-1 ml-7">
+                            {TEXTO_DEMANDA_AUTOMATICA}
+                          </p>
+                        </div>
+                        <div>
+                          <SimToggle
+                            label="Perdas automáticas"
+                            field="perdas_auto"
+                            simEdit={simEdit}
+                            setSimEdit={setSimEdit}
+                          />
+                          <p className="text-xs text-muted-foreground mt-1 ml-7">
+                            {TEXTO_PERDAS_AUTOMATICAS}
+                          </p>
+                        </div>
                       </div>
                     </div>
                     <div className="flex justify-end">
@@ -1443,11 +1579,14 @@ export default function Cenarios() {
 
               {/* ── TAB: Demandas e Perdas (Automático) ── */}
               <TabsContent value="automaticos" className="space-y-4 pt-4">
+                <p className="text-xs text-muted-foreground -mt-1 mb-2">{TEXTO_PROJECAO_DEMANDA}</p>
                 {simObj && temAutomatico && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {simObj.demanda_auto && (
                       <div className="space-y-3">
-                        <h4 className="text-sm font-semibold text-muted-foreground">Demanda</h4>
+                        <h4 className="text-sm font-semibold text-muted-foreground">
+                          Cenário de População Atendida (hab.)
+                        </h4>
                         <NativeSelect
                           className="w-full"
                           options={cenario_demanda.map((o: any) => ({
@@ -1458,6 +1597,9 @@ export default function Cenarios() {
                           onChange={(v: any) => setFilters({ ...filters, id_cd_auto: v })}
                           placeholder="Cenário Demanda"
                         />
+                        <h4 className="text-sm font-semibold text-muted-foreground">
+                          Cenário de Consumo (L/hab./dia))
+                        </h4>
                         <NativeSelect
                           className="w-full"
                           options={cenario_consumo.map((o: any) => ({
@@ -1529,6 +1671,12 @@ export default function Cenarios() {
                     />
                   </div>
                 </div>
+                {/* Seleção de meses desativada temporariamente — a simulação passa a
+                    considerar todos os meses por padrão (filters.meses nunca é
+                    definido, então o filtro condicional em applyFinancialMetrics
+                    não é aplicado). Bloco mantido comentado para facilitar o
+                    retorno futuro desse recurso. */}
+                {/*
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-semibold text-muted-foreground">
@@ -1576,6 +1724,7 @@ export default function Cenarios() {
                     ))}
                   </div>
                 </div>
+                */}
               </TabsContent>
             </Tabs>
 

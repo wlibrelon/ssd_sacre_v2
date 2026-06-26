@@ -39,8 +39,6 @@ function registrarDefinicoesProj4() {
   projecoesRegistradas = true
 }
 
-type ParCoordenadas = [number, number] | [number, number, number]
-
 function reprojetarCoordenadas(
   coords: any,
   transformar: (xy: [number, number]) => [number, number],
@@ -97,11 +95,28 @@ async function lerFeaturesDoShapefile(shpBytes: Uint8Array, dbfBytes: Uint8Array
   return features
 }
 
-const CHAVES_NOME_CANDIDATAS = ['nome', 'name', 'rotulo', 'label', 'ds_nome', 'nm_nome']
+const CHAVES_NOME_CANDIDATAS = ['nome', 'name', 'rotulo', 'label', 'ds_nome', 'nm_nome', 'id_sacre']
 
-function extrairNome(propriedades: Record<string, any> | null | undefined): string | null {
+function extrairNome(
+  propriedades: Record<string, any> | null | undefined,
+  campoConfigurado?: string | null,
+): string | null {
   if (!propriedades) return null
   const entradas = Object.entries(propriedades)
+
+  // 1. Campo configurado manualmente na camada (camadas_mapa.campo_nome) —
+  // tem prioridade sobre a lista de candidatos abaixo.
+  if (campoConfigurado) {
+    const encontrada = entradas.find(
+      ([chave]) => chave.toLowerCase() === campoConfigurado.toLowerCase(),
+    )
+    if (encontrada && encontrada[1] != null && String(encontrada[1]).trim() !== '') {
+      return String(encontrada[1])
+    }
+  }
+
+  // 2. Fallback: lista de nomes comuns, usada quando não há campo
+  // configurado (ou o campo configurado não existe nesta feição específica).
   for (const candidata of CHAVES_NOME_CANDIDATAS) {
     const encontrada = entradas.find(([chave]) => chave.toLowerCase() === candidata)
     if (encontrada && encontrada[1] != null && String(encontrada[1]).trim() !== '') {
@@ -127,6 +142,18 @@ export async function importarCamadaVetorial(
     .eq('id_camada', camada.id_camada)
 
   try {
+    // Reimportação é substitutiva: remove feições de uma tentativa anterior
+    // (inclusive as gravadas com geom nulo) antes de inserir as novas, para
+    // evitar duplicar registros a cada nova tentativa.
+    onProgress?.('Limpando importação anterior, se houver...')
+    const { error: deleteError } = await supabase
+      .from('feicoes_geoespaciais')
+      .delete()
+      .eq('id_camada', camada.id_camada)
+    if (deleteError) {
+      throw new Error(`Erro ao limpar feições anteriores: ${deleteError.message}`)
+    }
+
     onProgress?.('Baixando arquivo .zip...')
     const { data: blob, error: downloadError } = await supabase.storage
       .from('camadas-vetor')
@@ -159,9 +186,11 @@ export async function importarCamadaVetorial(
         `Processando feição ${Math.min(i + TAMANHO_LOTE, features.length)} de ${features.length}...`,
       )
 
+      // IMPORTANTE: a chave 'geom' abaixo precisa bater exatamente com a que
+      // a função importar_feicoes_lote() lê no banco (item->>'geom').
       const payload = lote.map((feature: any) => ({
-        geometria: reprojetarGeometria(feature.geometry, epsgOrigem),
-        nome: extrairNome(feature.properties),
+        geom: reprojetarGeometria(feature.geometry, epsgOrigem),
+        nome: extrairNome(feature.properties, camada.campo_nome),
         propriedades: feature.properties || {},
       }))
 
@@ -207,10 +236,6 @@ export async function importarCamadaRaster(camada: any): Promise<{ sucesso: true
 
   try {
     const caminho = `${camada.id_camada}/origem.tif`
-    // Bucket é privado: gera uma URL assinada de longa duração.
-    // OBS: essa URL expira (aqui, em ~1 ano). Quando a etapa de geração de
-    // tiles/COG for implementada, fonte_raster_url deve passar a apontar
-    // para esses tiles processados em vez do .tif assinado.
     const { data: urlData, error: urlError } = await supabase.storage
       .from('camadas-raster')
       .createSignedUrl(caminho, 60 * 60 * 24 * 365)
