@@ -182,10 +182,53 @@ export type Database = {
           },
         ]
       }
+      atividades_sociais: {
+        Row: {
+          ativar: boolean | null
+          data_atividade: string | null
+          data_pub: string | null
+          descricao: string | null
+          entidade: string | null
+          fotos: Json | null
+          id_ativ_soc: number
+          link: string | null
+          local: string | null
+          publico_alvo: string | null
+          titulo: string | null
+        }
+        Insert: {
+          ativar?: boolean | null
+          data_atividade?: string | null
+          data_pub?: string | null
+          descricao?: string | null
+          entidade?: string | null
+          fotos?: Json | null
+          id_ativ_soc?: number
+          link?: string | null
+          local?: string | null
+          publico_alvo?: string | null
+          titulo?: string | null
+        }
+        Update: {
+          ativar?: boolean | null
+          data_atividade?: string | null
+          data_pub?: string | null
+          descricao?: string | null
+          entidade?: string | null
+          fotos?: Json | null
+          id_ativ_soc?: number
+          link?: string | null
+          local?: string | null
+          publico_alvo?: string | null
+          titulo?: string | null
+        }
+        Relationships: []
+      }
       camadas_mapa: {
         Row: {
           ativo: boolean | null
           bbox: unknown
+          campo_nome: string | null
           categoria: string
           created_at: string | null
           descricao: string | null
@@ -209,6 +252,7 @@ export type Database = {
         Insert: {
           ativo?: boolean | null
           bbox?: unknown
+          campo_nome?: string | null
           categoria: string
           created_at?: string | null
           descricao?: string | null
@@ -232,6 +276,7 @@ export type Database = {
         Update: {
           ativo?: boolean | null
           bbox?: unknown
+          campo_nome?: string | null
           categoria?: string
           created_at?: string | null
           descricao?: string | null
@@ -1626,6 +1671,7 @@ export type Database = {
       }
       is_admin: { Args: never; Returns: boolean }
       longtransactionsenabled: { Args: never; Returns: boolean }
+      obter_extensao_camada: { Args: { p_id_camada: string }; Returns: Json }
       obter_feicoes_camada: {
         Args: {
           p_id_camada: string
