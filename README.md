@@ -29,11 +29,16 @@ docker network create sacre
 ```
 
 ### 2. Configuração de Variáveis de Ambiente
-Crie o arquivo `.env` dentro da pasta `devops/`:
+Crie o arquivo `.env` dentro da pasta `devops/`. Você pode fazer isso de forma automática com o script utilitário:
+```bash
+./devops/generate-env.sh
+```
+O script guiará você pela configuração (como domínio, dados SMTP, etc.) e gerará automaticamente chaves JWT e senhas altamente seguras e perfeitamente compatíveis com o Supabase.
+
+Caso prefira configurar manualmente:
 ```bash
 cp devops/.env.example devops/.env
 ```
-
 Edite o arquivo `devops/.env` e preencha as variáveis.
 - **APP_DOMAIN**: O domínio onde a aplicação rodará (padrão: `https://localhost`).
 - **VITE_SUPABASE_PUBLISHABLE_KEY**: Sua chave anônima do Supabase. **(Obrigatório)**
