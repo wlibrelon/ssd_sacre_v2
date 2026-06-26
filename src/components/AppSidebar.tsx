@@ -68,7 +68,7 @@ export const AppSidebar = ({ onOpenSobre }: { onOpenSobre: () => void }) => {
         { title: 'Contexto', url: '/area-estudo/contexto' },
         { title: 'Objetivos', url: '/area-estudo/objetivos' },
         { title: 'Documentos', url: '/area-estudo/documentos' },
-        { title: 'Camadas', url: '/area-estudo/camadas' },
+        { title: 'Mapas', url: '/area-estudo/camadas' },
       ],
     },
     {
@@ -100,7 +100,11 @@ export const AppSidebar = ({ onOpenSobre }: { onOpenSobre: () => void }) => {
     {
       title: 'Acesso Restrito',
       icon: Lock,
-      items: [{ title: 'Painel Administrativo', url: '/restrito' }],
+      items: [
+        { title: 'Painel Administrativo', url: '/restrito' },
+        { title: 'Gestão de Projetos', url: '/restrito/projetos' },
+        { title: 'Gestão de Camadas', url: '/restrito/camadas' },
+      ],
     },
   ]
 

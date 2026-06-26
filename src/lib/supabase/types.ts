@@ -60,6 +60,200 @@ export type Database = {
           },
         ]
       }
+      arq_resultados: {
+        Row: {
+          descricao: string | null
+          id_arq_res: number
+          id_projeto: number | null
+          nome_arq: string | null
+        }
+        Insert: {
+          descricao?: string | null
+          id_arq_res?: number
+          id_projeto?: number | null
+          nome_arq?: string | null
+        }
+        Update: {
+          descricao?: string | null
+          id_arq_res?: number
+          id_projeto?: number | null
+          nome_arq?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'arq_resultados_id_projeto_fkey'
+            columns: ['id_projeto']
+            isOneToOne: false
+            referencedRelation: 'projetos_wps'
+            referencedColumns: ['id_projeto']
+          },
+        ]
+      }
+      artigos: {
+        Row: {
+          abstract: string | null
+          arquivo: string | null
+          ativar: boolean
+          data_pub: string | null
+          doi: string | null
+          id_artigo: number
+          id_projeto: number | null
+          id_tipo_artigo: number | null
+          resumo: string | null
+          revista: string | null
+          titulo: string | null
+        }
+        Insert: {
+          abstract?: string | null
+          arquivo?: string | null
+          ativar?: boolean
+          data_pub?: string | null
+          doi?: string | null
+          id_artigo?: number
+          id_projeto?: number | null
+          id_tipo_artigo?: number | null
+          resumo?: string | null
+          revista?: string | null
+          titulo?: string | null
+        }
+        Update: {
+          abstract?: string | null
+          arquivo?: string | null
+          ativar?: boolean
+          data_pub?: string | null
+          doi?: string | null
+          id_artigo?: number
+          id_projeto?: number | null
+          id_tipo_artigo?: number | null
+          resumo?: string | null
+          revista?: string | null
+          titulo?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'artigos_id_projeto_fkey'
+            columns: ['id_projeto']
+            isOneToOne: false
+            referencedRelation: 'projetos_wps'
+            referencedColumns: ['id_projeto']
+          },
+          {
+            foreignKeyName: 'artigos_id_tipo_artigo_fkey'
+            columns: ['id_tipo_artigo']
+            isOneToOne: false
+            referencedRelation: 'tipo_artigo'
+            referencedColumns: ['id_tipo']
+          },
+        ]
+      }
+      artigos_autores: {
+        Row: {
+          id_artigo: number | null
+          id_artigo_autor: number
+          id_autor: number | null
+          is_principal: boolean | null
+        }
+        Insert: {
+          id_artigo?: number | null
+          id_artigo_autor?: number
+          id_autor?: number | null
+          is_principal?: boolean | null
+        }
+        Update: {
+          id_artigo?: number | null
+          id_artigo_autor?: number
+          id_autor?: number | null
+          is_principal?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'artigos_autores_id_artigo_fkey'
+            columns: ['id_artigo']
+            isOneToOne: false
+            referencedRelation: 'artigos'
+            referencedColumns: ['id_artigo']
+          },
+          {
+            foreignKeyName: 'artigos_autores_id_autor_fkey'
+            columns: ['id_autor']
+            isOneToOne: false
+            referencedRelation: 'colaboradores'
+            referencedColumns: ['id_colaborador']
+          },
+        ]
+      }
+      camadas_mapa: {
+        Row: {
+          ativo: boolean | null
+          bbox: unknown
+          categoria: string
+          created_at: string | null
+          descricao: string | null
+          epsg_origem: number | null
+          estilo: Json | null
+          fonte_raster_url: string | null
+          id_camada: string
+          importado_em: string | null
+          legenda: Json | null
+          mensagem_erro: string | null
+          nome: string
+          ordem_exibicao: number | null
+          status_importacao: string | null
+          tabela_origem: string | null
+          tipo_dados: string
+          total_feicoes: number | null
+          visivel_por_padrao: boolean | null
+          zoom_max: number | null
+          zoom_min: number | null
+        }
+        Insert: {
+          ativo?: boolean | null
+          bbox?: unknown
+          categoria: string
+          created_at?: string | null
+          descricao?: string | null
+          epsg_origem?: number | null
+          estilo?: Json | null
+          fonte_raster_url?: string | null
+          id_camada?: string
+          importado_em?: string | null
+          legenda?: Json | null
+          mensagem_erro?: string | null
+          nome: string
+          ordem_exibicao?: number | null
+          status_importacao?: string | null
+          tabela_origem?: string | null
+          tipo_dados: string
+          total_feicoes?: number | null
+          visivel_por_padrao?: boolean | null
+          zoom_max?: number | null
+          zoom_min?: number | null
+        }
+        Update: {
+          ativo?: boolean | null
+          bbox?: unknown
+          categoria?: string
+          created_at?: string | null
+          descricao?: string | null
+          epsg_origem?: number | null
+          estilo?: Json | null
+          fonte_raster_url?: string | null
+          id_camada?: string
+          importado_em?: string | null
+          legenda?: Json | null
+          mensagem_erro?: string | null
+          nome?: string
+          ordem_exibicao?: number | null
+          status_importacao?: string | null
+          tabela_origem?: string | null
+          tipo_dados?: string
+          total_feicoes?: number | null
+          visivel_por_padrao?: boolean | null
+          zoom_max?: number | null
+          zoom_min?: number | null
+        }
+        Relationships: []
+      }
       capex_acao: {
         Row: {
           capex: number | null
@@ -281,59 +475,157 @@ export type Database = {
           },
         ]
       }
+      colaboradores: {
+        Row: {
+          formacao: string | null
+          foto: string | null
+          id_colaborador: number
+          id_grupo: number | null
+          link_internet: string | null
+          nome: string
+          status: string | null
+        }
+        Insert: {
+          formacao?: string | null
+          foto?: string | null
+          id_colaborador?: number
+          id_grupo?: number | null
+          link_internet?: string | null
+          nome: string
+          status?: string | null
+        }
+        Update: {
+          formacao?: string | null
+          foto?: string | null
+          id_colaborador?: number
+          id_grupo?: number | null
+          link_internet?: string | null
+          nome?: string
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'fk_colaboradores_grupo'
+            columns: ['id_grupo']
+            isOneToOne: false
+            referencedRelation: 'grupo_colaboradores'
+            referencedColumns: ['id_grupo']
+          },
+        ]
+      }
+      congressos: {
+        Row: {
+          ativar: boolean
+          data: string | null
+          data_pub: string | null
+          id_congresso: number
+          link: string | null
+          local: string | null
+          organizador: string | null
+          periodo: string | null
+          status: string | null
+          titulo: string
+        }
+        Insert: {
+          ativar?: boolean
+          data?: string | null
+          data_pub?: string | null
+          id_congresso?: number
+          link?: string | null
+          local?: string | null
+          organizador?: string | null
+          periodo?: string | null
+          status?: string | null
+          titulo: string
+        }
+        Update: {
+          ativar?: boolean
+          data?: string | null
+          data_pub?: string | null
+          id_congresso?: number
+          link?: string | null
+          local?: string | null
+          organizador?: string | null
+          periodo?: string | null
+          status?: string | null
+          titulo?: string
+        }
+        Relationships: []
+      }
+      conteudo_estudo: {
+        Row: {
+          conteudo_html: string | null
+          id: number
+          ordem: number | null
+          secao: string
+        }
+        Insert: {
+          conteudo_html?: string | null
+          id?: number
+          ordem?: number | null
+          secao: string
+        }
+        Update: {
+          conteudo_html?: string | null
+          id?: number
+          ordem?: number | null
+          secao?: string
+        }
+        Relationships: []
+      }
       dados_simulacao: {
         Row: {
-          capex: number | null
+          capex_estrategia: number | null
+          capex_perdas: number | null
+          cenarios: Json | null
           demanda: number | null
+          estrategias: Json | null
           id_acao: number | null
-          id_c: number | null
-          id_cc: number | null
-          id_cd: number | null
-          id_cp: number | null
           id_ds: number
           id_fonte: number | null
+          id_mod: number | null
           id_s: number | null
-          id_tc: number | null
           opex: number | null
           perdas: number | null
           rebaixamento: number | null
           tempo: string | null
+          valores_extras: Json | null
           volume_captado: number | null
         }
         Insert: {
-          capex?: number | null
+          capex_estrategia?: number | null
+          capex_perdas?: number | null
+          cenarios?: Json | null
           demanda?: number | null
+          estrategias?: Json | null
           id_acao?: number | null
-          id_c?: number | null
-          id_cc?: number | null
-          id_cd?: number | null
-          id_cp?: number | null
           id_ds?: number
           id_fonte?: number | null
+          id_mod?: number | null
           id_s?: number | null
-          id_tc?: number | null
           opex?: number | null
           perdas?: number | null
           rebaixamento?: number | null
           tempo?: string | null
+          valores_extras?: Json | null
           volume_captado?: number | null
         }
         Update: {
-          capex?: number | null
+          capex_estrategia?: number | null
+          capex_perdas?: number | null
+          cenarios?: Json | null
           demanda?: number | null
+          estrategias?: Json | null
           id_acao?: number | null
-          id_c?: number | null
-          id_cc?: number | null
-          id_cd?: number | null
-          id_cp?: number | null
           id_ds?: number
           id_fonte?: number | null
+          id_mod?: number | null
           id_s?: number | null
-          id_tc?: number | null
           opex?: number | null
           perdas?: number | null
           rebaixamento?: number | null
           tempo?: string | null
+          valores_extras?: Json | null
           volume_captado?: number | null
         }
         Relationships: [
@@ -345,39 +637,18 @@ export type Database = {
             referencedColumns: ['id_acao']
           },
           {
-            foreignKeyName: 'dados_simulacao_id_c_fkey'
-            columns: ['id_c']
-            isOneToOne: false
-            referencedRelation: 'cenarios'
-            referencedColumns: ['id_cenarios']
-          },
-          {
-            foreignKeyName: 'dados_simulacao_id_cc_fkey'
-            columns: ['id_cc']
-            isOneToOne: false
-            referencedRelation: 'cenario_consumo'
-            referencedColumns: ['id_cc']
-          },
-          {
-            foreignKeyName: 'dados_simulacao_id_cd_fkey'
-            columns: ['id_cd']
-            isOneToOne: false
-            referencedRelation: 'cenario_demanda'
-            referencedColumns: ['id_cd']
-          },
-          {
-            foreignKeyName: 'dados_simulacao_id_cp_fkey'
-            columns: ['id_cp']
-            isOneToOne: false
-            referencedRelation: 'cenario_perdas'
-            referencedColumns: ['id_cp']
-          },
-          {
             foreignKeyName: 'dados_simulacao_id_fonte_fkey'
             columns: ['id_fonte']
             isOneToOne: false
             referencedRelation: 'fonte_agua'
             referencedColumns: ['id_fonte']
+          },
+          {
+            foreignKeyName: 'dados_simulacao_id_mod_fkey'
+            columns: ['id_mod']
+            isOneToOne: false
+            referencedRelation: 'modelos'
+            referencedColumns: ['id_mod']
           },
           {
             foreignKeyName: 'dados_simulacao_id_s_fkey'
@@ -386,12 +657,61 @@ export type Database = {
             referencedRelation: 'simulacao_ssd'
             referencedColumns: ['id_s']
           },
+        ]
+      }
+      documentos_publicos: {
+        Row: {
+          criado_em: string | null
+          descricao: string | null
+          id: number
+          nome: string
+          url_arquivo: string | null
+        }
+        Insert: {
+          criado_em?: string | null
+          descricao?: string | null
+          id?: number
+          nome: string
+          url_arquivo?: string | null
+        }
+        Update: {
+          criado_em?: string | null
+          descricao?: string | null
+          id?: number
+          nome?: string
+          url_arquivo?: string | null
+        }
+        Relationships: []
+      }
+      feicoes_geoespaciais: {
+        Row: {
+          geom: unknown
+          id_camada: string | null
+          id_feicao: string
+          nome_feicao: string | null
+          propriedades: Json | null
+        }
+        Insert: {
+          geom?: unknown
+          id_camada?: string | null
+          id_feicao?: string
+          nome_feicao?: string | null
+          propriedades?: Json | null
+        }
+        Update: {
+          geom?: unknown
+          id_camada?: string | null
+          id_feicao?: string
+          nome_feicao?: string | null
+          propriedades?: Json | null
+        }
+        Relationships: [
           {
-            foreignKeyName: 'dados_simulacao_id_tc_fkey'
-            columns: ['id_tc']
+            foreignKeyName: 'feicoes_geoespaciais_id_camada_fkey'
+            columns: ['id_camada']
             isOneToOne: false
-            referencedRelation: 'tipos_cenarios'
-            referencedColumns: ['id_tc']
+            referencedRelation: 'camadas_mapa'
+            referencedColumns: ['id_camada']
           },
         ]
       }
@@ -413,6 +733,223 @@ export type Database = {
         }
         Relationships: []
       }
+      grupo_acesso: {
+        Row: {
+          id_ga: number
+          nome_grupo: string
+        }
+        Insert: {
+          id_ga?: number
+          nome_grupo: string
+        }
+        Update: {
+          id_ga?: number
+          nome_grupo?: string
+        }
+        Relationships: []
+      }
+      grupo_colaboradores: {
+        Row: {
+          descricao: string
+          id_grupo: number
+        }
+        Insert: {
+          descricao: string
+          id_grupo?: number
+        }
+        Update: {
+          descricao?: string
+          id_grupo?: number
+        }
+        Relationships: []
+      }
+      indicadores: {
+        Row: {
+          campo_extra: string | null
+          descricao: string | null
+          id_fonte: number | null
+          id_indicador: number
+          unidade: string | null
+        }
+        Insert: {
+          campo_extra?: string | null
+          descricao?: string | null
+          id_fonte?: number | null
+          id_indicador?: number
+          unidade?: string | null
+        }
+        Update: {
+          campo_extra?: string | null
+          descricao?: string | null
+          id_fonte?: number | null
+          id_indicador?: number
+          unidade?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'indicadores_id_fonte_fkey'
+            columns: ['id_fonte']
+            isOneToOne: false
+            referencedRelation: 'fonte_agua'
+            referencedColumns: ['id_fonte']
+          },
+        ]
+      }
+      indicadores_aplicado: {
+        Row: {
+          arquivo: string | null
+          id_ia: number
+          id_indicador: number | null
+          id_s: number | null
+        }
+        Insert: {
+          arquivo?: string | null
+          id_ia?: number
+          id_indicador?: number | null
+          id_s?: number | null
+        }
+        Update: {
+          arquivo?: string | null
+          id_ia?: number
+          id_indicador?: number | null
+          id_s?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'indicadores_aplicado_id_indicador_fkey'
+            columns: ['id_indicador']
+            isOneToOne: false
+            referencedRelation: 'indicadores'
+            referencedColumns: ['id_indicador']
+          },
+          {
+            foreignKeyName: 'indicadores_aplicado_id_s_fkey'
+            columns: ['id_s']
+            isOneToOne: false
+            referencedRelation: 'simulacao_ssd'
+            referencedColumns: ['id_s']
+          },
+        ]
+      }
+      lista_colab: {
+        Row: {
+          id_colaborador: number | null
+          id_lista_colab: number
+          id_wp: number | null
+        }
+        Insert: {
+          id_colaborador?: number | null
+          id_lista_colab?: number
+          id_wp?: number | null
+        }
+        Update: {
+          id_colaborador?: number | null
+          id_lista_colab?: number
+          id_wp?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'lista_colab_id_colaborador_fkey'
+            columns: ['id_colaborador']
+            isOneToOne: false
+            referencedRelation: 'colaboradores'
+            referencedColumns: ['id_colaborador']
+          },
+          {
+            foreignKeyName: 'lista_colab_id_wp_fkey'
+            columns: ['id_wp']
+            isOneToOne: false
+            referencedRelation: 'wps'
+            referencedColumns: ['id_wp']
+          },
+        ]
+      }
+      midia: {
+        Row: {
+          arq_imagem: string | null
+          arq_video: string | null
+          ativar: boolean
+          data_pub: string | null
+          descricao: string | null
+          id_midia: number
+          link: string | null
+          tipo: string | null
+          titulo: string
+        }
+        Insert: {
+          arq_imagem?: string | null
+          arq_video?: string | null
+          ativar?: boolean
+          data_pub?: string | null
+          descricao?: string | null
+          id_midia?: number
+          link?: string | null
+          tipo?: string | null
+          titulo: string
+        }
+        Update: {
+          arq_imagem?: string | null
+          arq_video?: string | null
+          ativar?: boolean
+          data_pub?: string | null
+          descricao?: string | null
+          id_midia?: number
+          link?: string | null
+          tipo?: string | null
+          titulo?: string
+        }
+        Relationships: []
+      }
+      modelos: {
+        Row: {
+          arq_capex_estrategias: string | null
+          arq_capex_perdas: string | null
+          arq_demanda: string | null
+          arq_indicador: Json | null
+          arq_mod: string | null
+          arq_opex: string | null
+          arq_perdas: string | null
+          cenario: Json | null
+          estrategia: Json | null
+          id_fonte: number | null
+          id_mod: number
+        }
+        Insert: {
+          arq_capex_estrategias?: string | null
+          arq_capex_perdas?: string | null
+          arq_demanda?: string | null
+          arq_indicador?: Json | null
+          arq_mod?: string | null
+          arq_opex?: string | null
+          arq_perdas?: string | null
+          cenario?: Json | null
+          estrategia?: Json | null
+          id_fonte?: number | null
+          id_mod?: number
+        }
+        Update: {
+          arq_capex_estrategias?: string | null
+          arq_capex_perdas?: string | null
+          arq_demanda?: string | null
+          arq_indicador?: Json | null
+          arq_mod?: string | null
+          arq_opex?: string | null
+          arq_perdas?: string | null
+          cenario?: Json | null
+          estrategia?: Json | null
+          id_fonte?: number | null
+          id_mod?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'modelos_id_fonte_fkey'
+            columns: ['id_fonte']
+            isOneToOne: false
+            referencedRelation: 'fonte_agua'
+            referencedColumns: ['id_fonte']
+          },
+        ]
+      }
       opex: {
         Row: {
           id_oa: number
@@ -431,33 +968,260 @@ export type Database = {
         }
         Relationships: []
       }
+      perfis_usuarios: {
+        Row: {
+          created_at: string | null
+          email: string
+          id: string
+          id_ga: number | null
+          nivel_acesso: string | null
+          nome: string
+          objetivo_acesso: string | null
+          organizacao: string | null
+          status: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          id: string
+          id_ga?: number | null
+          nivel_acesso?: string | null
+          nome: string
+          objetivo_acesso?: string | null
+          organizacao?: string | null
+          status?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          id?: string
+          id_ga?: number | null
+          nivel_acesso?: string | null
+          nome?: string
+          objetivo_acesso?: string | null
+          organizacao?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'perfis_usuarios_id_ga_fkey'
+            columns: ['id_ga']
+            isOneToOne: false
+            referencedRelation: 'grupo_acesso'
+            referencedColumns: ['id_ga']
+          },
+        ]
+      }
+      projetos_wps: {
+        Row: {
+          id_autor: number | null
+          id_projeto: number
+          id_wp: number | null
+          objetivos: string | null
+          resumo: string | null
+          titulo: string | null
+        }
+        Insert: {
+          id_autor?: number | null
+          id_projeto?: number
+          id_wp?: number | null
+          objetivos?: string | null
+          resumo?: string | null
+          titulo?: string | null
+        }
+        Update: {
+          id_autor?: number | null
+          id_projeto?: number
+          id_wp?: number | null
+          objetivos?: string | null
+          resumo?: string | null
+          titulo?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'projetos_wps_id_wp_fkey'
+            columns: ['id_wp']
+            isOneToOne: false
+            referencedRelation: 'wps'
+            referencedColumns: ['id_wp']
+          },
+        ]
+      }
+      recursos_app: {
+        Row: {
+          id_ga: number | null
+          id_rapp: number
+          nome_recurso: string
+        }
+        Insert: {
+          id_ga?: number | null
+          id_rapp?: number
+          nome_recurso: string
+        }
+        Update: {
+          id_ga?: number | null
+          id_rapp?: number
+          nome_recurso?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'recursos_app_id_ga_fkey'
+            columns: ['id_ga']
+            isOneToOne: false
+            referencedRelation: 'grupo_acesso'
+            referencedColumns: ['id_ga']
+          },
+        ]
+      }
+      selecao_cenarios: {
+        Row: {
+          cenarios: Json | null
+          criado_at: string | null
+          estrategias: Json | null
+          id: string
+          id_acao: number | null
+          id_c: number | null
+          id_fonte: number | null
+          id_tc: number | null
+          id_usuario: string
+          selecionado: boolean | null
+        }
+        Insert: {
+          cenarios?: Json | null
+          criado_at?: string | null
+          estrategias?: Json | null
+          id?: string
+          id_acao?: number | null
+          id_c?: number | null
+          id_fonte?: number | null
+          id_tc?: number | null
+          id_usuario: string
+          selecionado?: boolean | null
+        }
+        Update: {
+          cenarios?: Json | null
+          criado_at?: string | null
+          estrategias?: Json | null
+          id?: string
+          id_acao?: number | null
+          id_c?: number | null
+          id_fonte?: number | null
+          id_tc?: number | null
+          id_usuario?: string
+          selecionado?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'selecao_cenarios_id_acao_fkey'
+            columns: ['id_acao']
+            isOneToOne: false
+            referencedRelation: 'acoes'
+            referencedColumns: ['id_acao']
+          },
+          {
+            foreignKeyName: 'selecao_cenarios_id_c_fkey'
+            columns: ['id_c']
+            isOneToOne: false
+            referencedRelation: 'cenarios'
+            referencedColumns: ['id_cenarios']
+          },
+          {
+            foreignKeyName: 'selecao_cenarios_id_fonte_fkey'
+            columns: ['id_fonte']
+            isOneToOne: false
+            referencedRelation: 'fonte_agua'
+            referencedColumns: ['id_fonte']
+          },
+          {
+            foreignKeyName: 'selecao_cenarios_id_tc_fkey'
+            columns: ['id_tc']
+            isOneToOne: false
+            referencedRelation: 'tipos_cenarios'
+            referencedColumns: ['id_tc']
+          },
+        ]
+      }
       simulacao_ssd: {
         Row: {
           demanda_auto: boolean | null
           descricao: string | null
           id_s: number
           inicio_perdas: string | null
+          limiar_alerta: number | null
+          limiar_colapso: number | null
+          limiar_crise: number | null
+          media_reducao_perdas: number | null
           perc_inicial_perdas: number | null
           perdas_auto: boolean | null
           pop_inicial: number | null
+          total_capex: number | null
         }
         Insert: {
           demanda_auto?: boolean | null
           descricao?: string | null
           id_s?: number
           inicio_perdas?: string | null
+          limiar_alerta?: number | null
+          limiar_colapso?: number | null
+          limiar_crise?: number | null
+          media_reducao_perdas?: number | null
           perc_inicial_perdas?: number | null
           perdas_auto?: boolean | null
           pop_inicial?: number | null
+          total_capex?: number | null
         }
         Update: {
           demanda_auto?: boolean | null
           descricao?: string | null
           id_s?: number
           inicio_perdas?: string | null
+          limiar_alerta?: number | null
+          limiar_colapso?: number | null
+          limiar_crise?: number | null
+          media_reducao_perdas?: number | null
           perc_inicial_perdas?: number | null
           perdas_auto?: boolean | null
           pop_inicial?: number | null
+          total_capex?: number | null
+        }
+        Relationships: []
+      }
+      spatial_ref_sys: {
+        Row: {
+          auth_name: string | null
+          auth_srid: number | null
+          proj4text: string | null
+          srid: number
+          srtext: string | null
+        }
+        Insert: {
+          auth_name?: string | null
+          auth_srid?: number | null
+          proj4text?: string | null
+          srid: number
+          srtext?: string | null
+        }
+        Update: {
+          auth_name?: string | null
+          auth_srid?: number | null
+          proj4text?: string | null
+          srid?: number
+          srtext?: string | null
+        }
+        Relationships: []
+      }
+      tipo_artigo: {
+        Row: {
+          descricao: string | null
+          id_tipo: number
+        }
+        Insert: {
+          descricao?: string | null
+          id_tipo?: number
+        }
+        Update: {
+          descricao?: string | null
+          id_tipo?: number
         }
         Relationships: []
       }
@@ -512,18 +1276,1013 @@ export type Database = {
         }
         Relationships: []
       }
+      wps: {
+        Row: {
+          descricao: string | null
+          id_gerente: number | null
+          id_wp: number
+          menu: string | null
+          titulo: string | null
+          wp: number | null
+        }
+        Insert: {
+          descricao?: string | null
+          id_gerente?: number | null
+          id_wp?: number
+          menu?: string | null
+          titulo?: string | null
+          wp?: number | null
+        }
+        Update: {
+          descricao?: string | null
+          id_gerente?: number | null
+          id_wp?: number
+          menu?: string | null
+          titulo?: string | null
+          wp?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'wps_id_gerente_fkey'
+            columns: ['id_gerente']
+            isOneToOne: false
+            referencedRelation: 'colaboradores'
+            referencedColumns: ['id_colaborador']
+          },
+        ]
+      }
     }
     Views: {
-      [_ in never]: never
+      geography_columns: {
+        Row: {
+          coord_dimension: number | null
+          f_geography_column: unknown
+          f_table_catalog: unknown
+          f_table_name: unknown
+          f_table_schema: unknown
+          srid: number | null
+          type: string | null
+        }
+        Relationships: []
+      }
+      geometry_columns: {
+        Row: {
+          coord_dimension: number | null
+          f_geometry_column: unknown
+          f_table_catalog: string | null
+          f_table_name: unknown
+          f_table_schema: unknown
+          srid: number | null
+          type: string | null
+        }
+        Insert: {
+          coord_dimension?: number | null
+          f_geometry_column?: unknown
+          f_table_catalog?: string | null
+          f_table_name?: unknown
+          f_table_schema?: unknown
+          srid?: number | null
+          type?: string | null
+        }
+        Update: {
+          coord_dimension?: number | null
+          f_geometry_column?: unknown
+          f_table_catalog?: string | null
+          f_table_name?: unknown
+          f_table_schema?: unknown
+          srid?: number | null
+          type?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
-      [_ in never]: never
+      _postgis_deprecate: {
+        Args: { newname: string; oldname: string; version: string }
+        Returns: undefined
+      }
+      _postgis_index_extent: {
+        Args: { col: string; tbl: unknown }
+        Returns: unknown
+      }
+      _postgis_pgsql_version: { Args: never; Returns: string }
+      _postgis_scripts_pgsql_version: { Args: never; Returns: string }
+      _postgis_selectivity: {
+        Args: { att_name: string; geom: unknown; mode?: string; tbl: unknown }
+        Returns: number
+      }
+      _postgis_stats: {
+        Args: { ''?: string; att_name: string; tbl: unknown }
+        Returns: string
+      }
+      _st_3dintersects: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      _st_contains: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      _st_containsproperly: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      _st_coveredby:
+        | { Args: { geog1: unknown; geog2: unknown }; Returns: boolean }
+        | { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
+      _st_covers:
+        | { Args: { geog1: unknown; geog2: unknown }; Returns: boolean }
+        | { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
+      _st_crosses: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      _st_dwithin: {
+        Args: {
+          geog1: unknown
+          geog2: unknown
+          tolerance: number
+          use_spheroid?: boolean
+        }
+        Returns: boolean
+      }
+      _st_equals: { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
+      _st_intersects: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      _st_linecrossingdirection: {
+        Args: { line1: unknown; line2: unknown }
+        Returns: number
+      }
+      _st_longestline: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: unknown
+      }
+      _st_maxdistance: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: number
+      }
+      _st_orderingequals: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      _st_overlaps: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      _st_sortablehash: { Args: { geom: unknown }; Returns: number }
+      _st_touches: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      _st_voronoi: {
+        Args: {
+          clip?: unknown
+          g1: unknown
+          return_polygons?: boolean
+          tolerance?: number
+        }
+        Returns: unknown
+      }
+      _st_within: { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
+      addauth: { Args: { '': string }; Returns: boolean }
+      addgeometrycolumn:
+        | {
+            Args: {
+              catalog_name: string
+              column_name: string
+              new_dim: number
+              new_srid_in: number
+              new_type: string
+              schema_name: string
+              table_name: string
+              use_typmod?: boolean
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              column_name: string
+              new_dim: number
+              new_srid: number
+              new_type: string
+              schema_name: string
+              table_name: string
+              use_typmod?: boolean
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              column_name: string
+              new_dim: number
+              new_srid: number
+              new_type: string
+              table_name: string
+              use_typmod?: boolean
+            }
+            Returns: string
+          }
+      disablelongtransactions: { Args: never; Returns: string }
+      dropgeometrycolumn:
+        | {
+            Args: {
+              catalog_name: string
+              column_name: string
+              schema_name: string
+              table_name: string
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              column_name: string
+              schema_name: string
+              table_name: string
+            }
+            Returns: string
+          }
+        | { Args: { column_name: string; table_name: string }; Returns: string }
+      dropgeometrytable:
+        | {
+            Args: {
+              catalog_name: string
+              schema_name: string
+              table_name: string
+            }
+            Returns: string
+          }
+        | { Args: { schema_name: string; table_name: string }; Returns: string }
+        | { Args: { table_name: string }; Returns: string }
+      enablelongtransactions: { Args: never; Returns: string }
+      equals: { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
+      finalizar_importacao_vetorial: {
+        Args: { p_id_camada: string; p_total: number }
+        Returns: undefined
+      }
+      geometry: { Args: { '': string }; Returns: unknown }
+      geometry_above: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      geometry_below: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      geometry_cmp: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: number
+      }
+      geometry_contained_3d: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      geometry_contains: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      geometry_contains_3d: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      geometry_distance_box: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: number
+      }
+      geometry_distance_centroid: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: number
+      }
+      geometry_eq: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      geometry_ge: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      geometry_gt: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      geometry_le: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      geometry_left: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      geometry_lt: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      geometry_overabove: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      geometry_overbelow: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      geometry_overlaps: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      geometry_overlaps_3d: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      geometry_overleft: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      geometry_overright: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      geometry_right: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      geometry_same: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      geometry_same_3d: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      geometry_within: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      geomfromewkt: { Args: { '': string }; Returns: unknown }
+      gettransactionid: { Args: never; Returns: unknown }
+      importar_feicoes_lote: {
+        Args: { p_feicoes: Json; p_id_camada: string }
+        Returns: number
+      }
+      is_admin: { Args: never; Returns: boolean }
+      longtransactionsenabled: { Args: never; Returns: boolean }
+      obter_feicoes_camada: {
+        Args: {
+          p_id_camada: string
+          p_max_lat: number
+          p_max_lon: number
+          p_min_lat: number
+          p_min_lon: number
+          p_zoom?: number
+        }
+        Returns: Json
+      }
+      populate_geometry_columns:
+        | { Args: { tbl_oid: unknown; use_typmod?: boolean }; Returns: number }
+        | { Args: { use_typmod?: boolean }; Returns: string }
+      postgis_constraint_dims: {
+        Args: { geomcolumn: string; geomschema: string; geomtable: string }
+        Returns: number
+      }
+      postgis_constraint_srid: {
+        Args: { geomcolumn: string; geomschema: string; geomtable: string }
+        Returns: number
+      }
+      postgis_constraint_type: {
+        Args: { geomcolumn: string; geomschema: string; geomtable: string }
+        Returns: string
+      }
+      postgis_extensions_upgrade: { Args: never; Returns: string }
+      postgis_full_version: { Args: never; Returns: string }
+      postgis_geos_version: { Args: never; Returns: string }
+      postgis_lib_build_date: { Args: never; Returns: string }
+      postgis_lib_revision: { Args: never; Returns: string }
+      postgis_lib_version: { Args: never; Returns: string }
+      postgis_libjson_version: { Args: never; Returns: string }
+      postgis_liblwgeom_version: { Args: never; Returns: string }
+      postgis_libprotobuf_version: { Args: never; Returns: string }
+      postgis_libxml_version: { Args: never; Returns: string }
+      postgis_proj_version: { Args: never; Returns: string }
+      postgis_scripts_build_date: { Args: never; Returns: string }
+      postgis_scripts_installed: { Args: never; Returns: string }
+      postgis_scripts_released: { Args: never; Returns: string }
+      postgis_svn_version: { Args: never; Returns: string }
+      postgis_type_name: {
+        Args: {
+          coord_dimension: number
+          geomname: string
+          use_new_name?: boolean
+        }
+        Returns: string
+      }
+      postgis_version: { Args: never; Returns: string }
+      postgis_wagyu_version: { Args: never; Returns: string }
+      st_3dclosestpoint: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: unknown
+      }
+      st_3ddistance: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: number
+      }
+      st_3dintersects: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      st_3dlongestline: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: unknown
+      }
+      st_3dmakebox: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: unknown
+      }
+      st_3dmaxdistance: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: number
+      }
+      st_3dshortestline: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: unknown
+      }
+      st_addpoint: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: unknown
+      }
+      st_angle:
+        | { Args: { line1: unknown; line2: unknown }; Returns: number }
+        | {
+            Args: { pt1: unknown; pt2: unknown; pt3: unknown; pt4?: unknown }
+            Returns: number
+          }
+      st_area:
+        | { Args: { geog: unknown; use_spheroid?: boolean }; Returns: number }
+        | { Args: { '': string }; Returns: number }
+      st_asencodedpolyline: {
+        Args: { geom: unknown; nprecision?: number }
+        Returns: string
+      }
+      st_asewkt: { Args: { '': string }; Returns: string }
+      st_asgeojson:
+        | {
+            Args: { geog: unknown; maxdecimaldigits?: number; options?: number }
+            Returns: string
+          }
+        | {
+            Args: { geom: unknown; maxdecimaldigits?: number; options?: number }
+            Returns: string
+          }
+        | {
+            Args: {
+              geom_column?: string
+              maxdecimaldigits?: number
+              pretty_bool?: boolean
+              r: Record<string, unknown>
+            }
+            Returns: string
+          }
+        | { Args: { '': string }; Returns: string }
+      st_asgml:
+        | {
+            Args: {
+              geog: unknown
+              id?: string
+              maxdecimaldigits?: number
+              nprefix?: string
+              options?: number
+            }
+            Returns: string
+          }
+        | {
+            Args: { geom: unknown; maxdecimaldigits?: number; options?: number }
+            Returns: string
+          }
+        | { Args: { '': string }; Returns: string }
+        | {
+            Args: {
+              geog: unknown
+              id?: string
+              maxdecimaldigits?: number
+              nprefix?: string
+              options?: number
+              version: number
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              geom: unknown
+              id?: string
+              maxdecimaldigits?: number
+              nprefix?: string
+              options?: number
+              version: number
+            }
+            Returns: string
+          }
+      st_askml:
+        | {
+            Args: { geog: unknown; maxdecimaldigits?: number; nprefix?: string }
+            Returns: string
+          }
+        | {
+            Args: { geom: unknown; maxdecimaldigits?: number; nprefix?: string }
+            Returns: string
+          }
+        | { Args: { '': string }; Returns: string }
+      st_aslatlontext: {
+        Args: { geom: unknown; tmpl?: string }
+        Returns: string
+      }
+      st_asmarc21: { Args: { format?: string; geom: unknown }; Returns: string }
+      st_asmvtgeom: {
+        Args: {
+          bounds: unknown
+          buffer?: number
+          clip_geom?: boolean
+          extent?: number
+          geom: unknown
+        }
+        Returns: unknown
+      }
+      st_assvg:
+        | {
+            Args: { geog: unknown; maxdecimaldigits?: number; rel?: number }
+            Returns: string
+          }
+        | {
+            Args: { geom: unknown; maxdecimaldigits?: number; rel?: number }
+            Returns: string
+          }
+        | { Args: { '': string }; Returns: string }
+      st_astext: { Args: { '': string }; Returns: string }
+      st_astwkb:
+        | {
+            Args: {
+              geom: unknown
+              prec?: number
+              prec_m?: number
+              prec_z?: number
+              with_boxes?: boolean
+              with_sizes?: boolean
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              geom: unknown[]
+              ids: number[]
+              prec?: number
+              prec_m?: number
+              prec_z?: number
+              with_boxes?: boolean
+              with_sizes?: boolean
+            }
+            Returns: string
+          }
+      st_asx3d: {
+        Args: { geom: unknown; maxdecimaldigits?: number; options?: number }
+        Returns: string
+      }
+      st_azimuth:
+        | { Args: { geog1: unknown; geog2: unknown }; Returns: number }
+        | { Args: { geom1: unknown; geom2: unknown }; Returns: number }
+      st_boundingdiagonal: {
+        Args: { fits?: boolean; geom: unknown }
+        Returns: unknown
+      }
+      st_buffer:
+        | {
+            Args: { geom: unknown; options?: string; radius: number }
+            Returns: unknown
+          }
+        | {
+            Args: { geom: unknown; quadsegs: number; radius: number }
+            Returns: unknown
+          }
+      st_centroid: { Args: { '': string }; Returns: unknown }
+      st_clipbybox2d: {
+        Args: { box: unknown; geom: unknown }
+        Returns: unknown
+      }
+      st_closestpoint: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: unknown
+      }
+      st_collect: { Args: { geom1: unknown; geom2: unknown }; Returns: unknown }
+      st_concavehull: {
+        Args: {
+          param_allow_holes?: boolean
+          param_geom: unknown
+          param_pctconvex: number
+        }
+        Returns: unknown
+      }
+      st_contains: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      st_containsproperly: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      st_coorddim: { Args: { geometry: unknown }; Returns: number }
+      st_coveredby:
+        | { Args: { geog1: unknown; geog2: unknown }; Returns: boolean }
+        | { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
+      st_covers:
+        | { Args: { geog1: unknown; geog2: unknown }; Returns: boolean }
+        | { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
+      st_crosses: { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
+      st_curvetoline: {
+        Args: { flags?: number; geom: unknown; tol?: number; toltype?: number }
+        Returns: unknown
+      }
+      st_delaunaytriangles: {
+        Args: { flags?: number; g1: unknown; tolerance?: number }
+        Returns: unknown
+      }
+      st_difference: {
+        Args: { geom1: unknown; geom2: unknown; gridsize?: number }
+        Returns: unknown
+      }
+      st_disjoint: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      st_distance:
+        | {
+            Args: { geog1: unknown; geog2: unknown; use_spheroid?: boolean }
+            Returns: number
+          }
+        | { Args: { geom1: unknown; geom2: unknown }; Returns: number }
+      st_distancesphere:
+        | { Args: { geom1: unknown; geom2: unknown }; Returns: number }
+        | {
+            Args: { geom1: unknown; geom2: unknown; radius: number }
+            Returns: number
+          }
+      st_distancespheroid: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: number
+      }
+      st_dwithin: {
+        Args: {
+          geog1: unknown
+          geog2: unknown
+          tolerance: number
+          use_spheroid?: boolean
+        }
+        Returns: boolean
+      }
+      st_equals: { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
+      st_expand:
+        | { Args: { box: unknown; dx: number; dy: number }; Returns: unknown }
+        | {
+            Args: { box: unknown; dx: number; dy: number; dz?: number }
+            Returns: unknown
+          }
+        | {
+            Args: {
+              dm?: number
+              dx: number
+              dy: number
+              dz?: number
+              geom: unknown
+            }
+            Returns: unknown
+          }
+      st_force3d: { Args: { geom: unknown; zvalue?: number }; Returns: unknown }
+      st_force3dm: {
+        Args: { geom: unknown; mvalue?: number }
+        Returns: unknown
+      }
+      st_force3dz: {
+        Args: { geom: unknown; zvalue?: number }
+        Returns: unknown
+      }
+      st_force4d: {
+        Args: { geom: unknown; mvalue?: number; zvalue?: number }
+        Returns: unknown
+      }
+      st_generatepoints:
+        | { Args: { area: unknown; npoints: number }; Returns: unknown }
+        | {
+            Args: { area: unknown; npoints: number; seed: number }
+            Returns: unknown
+          }
+      st_geogfromtext: { Args: { '': string }; Returns: unknown }
+      st_geographyfromtext: { Args: { '': string }; Returns: unknown }
+      st_geohash:
+        | { Args: { geog: unknown; maxchars?: number }; Returns: string }
+        | { Args: { geom: unknown; maxchars?: number }; Returns: string }
+      st_geomcollfromtext: { Args: { '': string }; Returns: unknown }
+      st_geometricmedian: {
+        Args: {
+          fail_if_not_converged?: boolean
+          g: unknown
+          max_iter?: number
+          tolerance?: number
+        }
+        Returns: unknown
+      }
+      st_geometryfromtext: { Args: { '': string }; Returns: unknown }
+      st_geomfromewkt: { Args: { '': string }; Returns: unknown }
+      st_geomfromgeojson:
+        | { Args: { '': Json }; Returns: unknown }
+        | { Args: { '': Json }; Returns: unknown }
+        | { Args: { '': string }; Returns: unknown }
+      st_geomfromgml: { Args: { '': string }; Returns: unknown }
+      st_geomfromkml: { Args: { '': string }; Returns: unknown }
+      st_geomfrommarc21: { Args: { marc21xml: string }; Returns: unknown }
+      st_geomfromtext: { Args: { '': string }; Returns: unknown }
+      st_gmltosql: { Args: { '': string }; Returns: unknown }
+      st_hasarc: { Args: { geometry: unknown }; Returns: boolean }
+      st_hausdorffdistance: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: number
+      }
+      st_hexagon: {
+        Args: { cell_i: number; cell_j: number; origin?: unknown; size: number }
+        Returns: unknown
+      }
+      st_hexagongrid: {
+        Args: { bounds: unknown; size: number }
+        Returns: Record<string, unknown>[]
+      }
+      st_interpolatepoint: {
+        Args: { line: unknown; point: unknown }
+        Returns: number
+      }
+      st_intersection: {
+        Args: { geom1: unknown; geom2: unknown; gridsize?: number }
+        Returns: unknown
+      }
+      st_intersects:
+        | { Args: { geog1: unknown; geog2: unknown }; Returns: boolean }
+        | { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
+      st_isvaliddetail: {
+        Args: { flags?: number; geom: unknown }
+        Returns: Database['public']['CompositeTypes']['valid_detail']
+        SetofOptions: {
+          from: '*'
+          to: 'valid_detail'
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      st_length:
+        | { Args: { geog: unknown; use_spheroid?: boolean }; Returns: number }
+        | { Args: { '': string }; Returns: number }
+      st_letters: { Args: { font?: Json; letters: string }; Returns: unknown }
+      st_linecrossingdirection: {
+        Args: { line1: unknown; line2: unknown }
+        Returns: number
+      }
+      st_linefromencodedpolyline: {
+        Args: { nprecision?: number; txtin: string }
+        Returns: unknown
+      }
+      st_linefromtext: { Args: { '': string }; Returns: unknown }
+      st_linelocatepoint: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: number
+      }
+      st_linetocurve: { Args: { geometry: unknown }; Returns: unknown }
+      st_locatealong: {
+        Args: { geometry: unknown; leftrightoffset?: number; measure: number }
+        Returns: unknown
+      }
+      st_locatebetween: {
+        Args: {
+          frommeasure: number
+          geometry: unknown
+          leftrightoffset?: number
+          tomeasure: number
+        }
+        Returns: unknown
+      }
+      st_locatebetweenelevations: {
+        Args: { fromelevation: number; geometry: unknown; toelevation: number }
+        Returns: unknown
+      }
+      st_longestline: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: unknown
+      }
+      st_makebox2d: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: unknown
+      }
+      st_makeline: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: unknown
+      }
+      st_makevalid: {
+        Args: { geom: unknown; params: string }
+        Returns: unknown
+      }
+      st_maxdistance: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: number
+      }
+      st_minimumboundingcircle: {
+        Args: { inputgeom: unknown; segs_per_quarter?: number }
+        Returns: unknown
+      }
+      st_mlinefromtext: { Args: { '': string }; Returns: unknown }
+      st_mpointfromtext: { Args: { '': string }; Returns: unknown }
+      st_mpolyfromtext: { Args: { '': string }; Returns: unknown }
+      st_multilinestringfromtext: { Args: { '': string }; Returns: unknown }
+      st_multipointfromtext: { Args: { '': string }; Returns: unknown }
+      st_multipolygonfromtext: { Args: { '': string }; Returns: unknown }
+      st_node: { Args: { g: unknown }; Returns: unknown }
+      st_normalize: { Args: { geom: unknown }; Returns: unknown }
+      st_offsetcurve: {
+        Args: { distance: number; line: unknown; params?: string }
+        Returns: unknown
+      }
+      st_orderingequals: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      st_overlaps: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: boolean
+      }
+      st_perimeter: {
+        Args: { geog: unknown; use_spheroid?: boolean }
+        Returns: number
+      }
+      st_pointfromtext: { Args: { '': string }; Returns: unknown }
+      st_pointm: {
+        Args: {
+          mcoordinate: number
+          srid?: number
+          xcoordinate: number
+          ycoordinate: number
+        }
+        Returns: unknown
+      }
+      st_pointz: {
+        Args: {
+          srid?: number
+          xcoordinate: number
+          ycoordinate: number
+          zcoordinate: number
+        }
+        Returns: unknown
+      }
+      st_pointzm: {
+        Args: {
+          mcoordinate: number
+          srid?: number
+          xcoordinate: number
+          ycoordinate: number
+          zcoordinate: number
+        }
+        Returns: unknown
+      }
+      st_polyfromtext: { Args: { '': string }; Returns: unknown }
+      st_polygonfromtext: { Args: { '': string }; Returns: unknown }
+      st_project: {
+        Args: { azimuth: number; distance: number; geog: unknown }
+        Returns: unknown
+      }
+      st_quantizecoordinates: {
+        Args: {
+          g: unknown
+          prec_m?: number
+          prec_x: number
+          prec_y?: number
+          prec_z?: number
+        }
+        Returns: unknown
+      }
+      st_reduceprecision: {
+        Args: { geom: unknown; gridsize: number }
+        Returns: unknown
+      }
+      st_relate: { Args: { geom1: unknown; geom2: unknown }; Returns: string }
+      st_removerepeatedpoints: {
+        Args: { geom: unknown; tolerance?: number }
+        Returns: unknown
+      }
+      st_segmentize: {
+        Args: { geog: unknown; max_segment_length: number }
+        Returns: unknown
+      }
+      st_setsrid:
+        | { Args: { geog: unknown; srid: number }; Returns: unknown }
+        | { Args: { geom: unknown; srid: number }; Returns: unknown }
+      st_sharedpaths: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: unknown
+      }
+      st_shortestline: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: unknown
+      }
+      st_simplifypolygonhull: {
+        Args: { geom: unknown; is_outer?: boolean; vertex_fraction: number }
+        Returns: unknown
+      }
+      st_split: { Args: { geom1: unknown; geom2: unknown }; Returns: unknown }
+      st_square: {
+        Args: { cell_i: number; cell_j: number; origin?: unknown; size: number }
+        Returns: unknown
+      }
+      st_squaregrid: {
+        Args: { bounds: unknown; size: number }
+        Returns: Record<string, unknown>[]
+      }
+      st_srid:
+        | { Args: { geog: unknown }; Returns: number }
+        | { Args: { geom: unknown }; Returns: number }
+      st_subdivide: {
+        Args: { geom: unknown; gridsize?: number; maxvertices?: number }
+        Returns: unknown[]
+      }
+      st_swapordinates: {
+        Args: { geom: unknown; ords: unknown }
+        Returns: unknown
+      }
+      st_symdifference: {
+        Args: { geom1: unknown; geom2: unknown; gridsize?: number }
+        Returns: unknown
+      }
+      st_symmetricdifference: {
+        Args: { geom1: unknown; geom2: unknown }
+        Returns: unknown
+      }
+      st_tileenvelope: {
+        Args: {
+          bounds?: unknown
+          margin?: number
+          x: number
+          y: number
+          zoom: number
+        }
+        Returns: unknown
+      }
+      st_touches: { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
+      st_transform:
+        | {
+            Args: { from_proj: string; geom: unknown; to_proj: string }
+            Returns: unknown
+          }
+        | {
+            Args: { from_proj: string; geom: unknown; to_srid: number }
+            Returns: unknown
+          }
+        | { Args: { geom: unknown; to_proj: string }; Returns: unknown }
+      st_triangulatepolygon: { Args: { g1: unknown }; Returns: unknown }
+      st_union:
+        | { Args: { geom1: unknown; geom2: unknown }; Returns: unknown }
+        | {
+            Args: { geom1: unknown; geom2: unknown; gridsize: number }
+            Returns: unknown
+          }
+      st_voronoilines: {
+        Args: { extend_to?: unknown; g1: unknown; tolerance?: number }
+        Returns: unknown
+      }
+      st_voronoipolygons: {
+        Args: { extend_to?: unknown; g1: unknown; tolerance?: number }
+        Returns: unknown
+      }
+      st_within: { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
+      st_wkbtosql: { Args: { wkb: string }; Returns: unknown }
+      st_wkttosql: { Args: { '': string }; Returns: unknown }
+      st_wrapx: {
+        Args: { geom: unknown; move: number; wrap: number }
+        Returns: unknown
+      }
+      unlockrows: { Args: { '': string }; Returns: number }
+      updategeometrysrid: {
+        Args: {
+          catalogn_name: string
+          column_name: string
+          new_srid_in: number
+          schema_name: string
+          table_name: string
+        }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never
     }
     CompositeTypes: {
-      [_ in never]: never
+      geometry_dump: {
+        path: number[] | null
+        geom: unknown
+      }
+      valid_detail: {
+        valid: boolean | null
+        reason: string | null
+        location: unknown
+      }
     }
   }
 }
@@ -648,275 +2407,3 @@ export const Constants = {
     Enums: {},
   },
 } as const
-
-// ====== DATABASE EXTENDED CONTEXT (auto-generated) ======
-// This section contains actual PostgreSQL column types, constraints, RLS policies,
-// functions, triggers, indexes and materialized views not present in the type definitions above.
-// IMPORTANT: The TypeScript types above map UUID, TEXT, VARCHAR all to "string".
-// Use the COLUMN TYPES section below to know the real PostgreSQL type for each column.
-// Always use the correct PostgreSQL type when writing SQL migrations.
-
-// --- COLUMN TYPES (actual PostgreSQL types) ---
-// Use this to know the real database type when writing migrations.
-// "string" in TypeScript types above may be uuid, text, varchar, timestamptz, etc.
-// Table: acoes
-//   id_acao: integer (not null)
-//   descricao: character varying (nullable)
-//   obs: character varying (nullable)
-// Table: acoes_fonte
-//   id_ef: integer (not null)
-//   id_fonte: integer (nullable)
-//   id_acao: integer (nullable)
-// Table: capex_acao
-//   id_ca: integer (not null, default: nextval('capex_acao_id_ca_seq'::regclass))
-//   id_acao: integer (nullable)
-//   tempo: character varying (nullable)
-//   capex: double precision (nullable)
-// Table: capex_perdas
-//   id_cp: integer (not null, default: nextval('capex_perdas_id_cp_seq'::regclass))
-//   tempo: character varying (nullable)
-//   capex: double precision (nullable)
-// Table: cenario_consumo
-//   id_cc: integer (not null)
-//   nome_cenario_consumo: character varying (nullable)
-//   descricao: character varying (nullable)
-//   vol_hab: double precision (nullable)
-// Table: cenario_demanda
-//   id_cd: integer (not null)
-//   nome_cenario_demanda: character varying (nullable)
-//   descricao: character varying (nullable)
-//   percentual: double precision (nullable)
-// Table: cenario_perdas
-//   id_cp: integer (not null)
-//   nome_cenario_perdas: character varying (nullable)
-//   percentual: double precision (nullable)
-// Table: cenario_simulacao
-//   id_cs: integer (not null)
-//   id_s: integer (nullable)
-//   id_fonte: integer (nullable)
-//   id_tc: integer (nullable)
-//   id_c: integer (nullable)
-//   id_acao: integer (nullable)
-// Table: cenarios
-//   id_cenarios: integer (not null)
-//   cenarios: character varying (nullable)
-//   obs_cenario: character varying (nullable)
-// Table: cenarios_fonte
-//   id_cf: integer (not null)
-//   id_fonte: integer (nullable)
-//   id_tc: integer (nullable)
-// Table: dados_simulacao
-//   id_ds: integer (not null)
-//   id_s: integer (nullable)
-//   tempo: character varying (nullable)
-//   id_fonte: integer (nullable)
-//   id_tc: integer (nullable)
-//   id_c: integer (nullable)
-//   id_acao: integer (nullable)
-//   id_cd: integer (nullable)
-//   id_cc: integer (nullable)
-//   id_cp: integer (nullable)
-//   volume_captado: double precision (nullable)
-//   capex: double precision (nullable)
-//   opex: double precision (nullable)
-//   rebaixamento: double precision (nullable)
-//   demanda: double precision (nullable)
-//   perdas: double precision (nullable)
-// Table: fonte_agua
-//   id_fonte: integer (not null)
-//   nome_fonte: character varying (nullable)
-//   sujeito_perdas: boolean (nullable, default: true)
-// Table: opex
-//   id_oa: integer (not null, default: nextval('opex_id_oa_seq'::regclass))
-//   tempo: character varying (nullable)
-//   opex: double precision (nullable)
-// Table: simulacao_ssd
-//   id_s: integer (not null)
-//   descricao: character varying (nullable)
-//   demanda_auto: boolean (nullable, default: false)
-//   perdas_auto: boolean (nullable, default: false)
-//   pop_inicial: double precision (nullable)
-//   inicio_perdas: character varying (nullable)
-//   perc_inicial_perdas: double precision (nullable)
-// Table: tipo_cenario_cenario
-//   id_tcc: integer (not null)
-//   id_tc: integer (nullable)
-//   id_c: integer (nullable)
-// Table: tipos_cenarios
-//   id_tc: integer (not null)
-//   descricao: character varying (nullable)
-//   obs_tipo_cenario: character varying (nullable)
-
-// --- CONSTRAINTS ---
-// Table: acoes
-//   PRIMARY KEY estrategias_pkey: PRIMARY KEY (id_acao)
-// Table: acoes_fonte
-//   FOREIGN KEY acoes_fonte_id_acao_fkey: FOREIGN KEY (id_acao) REFERENCES acoes(id_acao) ON DELETE CASCADE
-//   FOREIGN KEY estrategias_fonte_id_fonte_fkey: FOREIGN KEY (id_fonte) REFERENCES fonte_agua(id_fonte) ON DELETE CASCADE
-//   PRIMARY KEY estrategias_fonte_pkey: PRIMARY KEY (id_ef)
-// Table: capex_acao
-//   FOREIGN KEY capex_acao_id_acao_fkey: FOREIGN KEY (id_acao) REFERENCES acoes(id_acao) ON DELETE CASCADE
-//   PRIMARY KEY capex_acao_pkey: PRIMARY KEY (id_ca)
-// Table: capex_perdas
-//   PRIMARY KEY capex_perdas_pkey: PRIMARY KEY (id_cp)
-// Table: cenario_consumo
-//   PRIMARY KEY cenario_consumo_pkey: PRIMARY KEY (id_cc)
-// Table: cenario_demanda
-//   PRIMARY KEY cenario_demanda_pkey: PRIMARY KEY (id_cd)
-// Table: cenario_perdas
-//   PRIMARY KEY cenario_perdas_pkey: PRIMARY KEY (id_cp)
-// Table: cenario_simulacao
-//   FOREIGN KEY cenario_simulacao_id_acao_fkey: FOREIGN KEY (id_acao) REFERENCES acoes(id_acao) ON DELETE CASCADE
-//   FOREIGN KEY cenario_simulacao_id_c_fkey: FOREIGN KEY (id_c) REFERENCES cenarios(id_cenarios) ON DELETE CASCADE
-//   FOREIGN KEY cenario_simulacao_id_fonte_fkey: FOREIGN KEY (id_fonte) REFERENCES fonte_agua(id_fonte) ON DELETE CASCADE
-//   FOREIGN KEY cenario_simulacao_id_s_fkey: FOREIGN KEY (id_s) REFERENCES simulacao_ssd(id_s) ON DELETE CASCADE
-//   FOREIGN KEY cenario_simulacao_id_tc_fkey: FOREIGN KEY (id_tc) REFERENCES tipos_cenarios(id_tc) ON DELETE CASCADE
-//   PRIMARY KEY cenario_simulacao_pkey: PRIMARY KEY (id_cs)
-// Table: cenarios
-//   PRIMARY KEY cenarios_pkey: PRIMARY KEY (id_cenarios)
-// Table: cenarios_fonte
-//   FOREIGN KEY cenarios_fonte_id_fonte_fkey: FOREIGN KEY (id_fonte) REFERENCES fonte_agua(id_fonte) ON DELETE CASCADE
-//   FOREIGN KEY cenarios_fonte_id_tc_fkey: FOREIGN KEY (id_tc) REFERENCES tipos_cenarios(id_tc) ON DELETE CASCADE
-//   PRIMARY KEY cenarios_fonte_pkey: PRIMARY KEY (id_cf)
-// Table: dados_simulacao
-//   FOREIGN KEY dados_simulacao_id_acao_fkey: FOREIGN KEY (id_acao) REFERENCES acoes(id_acao) ON DELETE CASCADE
-//   FOREIGN KEY dados_simulacao_id_c_fkey: FOREIGN KEY (id_c) REFERENCES cenarios(id_cenarios) ON DELETE CASCADE
-//   FOREIGN KEY dados_simulacao_id_cc_fkey: FOREIGN KEY (id_cc) REFERENCES cenario_consumo(id_cc) ON DELETE CASCADE
-//   FOREIGN KEY dados_simulacao_id_cd_fkey: FOREIGN KEY (id_cd) REFERENCES cenario_demanda(id_cd) ON DELETE CASCADE
-//   FOREIGN KEY dados_simulacao_id_cp_fkey: FOREIGN KEY (id_cp) REFERENCES cenario_perdas(id_cp) ON DELETE CASCADE
-//   FOREIGN KEY dados_simulacao_id_fonte_fkey: FOREIGN KEY (id_fonte) REFERENCES fonte_agua(id_fonte) ON DELETE CASCADE
-//   FOREIGN KEY dados_simulacao_id_s_fkey: FOREIGN KEY (id_s) REFERENCES simulacao_ssd(id_s) ON DELETE CASCADE
-//   FOREIGN KEY dados_simulacao_id_tc_fkey: FOREIGN KEY (id_tc) REFERENCES tipos_cenarios(id_tc) ON DELETE CASCADE
-//   PRIMARY KEY dados_simulacao_pkey: PRIMARY KEY (id_ds)
-// Table: fonte_agua
-//   PRIMARY KEY fonte_agua_pkey: PRIMARY KEY (id_fonte)
-// Table: opex
-//   PRIMARY KEY opex_pkey: PRIMARY KEY (id_oa)
-// Table: simulacao_ssd
-//   PRIMARY KEY simulacao_ssd_pkey: PRIMARY KEY (id_s)
-// Table: tipo_cenario_cenario
-//   FOREIGN KEY tipo_cenario_cenario_id_c_fkey: FOREIGN KEY (id_c) REFERENCES cenarios(id_cenarios) ON DELETE CASCADE
-//   FOREIGN KEY tipo_cenario_cenario_id_tc_fkey: FOREIGN KEY (id_tc) REFERENCES tipos_cenarios(id_tc) ON DELETE CASCADE
-//   PRIMARY KEY tipo_cenario_cenario_pkey: PRIMARY KEY (id_tcc)
-// Table: tipos_cenarios
-//   PRIMARY KEY tipos_cenarios_pkey: PRIMARY KEY (id_tc)
-
-// --- ROW LEVEL SECURITY POLICIES ---
-// Table: acoes
-//   Policy "anon_read" (SELECT, PERMISSIVE) roles={anon}
-//     USING: true
-//   Policy "authenticated_all" (ALL, PERMISSIVE) roles={authenticated}
-//     USING: true
-//     WITH CHECK: true
-// Table: acoes_fonte
-//   Policy "anon_read" (SELECT, PERMISSIVE) roles={anon}
-//     USING: true
-//   Policy "authenticated_all" (ALL, PERMISSIVE) roles={authenticated}
-//     USING: true
-//     WITH CHECK: true
-// Table: capex_acao
-//   Policy "All capex_acao anon" (ALL, PERMISSIVE) roles={anon}
-//     USING: true
-//     WITH CHECK: true
-//   Policy "All capex_acao auth" (ALL, PERMISSIVE) roles={authenticated}
-//     USING: true
-//     WITH CHECK: true
-//   Policy "anon_read" (SELECT, PERMISSIVE) roles={anon}
-//     USING: true
-//   Policy "authenticated_all" (ALL, PERMISSIVE) roles={authenticated}
-//     USING: true
-//     WITH CHECK: true
-// Table: capex_perdas
-//   Policy "All capex_perdas anon" (ALL, PERMISSIVE) roles={anon}
-//     USING: true
-//     WITH CHECK: true
-//   Policy "All capex_perdas auth" (ALL, PERMISSIVE) roles={authenticated}
-//     USING: true
-//     WITH CHECK: true
-//   Policy "Insert capex_acao anon" (INSERT, PERMISSIVE) roles={anon}
-//     WITH CHECK: true
-//   Policy "anon_read" (SELECT, PERMISSIVE) roles={anon}
-//     USING: true
-//   Policy "authenticated_all" (ALL, PERMISSIVE) roles={authenticated}
-//     USING: true
-//     WITH CHECK: true
-// Table: cenario_consumo
-//   Policy "anon_read" (SELECT, PERMISSIVE) roles={anon}
-//     USING: true
-//   Policy "authenticated_all" (ALL, PERMISSIVE) roles={authenticated}
-//     USING: true
-//     WITH CHECK: true
-// Table: cenario_demanda
-//   Policy "anon_read" (SELECT, PERMISSIVE) roles={anon}
-//     USING: true
-//   Policy "authenticated_all" (ALL, PERMISSIVE) roles={authenticated}
-//     USING: true
-//     WITH CHECK: true
-// Table: cenario_perdas
-//   Policy "anon_read" (SELECT, PERMISSIVE) roles={anon}
-//     USING: true
-//   Policy "authenticated_all" (ALL, PERMISSIVE) roles={authenticated}
-//     USING: true
-//     WITH CHECK: true
-// Table: cenario_simulacao
-//   Policy "anon_read" (SELECT, PERMISSIVE) roles={anon}
-//     USING: true
-//   Policy "authenticated_all" (ALL, PERMISSIVE) roles={authenticated}
-//     USING: true
-//     WITH CHECK: true
-// Table: cenarios
-//   Policy "anon_read" (SELECT, PERMISSIVE) roles={anon}
-//     USING: true
-//   Policy "authenticated_all" (ALL, PERMISSIVE) roles={authenticated}
-//     USING: true
-//     WITH CHECK: true
-// Table: cenarios_fonte
-//   Policy "anon_read" (SELECT, PERMISSIVE) roles={anon}
-//     USING: true
-//   Policy "authenticated_all" (ALL, PERMISSIVE) roles={authenticated}
-//     USING: true
-//     WITH CHECK: true
-// Table: dados_simulacao
-//   Policy "anon_read" (SELECT, PERMISSIVE) roles={anon}
-//     USING: true
-//   Policy "authenticated_all" (ALL, PERMISSIVE) roles={authenticated}
-//     USING: true
-//     WITH CHECK: true
-// Table: fonte_agua
-//   Policy "anon_read" (SELECT, PERMISSIVE) roles={anon}
-//     USING: true
-//   Policy "authenticated_all" (ALL, PERMISSIVE) roles={authenticated}
-//     USING: true
-//     WITH CHECK: true
-// Table: opex
-//   Policy "All opex anon" (ALL, PERMISSIVE) roles={anon}
-//     USING: true
-//     WITH CHECK: true
-//   Policy "All opex auth" (ALL, PERMISSIVE) roles={authenticated}
-//     USING: true
-//     WITH CHECK: true
-//   Policy "Insert capex_acao anon" (INSERT, PERMISSIVE) roles={anon}
-//     WITH CHECK: true
-//   Policy "anon_read" (SELECT, PERMISSIVE) roles={anon}
-//     USING: true
-//   Policy "authenticated_all" (ALL, PERMISSIVE) roles={authenticated}
-//     USING: true
-//     WITH CHECK: true
-// Table: simulacao_ssd
-//   Policy "anon_read" (SELECT, PERMISSIVE) roles={anon}
-//     USING: true
-//   Policy "authenticated_all" (ALL, PERMISSIVE) roles={authenticated}
-//     USING: true
-//     WITH CHECK: true
-// Table: tipo_cenario_cenario
-//   Policy "anon_read" (SELECT, PERMISSIVE) roles={anon}
-//     USING: true
-//   Policy "authenticated_all" (ALL, PERMISSIVE) roles={authenticated}
-//     USING: true
-//     WITH CHECK: true
-// Table: tipos_cenarios
-//   Policy "anon_read" (SELECT, PERMISSIVE) roles={anon}
-//     USING: true
-//   Policy "authenticated_all" (ALL, PERMISSIVE) roles={authenticated}
-//     USING: true
-//     WITH CHECK: true

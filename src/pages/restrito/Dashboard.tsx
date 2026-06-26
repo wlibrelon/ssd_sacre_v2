@@ -23,6 +23,16 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Textarea } from '@/components/ui/textarea'
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion'
+import { ArtigosTab } from '@/components/gestao-projetos/ArtigosTab'
+import { MidiaAdmin } from '@/components/admin/MidiaAdmin'
+import { CongressosAdmin } from '@/components/admin/CongressosAdmin'
+
 export default function Dashboard() {
   const { user, profile, isAuthenticated } = useAuth()
   const { toast } = useToast()
@@ -32,23 +42,28 @@ export default function Dashboard() {
   const [contexto, setContexto] = useState('')
   const [objetivos, setObjetivos] = useState('')
   const [descricaoDoc, setDescricaoDoc] = useState('')
+
   useEffect(() => {
     if (!isAuthenticated) return
     loadData()
   }, [isAuthenticated])
+
   const loadData = async () => {
     const { data: usersData } = await supabase
       .from('perfis_usuarios')
       .select('*')
       .eq('status', 'pendente')
     if (usersData) setPendingUsers(usersData)
+
     const { data: groupsData } = await supabase.from('grupo_acesso').select('*')
     if (groupsData) setGroups(groupsData)
+
     const { data: docsData } = await supabase
       .from('documentos_publicos')
       .select('*')
       .order('criado_em', { ascending: false })
     if (docsData) setDocuments(docsData)
+
     const { data: contData } = await supabase.from('conteudo_estudo').select('*')
     if (contData) {
       const ctx = contData.find((c) => c.secao === 'contexto')
@@ -57,12 +72,14 @@ export default function Dashboard() {
       if (obj) setObjetivos(obj.conteudo_html || '')
     }
   }
+
   const approveUser = async (id: string, id_ga: number) => {
     if (!id_ga) return toast({ title: 'Selecione um grupo', variant: 'destructive' })
     await supabase.from('perfis_usuarios').update({ status: 'aprovado', id_ga }).eq('id', id)
     toast({ title: 'Usuário aprovado' })
     loadData()
   }
+
   const saveContent = async (secao: string, conteudo_html: string) => {
     const { data } = await supabase
       .from('conteudo_estudo')
@@ -76,6 +93,7 @@ export default function Dashboard() {
     }
     toast({ title: 'Conteúdo salvo' })
   }
+
   const uploadDoc = async (e: any) => {
     const file = e.target.files[0]
     if (!file) return
@@ -94,14 +112,25 @@ export default function Dashboard() {
     setDescricaoDoc('')
     loadData()
   }
+
   const deleteDoc = async (id: number, url: string) => {
     await supabase.from('documentos_publicos').delete().eq('id', id)
     const filename = url.split('/').pop()
     if (filename) await supabase.storage.from('documentos').remove([filename])
     loadData()
   }
+
+  const [AtividadesAdmin, setAtividadesAdmin] = useState<any>(null)
+  useEffect(() => {
+    import('@/components/admin/AtividadesSociaisAdmin').then((m) =>
+      setAtividadesAdmin(() => m.AtividadesSociaisAdmin),
+    )
+  }, [])
+
   if (!isAuthenticated) return <Navigate to="/auth" replace />
+
   const isAdmin = profile?.id_ga === 4
+
   return (
     <div className="space-y-8 animate-fade-in max-w-6xl mx-auto p-4">
       <div className="flex justify-between items-end border-b pb-4">
@@ -112,26 +141,58 @@ export default function Dashboard() {
           </p>
         </div>
       </div>
-      <Tabs defaultValue="geral" className="w-full">
+
+      <Tabs defaultValue="divulgacao" className="w-full">
         <TabsList className="flex flex-wrap h-auto gap-2 mb-6">
-          <TabsTrigger value="geral">Geral</TabsTrigger>
+          <TabsTrigger value="divulgacao">Divulgação</TabsTrigger>
           {isAdmin && <TabsTrigger value="usuarios">Aprovação de Usuários</TabsTrigger>}
           {isAdmin && <TabsTrigger value="conteudo">Gestão de Conteúdo</TabsTrigger>}
           {isAdmin && <TabsTrigger value="documentos">Documentos Públicos</TabsTrigger>}
         </TabsList>
-        <TabsContent value="geral">
+
+        <TabsContent value="divulgacao">
           <Card>
             <CardHeader>
-              <CardTitle>Bem-vindo</CardTitle>
+              <CardTitle>Gestão de Divulgação</CardTitle>
+              <CardDescription>Gerencie publicações, mídia e eventos do projeto.</CardDescription>
             </CardHeader>
             <CardContent>
-              <p>
-                Utilize o menu lateral para navegar nas ferramentas disponíveis para o seu nível de
-                acesso.
-              </p>
+              <Accordion type="single" collapsible className="w-full">
+                <AccordionItem value="publicacoes">
+                  <AccordionTrigger className="text-lg">Publicações Científicas</AccordionTrigger>
+                  <AccordionContent className="pt-4 border-t">
+                    <ArtigosTab />
+                  </AccordionContent>
+                </AccordionItem>
+                <AccordionItem value="midia">
+                  <AccordionTrigger className="text-lg">Mídia e Notícias</AccordionTrigger>
+                  <AccordionContent className="pt-4 border-t">
+                    <MidiaAdmin />
+                  </AccordionContent>
+                </AccordionItem>
+                <AccordionItem value="congressos">
+                  <AccordionTrigger className="text-lg">Congressos e Eventos</AccordionTrigger>
+                  <AccordionContent className="pt-4 border-t">
+                    <CongressosAdmin />
+                  </AccordionContent>
+                </AccordionItem>
+                <AccordionItem value="atividades">
+                  <AccordionTrigger className="text-lg">Atividades Sociais</AccordionTrigger>
+                  <AccordionContent className="pt-4 border-t">
+                    {AtividadesAdmin ? (
+                      <AtividadesAdmin />
+                    ) : (
+                      <p className="text-sm text-muted-foreground p-4 bg-muted/20 text-center rounded-md">
+                        Carregando...
+                      </p>
+                    )}
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
             </CardContent>
           </Card>
         </TabsContent>
+
         {isAdmin && (
           <>
             <TabsContent value="usuarios">
@@ -198,6 +259,7 @@ export default function Dashboard() {
                 </CardContent>
               </Card>
             </TabsContent>
+
             <TabsContent value="conteudo">
               <div className="grid md:grid-cols-2 gap-6">
                 <Card>
@@ -234,6 +296,7 @@ export default function Dashboard() {
                 </Card>
               </div>
             </TabsContent>
+
             <TabsContent value="documentos">
               <Card>
                 <CardHeader>

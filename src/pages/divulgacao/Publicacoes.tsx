@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react'
+import { supabase } from '@/lib/supabase/client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Accordion,
@@ -8,26 +10,26 @@ import {
 import { Button } from '@/components/ui/button'
 import { ExternalLink, BookOpen } from 'lucide-react'
 
-const papers = [
-  {
-    title: 'Urban Water Resilience in the Face of Climate Change: The Bauru Case Study',
-    authors: 'Alves, R., Santos, C., et al.',
-    journal: 'Journal of Hydrology',
-    year: 2024,
-    abstract:
-      'This paper presents the preliminary findings of the SACRE project, detailing the methodological approach to combining technical modeling with public policy frameworks...',
-  },
-  {
-    title: 'Nature-Based Solutions for Urban Drainage Systems',
-    authors: 'Maria Fernanda, João Pedro',
-    journal: 'Water Resources Management',
-    year: 2025,
-    abstract:
-      'Evaluating the cost-effectiveness of implementing rain gardens and permeable pavements in densely populated areas using WEAP simulations...',
-  },
-]
-
 export default function Publicacoes() {
+  const [papers, setPapers] = useState<any[]>([])
+
+  useEffect(() => {
+    const fetchPapers = async () => {
+      const { data } = await supabase
+        .from('artigos')
+        .select(`
+        *,
+        artigos_autores (
+          colaboradores (nome)
+        )
+      `)
+        .order('titulo', { ascending: false })
+
+      if (data) setPapers(data)
+    }
+    fetchPapers()
+  }, [])
+
   return (
     <div className="max-w-4xl space-y-6 animate-fade-in">
       <div className="mb-8">
@@ -41,36 +43,62 @@ export default function Publicacoes() {
       </div>
 
       <div className="space-y-4">
-        {papers.map((paper, idx) => (
-          <Card key={idx} className="overflow-hidden border-l-4 border-l-secondary">
-            <CardHeader className="pb-2">
-              <div className="flex justify-between items-start gap-4">
-                <div>
-                  <CardTitle className="text-xl leading-tight">{paper.title}</CardTitle>
-                  <p className="text-sm text-primary/80 mt-1 font-medium">{paper.authors}</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {paper.journal} • {paper.year}
-                  </p>
+        {papers.map((paper) => {
+          const authors =
+            paper.artigos_autores && paper.artigos_autores.length > 0
+              ? paper.artigos_autores
+                  .map((a: any) => a.colaboradores?.nome)
+                  .filter(Boolean)
+                  .join(', ')
+              : 'Autores não informados'
+
+          return (
+            <Card key={paper.id_artigo} className="overflow-hidden border-l-4 border-l-secondary">
+              <CardHeader className="pb-2">
+                <div className="flex justify-between items-start gap-4">
+                  <div>
+                    <CardTitle className="text-xl leading-tight">{paper.titulo}</CardTitle>
+                    <p className="text-sm text-primary/80 mt-1 font-medium">{authors}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {paper.revista || 'Periódico Científico'}
+                    </p>
+                  </div>
+                  {paper.doi && (
+                    <Button size="sm" variant="outline" className="shrink-0 gap-2" asChild>
+                      <a
+                        href={`https://doi.org/${paper.doi}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <ExternalLink className="h-4 w-4" /> DOI
+                      </a>
+                    </Button>
+                  )}
                 </div>
-                <Button size="sm" variant="outline" className="shrink-0 gap-2">
-                  <ExternalLink className="h-4 w-4" /> DOI
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <Accordion type="single" collapsible>
-                <AccordionItem value="abstract" className="border-none">
-                  <AccordionTrigger className="text-sm py-2 text-secondary hover:no-underline hover:text-primary">
-                    Ler Abstract
-                  </AccordionTrigger>
-                  <AccordionContent className="text-muted-foreground text-sm leading-relaxed">
-                    {paper.abstract}
-                  </AccordionContent>
-                </AccordionItem>
-              </Accordion>
-            </CardContent>
-          </Card>
-        ))}
+              </CardHeader>
+              <CardContent>
+                {(paper.resumo || paper.abstract) && (
+                  <Accordion type="single" collapsible>
+                    <AccordionItem value="abstract" className="border-none">
+                      <AccordionTrigger className="text-sm py-2 text-secondary hover:no-underline hover:text-primary">
+                        Ler Resumo / Abstract
+                      </AccordionTrigger>
+                      <AccordionContent className="text-muted-foreground text-sm leading-relaxed space-y-4">
+                        {paper.resumo && <p>{paper.resumo}</p>}
+                        {paper.abstract && <p className="italic">{paper.abstract}</p>}
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
+                )}
+              </CardContent>
+            </Card>
+          )
+        })}
+        {papers.length === 0 && (
+          <p className="text-muted-foreground text-center py-8">
+            Nenhuma publicação cadastrada no momento.
+          </p>
+        )}
       </div>
     </div>
   )

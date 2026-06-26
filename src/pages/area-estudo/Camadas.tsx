@@ -1,0 +1,235 @@
+import { useState, useEffect, useMemo } from 'react'
+import { supabase } from '@/lib/supabase/client'
+import { Checkbox } from '@/components/ui/checkbox'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { Layers, Loader2, Info } from 'lucide-react'
+import { SimpleMap } from '@/components/map/SimpleMap'
+import { TileLayer } from '@/components/map/TileLayer'
+import { GeoJSONLayer } from '@/components/map/GeoJSONLayer'
+
+type Camada = {
+  id_camada: string
+  nome: string
+  descricao: string
+  categoria: string
+  tipo_dados: 'vetorial' | 'raster'
+  fonte_raster_url: string
+  estilo: any
+  legenda: any
+  zoom_min: number
+  zoom_max: number
+  visivel_por_padrao: boolean
+}
+
+export default function Camadas() {
+  const [camadas, setCamadas] = useState<Camada[]>([])
+  const [activeLayers, setActiveLayers] = useState<Set<string>>(new Set())
+  const [bbox, setBbox] = useState<number[] | null>(null)
+  const [zoom, setZoom] = useState(10)
+  const [debouncedBbox, setDebouncedBbox] = useState<number[] | null>(null)
+  const [layerData, setLayerData] = useState<Record<string, any>>({})
+  const [loadingLayers, setLoadingLayers] = useState<Set<string>>(new Set())
+
+  useEffect(() => {
+    supabase
+      .from('camadas_mapa')
+      .select('*')
+      .eq('ativo', true)
+      .order('ordem_exibicao')
+      .then(({ data }) => {
+        if (data) {
+          setCamadas(data)
+          const defaultActive = new Set<string>()
+          data.forEach((c) => {
+            if (c.visivel_por_padrao) defaultActive.add(c.id_camada)
+          })
+          setActiveLayers(defaultActive)
+        }
+      })
+  }, [])
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedBbox(bbox), 500)
+    return () => clearTimeout(t)
+  }, [bbox])
+
+  useEffect(() => {
+    if (!debouncedBbox) return
+
+    camadas.forEach((camada) => {
+      if (activeLayers.has(camada.id_camada) && camada.tipo_dados === 'vetorial') {
+        if (zoom < camada.zoom_min || zoom > camada.zoom_max) return
+
+        setLoadingLayers((prev) => new Set(prev).add(camada.id_camada))
+
+        supabase
+          .rpc('obter_feicoes_camada', {
+            p_id_camada: camada.id_camada,
+            p_min_lon: debouncedBbox[0],
+            p_min_lat: debouncedBbox[1],
+            p_max_lon: debouncedBbox[2],
+            p_max_lat: debouncedBbox[3],
+            p_zoom: Math.round(zoom),
+          })
+          .then(({ data, error }) => {
+            setLoadingLayers((prev) => {
+              const next = new Set(prev)
+              next.delete(camada.id_camada)
+              return next
+            })
+            if (data && !error) {
+              setLayerData((prev) => ({ ...prev, [camada.id_camada]: data }))
+            }
+          })
+      }
+    })
+  }, [debouncedBbox, activeLayers, camadas, zoom])
+
+  const groupedCamadas = useMemo(() => {
+    const groups: Record<string, Camada[]> = {}
+    camadas.forEach((c) => {
+      if (!groups[c.categoria]) groups[c.categoria] = []
+      groups[c.categoria].push(c)
+    })
+    return groups
+  }, [camadas])
+
+  const toggleLayer = (id: string) => {
+    setActiveLayers((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const activeCamadas = camadas.filter((c) => activeLayers.has(c.id_camada))
+
+  const renderLegend = () => {
+    if (activeCamadas.length === 0) return null
+    return (
+      <div className="absolute bottom-6 right-6 bg-white/95 backdrop-blur-sm p-4 rounded-lg shadow-lg border border-border/50 z-10 w-56 text-sm">
+        <h3 className="font-semibold mb-3 flex items-center gap-2">
+          <Info className="w-4 h-4 text-primary" /> Legenda
+        </h3>
+        <ScrollArea className="max-h-64 pr-3">
+          <div className="space-y-4">
+            {activeCamadas.map((c) => {
+              if (!c.legenda || !Array.isArray(c.legenda) || c.legenda.length === 0) return null
+              return (
+                <div key={c.id_camada} className="space-y-2">
+                  <div className="font-medium text-xs text-muted-foreground border-b pb-1">
+                    {c.nome}
+                  </div>
+                  {c.legenda.map((leg: any, i: number) => (
+                    <div key={i} className="flex items-center gap-2">
+                      {leg.type === 'line' && (
+                        <div className="w-5 h-0.5" style={{ backgroundColor: leg.color }} />
+                      )}
+                      {leg.type === 'polygon' && (
+                        <div
+                          className="w-4 h-4 rounded-sm opacity-60 border"
+                          style={{ backgroundColor: leg.color, borderColor: leg.color }}
+                        />
+                      )}
+                      {leg.type === 'point' && (
+                        <div
+                          className="w-3 h-3 rounded-full border border-white shadow-sm"
+                          style={{ backgroundColor: leg.color }}
+                        />
+                      )}
+                      <span className="text-xs text-foreground/80">{leg.label}</span>
+                    </div>
+                  ))}
+                </div>
+              )
+            })}
+          </div>
+        </ScrollArea>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex h-full w-full overflow-hidden relative">
+      <div className="w-80 border-r bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 flex flex-col z-20 shadow-sm shrink-0">
+        <div className="p-5 border-b bg-card">
+          <h2 className="font-semibold text-lg flex items-center gap-2">
+            <Layers className="h-5 w-5 text-primary" /> Camadas do Mapa
+          </h2>
+          <p className="text-xs text-muted-foreground mt-1">
+            Selecione as camadas para visualizar no mapa interativo.
+          </p>
+        </div>
+        <ScrollArea className="flex-1 p-5">
+          <div className="space-y-6">
+            {Object.entries(groupedCamadas).map(([categoria, items]) => (
+              <div key={categoria} className="space-y-3">
+                <h3 className="font-medium text-sm text-primary tracking-tight uppercase">
+                  {categoria}
+                </h3>
+                <div className="space-y-2">
+                  {items.map((camada) => (
+                    <div key={camada.id_camada} className="flex items-start space-x-3 group">
+                      <Checkbox
+                        id={camada.id_camada}
+                        checked={activeLayers.has(camada.id_camada)}
+                        onCheckedChange={() => toggleLayer(camada.id_camada)}
+                        className="mt-0.5"
+                      />
+                      <div className="grid gap-1.5 leading-none flex-1">
+                        <label
+                          htmlFor={camada.id_camada}
+                          className="text-sm font-medium leading-none cursor-pointer group-hover:text-primary transition-colors flex items-center gap-2"
+                        >
+                          {camada.nome}
+                          {loadingLayers.has(camada.id_camada) && (
+                            <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />
+                          )}
+                        </label>
+                        {camada.descricao && (
+                          <p className="text-xs text-muted-foreground line-clamp-2">
+                            {camada.descricao}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </ScrollArea>
+      </div>
+
+      <div className="flex-1 relative bg-slate-100">
+        <SimpleMap
+          defaultCenter={[-46.6333, -23.5505]}
+          defaultZoom={10}
+          onBoundsChange={(b, z) => {
+            setBbox(b)
+            setZoom(z)
+          }}
+        >
+          <TileLayer urlTemplate="https://tile.openstreetmap.org/{z}/{x}/{y}.png" />
+
+          {activeCamadas
+            .filter((c) => c.tipo_dados === 'raster')
+            .map((c) => (
+              <TileLayer key={c.id_camada} urlTemplate={c.fonte_raster_url} />
+            ))}
+
+          {activeCamadas
+            .filter((c) => c.tipo_dados === 'vetorial')
+            .map((c) => {
+              if (zoom < c.zoom_min || zoom > c.zoom_max) return null
+              const data = layerData[c.id_camada]
+              if (!data) return null
+              return <GeoJSONLayer key={c.id_camada} data={data} style={c.estilo} />
+            })}
+        </SimpleMap>
+        {renderLegend()}
+      </div>
+    </div>
+  )
+}

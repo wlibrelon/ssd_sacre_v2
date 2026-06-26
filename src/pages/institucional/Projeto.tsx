@@ -1,173 +1,147 @@
 import { Card, CardContent } from '@/components/ui/card'
+import { Droplet, Recycle, Users, Sprout, ArrowRight } from 'lucide-react'
 
 export default function Projeto() {
   return (
-    <div className="w-full min-h-screen py-8 sm:py-12 md:py-16 lg:py-20 px-4 sm:px-6 md:px-8 lg:px-12 xl:px-16 space-y-6 sm:space-y-8 md:space-y-10 lg:space-y-12 animate-fade-in bg-gradient-to-b from-white to-gray-50">
-      {/* TÍTULO E INTRO - FULL WIDTH RESPONSIVO */}
-      <section className="w-full">
-        <div className="max-w-7xl mx-auto">
-          <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-4 sm:mb-6 md:mb-8 leading-tight tracking-tight">
-            Projeto SACRE
-          </h1>
-          <div className="w-20 sm:w-24 md:w-28 lg:w-32 h-1.5 sm:h-2 md:h-2.5 bg-secondary mb-6 sm:mb-8 md:mb-10 rounded-full mx-auto sm:mx-0" />
-          <div className="max-w-none text-gray-900 leading-relaxed md:leading-7 lg:leading-8 text-justify md:text-left hyphens-auto space-y-4 sm:space-y-5 md:space-y-6">
-            <p className="text-sm sm:text-base md:text-lg mb-6 sm:mb-8 md:mb-10">
-              Entre 2013 e 2017, longos períodos de estiagem criaram uma crise no abastecimento de
-              água¹ para 48% dos municípios brasileiros², causando graves problemas para a saúde
-              pública, economia e ambiente. Soluções tradicionais, baseadas em sistemas
-              centralizados de fonte-única de abastecimento de água, têm-se mostrado ineficazes no
-              Brasil e em países em desenvolvimento. Assim, o objetivo central do Projeto SACRE é o
-              de criar soluções "híbridas hidroeconômicas", ou seja, aquelas que reduzam a
-              vulnerabilidade no abastecimento urbano e rural e tratem as águas contaminadas, a
-              partir do uso integrado de métodos clássicos e inovadores de engenharia, gestão e
-              técnicas baseadas na natureza (NE&MS: Nature, Engineering and Management based
-              Solutions).
-            </p>
+    <div className="w-full min-h-screen py-12 md:py-20 px-4 sm:px-6 lg:px-8 space-y-16 animate-fade-in bg-slate-50/50">
+      {/* Header Section */}
+      <section className="max-w-4xl mx-auto text-center space-y-6">
+        <h2 className="text-lg md:text-xl text-muted-foreground leading-relaxed">
+          Desenvolvendo estratégias híbridas hidroeconômicas para enfrentar crises hídricas e
+          garantir o abastecimento sustentável.
+        </h2>
+      </section>
 
-            <p className="text-sm sm:text-base md:text-lg mb-6 sm:mb-8 md:mb-10">
-              O SACRE é um multiprojeto que tratará do desenvolvimento de pesquisas e tecnologias
-              originais por meio de trabalhos direto no campo, formação de recursos humanos de alto
-              nível e comunicação social, cujos resultados ao final permitirão subsidiar e criar
-              políticas públicas voltadas à gestão de recursos hídricos. O projeto é apoiado em
-              quatro pilares: desenvolvimento tecnológico e científico; políticas públicas; formação
-              de recursos humanos de alto nível; e comunicação. A ideia central é que a ciência deva
-              embasar as políticas, a partir do treinamento e formação de novos profissionais e da
-              comunicação científica e do ouvir a sociedade e os governantes.
-            </p>
+      {/* Hero Image */}
+      <section className="max-w-7xl mx-auto">
+        <div className="relative rounded-3xl overflow-hidden shadow-2xl aspect-video md:aspect-[21/9] w-full group">
+          <div
+            className="absolute inset-0 bg-cover bg-center transition-transform duration-1000 group-hover:scale-105"
+            style={{
+              backgroundImage: `url(https://hyacuhtohjuzgvcqzdwe.supabase.co/storage/v1/object/public/imagens_app/imagem_1_projeto.png)`,
+            }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-gray-900/80 via-gray-900/20 to-transparent" />
+          <div className="absolute bottom-0 left-0 p-8 md:p-12 w-full"></div>
+        </div>
+      </section>
 
-            <p className="text-sm sm:text-base md:text-lg mb-6 sm:mb-8 md:mb-10">
+      {/* Main Content & Mission */}
+      <section className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
+        {/* Left Column - Main Text */}
+        <div className="lg:col-span-7 space-y-8 text-gray-700 text-lg leading-relaxed text-justify">
+          <p className="first-letter:text-5xl first-letter:font-bold first-letter:text-primary first-letter:mr-3 first-letter:float-left">
+            Entre 2013 e 2017, longos períodos de estiagem criaram uma crise no abastecimento de
+            água para 48% dos municípios brasileiros, causando graves problemas para a saúde
+            pública, economia e ambiente. Soluções tradicionais, baseadas em sistemas centralizados
+            de fonte-única de abastecimento, têm-se mostrado ineficazes.
+          </p>
+          <p>
+            Assim, o objetivo central do Projeto SACRE é criar soluções{' '}
+            <strong className="text-gray-900 font-semibold">"híbridas hidroeconômicas"</strong> que
+            reduzam a vulnerabilidade no abastecimento urbano e rural e tratem as águas
+            contaminadas, a partir do uso integrado de métodos clássicos e inovadores.
+          </p>
+          <p>
+            O SACRE é um multiprojeto apoiado em quatro pilares: desenvolvimento tecnológico e
+            científico; políticas públicas; formação de recursos humanos; e comunicação. A ideia
+            central é que a ciência deva embasar as políticas, ouvindo a sociedade e os governantes.
+          </p>
+        </div>
+
+        {/* Right Column - Highlight Cards */}
+        <div className="lg:col-span-5 space-y-6">
+          <Card className="bg-white border-0 shadow-xl shadow-primary/5 hover:-translate-y-1 transition-transform duration-300">
+            <CardContent className="p-8">
+              <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mb-6">
+                <Droplet className="w-6 h-6 text-primary" />
+              </div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-4">Nossa Missão</h3>
+              <p className="text-gray-600 leading-relaxed">
+                Fornecer dados precisos e modelos de simulação robustos que capacitem gestores
+                públicos a antecipar crises hídricas e planejar infraestruturas resilientes.
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-primary text-primary-foreground border-0 shadow-xl hover:-translate-y-1 transition-transform duration-300">
+            <CardContent className="p-8">
+              <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center mb-6">
+                <Sprout className="w-6 h-6 text-white" />
+              </div>
+              <h3 className="text-2xl font-bold text-white mb-4">A Abordagem</h3>
+              <p className="text-primary-foreground/90 leading-relaxed">
+                Utilizamos a bacia do município de Bauru como um "Living Lab", aplicando conceitos
+                de economia circular e Soluções Baseadas na Natureza (SbN).
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </section>
+
+      {/* Second Image & Methodology */}
+      <section className="max-w-7xl mx-auto space-y-12 pt-8 border-t border-gray-200">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+          <div className="order-2 md:order-1 space-y-6 text-gray-700 text-lg leading-relaxed">
+            <h2 className="text-3xl font-bold text-gray-900 mb-6">Metodologia e Inovação</h2>
+            <p>
               O trabalho está fundamentado na modelagem de fluxo de água e transporte reativo de
               contaminantes, acoplando aquíferos e corpos hídricos superficiais; conceitos de
-              alocação de recursos hídricos e uso conjuntivo³ ⁴ de águas superficiais e
-              subterrâneas; soluções de tratamento de águas subterrâneas de baixo custo (barreiras
-              reativas, com foco no nitrato e contaminantes emergentes); recarga gerenciada de
-              aquíferos (MAR)⁵; e sistemas híbridos de captação aquífero-rio (riverbank filtration).
+              alocação de recursos hídricos e uso conjuntivo de águas.
             </p>
+            <ul className="space-y-4 mt-6">
+              {[
+                'Tratamento de águas subterrâneas de baixo custo',
+                'Recarga gerenciada de aquíferos (MAR)',
+                'Sistemas híbridos de captação aquífero-rio',
+                'Plataforma digital hidroeconômica (HYMP)',
+              ].map((item, i) => (
+                <li key={i} className="flex items-center gap-3">
+                  <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                    <ArrowRight className="w-4 h-4 text-green-600" />
+                  </div>
+                  <span className="font-medium text-gray-900">{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="order-1 md:order-2">
+            <div className="relative rounded-3xl overflow-hidden shadow-xl aspect-square sm:aspect-video md:aspect-square">
+              <div
+                className="absolute inset-0 bg-cover bg-center hover:scale-105 transition-transform duration-700"
+                style={{
+                  backgroundImage: `url(https://hyacuhtohjuzgvcqzdwe.supabase.co/storage/v1/object/public/imagens_app/imagem_2_projeto.png)`,
+                }}
+              />
+            </div>
           </div>
         </div>
       </section>
 
-      {/* HERO 1 - FULL WIDTH RESPONSIVO */}
-      <section className="w-full relative rounded-3xl overflow-hidden h-[40vh] sm:h-[45vh] md:h-[50vh] lg:h-[55vh] xl:h-[60vh] flex items-center justify-center p-6 sm:p-8 md:p-10 lg:p-12 text-center text-white shadow-2xl mx-auto max-w-none">
-        <div
-          className="absolute inset-0 z-0 bg-center bg-cover bg-no-repeat brightness-90 contrast-110"
-          style={{
-            backgroundImage: `url(${'https://hyacuhtohjuzgvcqzdwe.supabase.co/storage/v1/object/public/imagens_app/imagem_1_projeto.png'})`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-          }}
-        />
-        <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-black/20 to-black/40 z-10" />
-        <div className="relative z-20 w-full max-w-6xl mx-auto px-4 sm:px-6">
-          {/* Conteúdo sobreposto opcional */}
+      {/* Final Info Blocks */}
+      <section className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6 pt-8">
+        <div className="p-8 bg-white rounded-3xl border border-gray-100 shadow-sm flex flex-col items-center text-center">
+          <Users className="w-10 h-10 text-secondary mb-4" />
+          <h4 className="text-xl font-bold mb-3">Rede de Parcerias</h4>
+          <p className="text-gray-600 text-sm">
+            Envolvimento de líderes estaduais, universidades nacionais (USP, UNESP, UNICAMP) e
+            internacionais, unindo 41 profissionais altamente qualificados.
+          </p>
         </div>
-      </section>
-
-      {/* CARDS GRID - FULL WIDTH RESPONSIVO */}
-      <section className="w-full">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 md:gap-8 lg:gap-10 px-4 sm:px-0">
-          <Card className="hover:shadow-2xl hover:scale-[1.02] transition-all duration-500 border-0 bg-gradient-to-br from-white/80 to-gray-50/80 backdrop-blur-sm">
-            <CardContent className="pt-6 sm:pt-8 pb-8 px-6 sm:px-8">
-              <h3 className="text-lg sm:text-xl md:text-2xl font-semibold mb-4 sm:mb-6 text-gray-900 leading-tight">
-                Nossa Missão
-              </h3>
-              <p className="text-gray-900 leading-relaxed text-balance text-xs sm:text-sm md:text-base">
-                Fornecer dados precisos e modelos de simulação robustos que capacitem gestores
-                públicos e companhias de saneamento a antecipar crises hídricas e planejar
-                infraestruturas resilientes.
-              </p>
-            </CardContent>
-          </Card>
-          <Card className="hover:shadow-2xl hover:scale-[1.02] transition-all duration-500 border-0 bg-gradient-to-br from-white/80 to-gray-50/80 backdrop-blur-sm">
-            <CardContent className="pt-6 sm:pt-8 pb-8 px-6 sm:px-8">
-              <h3 className="text-lg sm:text-xl md:text-2xl font-semibold mb-4 sm:mb-6 text-gray-900 leading-tight">
-                Abordagem
-              </h3>
-              <p className="text-gray-900 leading-relaxed text-balance text-xs sm:text-sm md:text-base">
-                Utilizamos a bacia hidrográfica do município de Bauru como um "Living Lab"
-                (laboratório vivo), aplicando conceitos de economia circular e Soluções Baseadas na
-                Natureza (SbN).
-              </p>
-            </CardContent>
-          </Card>
+        <div className="p-8 bg-white rounded-3xl border border-gray-100 shadow-sm flex flex-col items-center text-center">
+          <Recycle className="w-10 h-10 text-secondary mb-4" />
+          <h4 className="text-xl font-bold mb-3">Formação Humana</h4>
+          <p className="text-gray-600 text-sm">
+            Mais de 30 pesquisadores e bolsistas atuando ativamente, além de treinamentos in loco
+            para stakeholders locais e Comitês de Bacia.
+          </p>
         </div>
-      </section>
-
-      {/* HERO 2 - FULL WIDTH RESPONSIVO */}
-      <section className="w-full relative rounded-3xl overflow-hidden h-[40vh] sm:h-[45vh] md:h-[50vh] lg:h-[55vh] xl:h-[60vh] flex items-center justify-center p-6 sm:p-8 md:p-10 lg:p-12 text-center text-white shadow-2xl mx-auto max-w-none">
-        <div
-          className="absolute inset-0 z-0 bg-center bg-cover bg-no-repeat brightness-90 contrast-110"
-          style={{
-            backgroundImage: `url(${'https://hyacuhtohjuzgvcqzdwe.supabase.co/storage/v1/object/public/imagens_app/imagem_2_projeto.png'})`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-          }}
-        />
-        <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-black/20 to-black/40 z-10" />
-        <div className="relative z-20 w-full max-w-6xl mx-auto px-4 sm:px-6">
-          {/* Conteúdo sobreposto opcional */}
-        </div>
-      </section>
-
-      {/* CONTEÚDO FINAL - FULL WIDTH RESPONSIVO */}
-      <section className="w-full">
-        <div className="max-w-7xl mx-auto max-w-none text-gray-900 leading-relaxed md:leading-7 lg:leading-8 text-justify md:text-left hyphens-auto space-y-6 sm:space-y-8 md:space-y-10 px-4 sm:px-0">
-          <div className="w-20 sm:w-24 md:w-28 lg:w-32 h-1.5 sm:h-2 md:h-2.5 bg-secondary mb-6 sm:mb-8 md:mb-10 mx-auto sm:mx-0 rounded-full" />
-          <p className="text-sm sm:text-base md:text-lg mb-6 sm:mb-8 md:mb-10">
-            O desenvolvimento de métodos de monitoramento e de remediação de aquíferos contaminados
-            por fontes multipontuais e dispersas, com base em NE&MS, proporcionará avanços
-            científicos inéditos ao país e poderá gerar tecnologias patenteáveis. Todas as soluções
-            de aumento de oferta, tratamento e alocação de águas rurais e urbanas serão avaliadas
-            dentro de um novo arranjo administrativo de gestão de recurso hídrico, que levará em
-            conta aspectos socioeconômicos, hábitos sociais dos usuários ("produtores públicos e
-            privados de água⁶") e as políticas de uso da terra. As soluções técnicas e de
-            envolvimento institucional serão testadas de forma pioneira em um estudo nas cabeceiras
-            das bacias hidrográficas dos rios Bauru-Batalha, onde se localizam parte dos municípios
-            de Bauru, Piratininga e Agudos (SP).
-          </p>
-
-          <p className="text-sm sm:text-base md:text-lg mb-6 sm:mb-8 md:mb-10">
-            Toda a experiência científica interdisciplinar de ponta nas áreas de hidrogeologia,
-            engenharia hidrológica, socioeconomia e governança hídrica, baseada no desenvolvimento e
-            adaptação de NE&MS, permitirá criar uma plataforma digital hidroeconômica de múltiplas
-            soluções (HYMP: HYdroeconomic, Multiple solutions Platform) que auxiliará na gestão dos
-            recursos hídricos adequada às condições biofísicas e socioeconômicas do Estado de São
-            Paulo. O Projeto SACRE traz também uma outra novidade, que é o envolvimento das
-            principais lideranças institucionais na gestão dos recursos hídricos subterrâneos do
-            Estado de São Paulo (IPA, CETESB, IPT, SIMAL, DAEE), consorciadas a universidades
-            nacionais (USP, UNESP, UNICAMP e UNIFESP) e estrangeiras (University of Waterloo do
-            Canadá e Hiroshima University do Japão), recebendo apoio formal dos governos do Estado
-            de São Paulo, do Canadá e do Município de Bauru. No total são 41 profissionais, a
-            maioria com título superior a doutor.
-          </p>
-
-          <p className="text-sm sm:text-base md:text-lg mb-6 sm:mb-8 md:mb-10">
-            A formação de recursos humanos é outro ponto de destaque do SACRE. Hoje o projeto conta
-            com 26 alunos e pesquisadores bolsistas e outros 4 não bolsistas, incluindo 1 Jovem
-            Pesquisador; 2 Pós-Doutorados (PD); 5 Doutorados Direto; 3 Doutorados; 5 Mestrados; 4
-            Treinamento Tecnológicos (TT); 4 Iniciação Científica (IC); e 4 Trabalho de Conclusão de
-            Curso (e ainda 8 bolsas não ocupadas, incluindo 1 PD, 1 Jornalismo Científico, 3 IC e 3
-            TT). Cursos e treinamento in loco também são desenvolvidos e voltados tanto para a os
-            stakeholders locais e estaduais, como de Comitês de Bacia e de organismos nacionais.
-          </p>
-
-          <p className="text-sm sm:text-base md:text-lg mb-6 sm:mb-8 md:mb-10">
-            A comunicação científica tem papel decisivo no SACRE, pois entende-se que políticas
-            públicas são efetivas se construídas em acordo com a sociedade e os seus stakeholders.
-            Como um projeto científico, o letramento científico⁷ é fundamental para a sociedade
-            contemporânea, sobretudo em temas novos, como as mudanças climáticas globais e soluções
-            baseadas na natureza. Por essa razão, o projeto conta em sua equipe com jornalistas e
-            comunicadores científicos, além de realizar eventos próprios, como o Encontro das
-            Águas⁸, HidroGeoDia⁹, e produtos específicos em mídia digital.
-          </p>
-
-          <p className="text-sm sm:text-base md:text-lg mb-0">
-            Ao final do Projeto SACRE, um fórum permanente será criado com o propósito de apoiar a
-            gestão das águas subterrâneas, através das agências governamentais parceiras. O SACRE
-            conta com o financiamento da FAPESP pelo Projeto Temático (2020/15434-0) e de Jovem
-            Pesquisador (2021/12817-8); do CNPq pelo Projeto Universal (423950/2021-5); e de bolsas
-            de estudos da FAPESP, CAPES, CNPq e da própria USP, superando o montante de 11 milhões
-            de reais.
+        <div className="p-8 bg-white rounded-3xl border border-gray-100 shadow-sm flex flex-col items-center text-center">
+          <Droplet className="w-10 h-10 text-secondary mb-4" />
+          <h4 className="text-xl font-bold mb-3">Letramento Científico</h4>
+          <p className="text-gray-600 text-sm">
+            Eventos como o Encontro das Águas e HidroGeoDia garantem que as políticas públicas sejam
+            construídas junto com a sociedade e stakeholders.
           </p>
         </div>
       </section>
