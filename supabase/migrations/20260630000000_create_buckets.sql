@@ -21,8 +21,19 @@ ON CONFLICT (id) DO NOTHING;
 
 
 -- ── 2. Garante RLS habilitado na tabela de objetos ─────────
+-- No Supabase o RLS já vem habilitado em storage.objects por padrão.
+-- O bloco abaixo só tenta habilitar se necessário e ignora falta de
+-- permissão (o role postgres não é owner da tabela na stack self-hosted).
 
-ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
+DO $$
+BEGIN
+  IF NOT (SELECT relrowsecurity FROM pg_class
+          WHERE oid = 'storage.objects'::regclass) THEN
+    ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
+  END IF;
+EXCEPTION WHEN insufficient_privilege THEN
+  RAISE NOTICE 'Sem permissão para ALTER TABLE storage.objects — RLS deve ser habilitado como supabase_admin, se ainda não estiver.';
+END $$;
 
 -- ── 3. Políticas RLS — leitura (SELECT) ────────────────────
 CREATE POLICY "dados_brutos: leitura"
