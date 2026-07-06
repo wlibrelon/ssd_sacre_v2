@@ -1,23 +1,30 @@
 -- ============================================================
 -- Criação de buckets de Storage + políticas RLS
--- Todos os buckets são privados (public = false)
+-- TODO(fase de testes): todos os buckets estão públicos para leitura
+-- (public = true) temporariamente, pois o app usa getPublicUrl().
+-- Rever níveis de acesso antes do go-live: buckets sensíveis
+-- (dados_brutos, documentos, artigos_*) devem voltar a private,
+-- com o app usando createSignedUrl() para exibi-los.
 -- ============================================================
 
 -- ── 1. Criação dos buckets ─────────────────────────────────
 INSERT INTO storage.buckets (id, name, public) VALUES
-  ('dados_brutos', 'dados_brutos', false),
-  ('atividades_sociais',   'atividades_sociais',   false),
-  ('camadas_raster',       'camadas_raster',       false),
-  ('camadas_vetor',        'camadas_vetor',        false),
-  ('arquivos_resultados',  'arquivos_resultados',  false),
-  ('parceiros',            'parceiros',            false),
-  ('fotos_colaboradores',  'fotos_colaboradores',  false),
-  ('imagens',              'imagens',              false),
-  ('artigos_referencia',   'artigos_referencia',   false),
-  ('artigos_sacre',        'artigos_sacre',        false),
-  ('documentos',           'documentos',           false),
-  ('imagens_app',          'imagens_app',          false)
+  ('dados_brutos', 'dados_brutos', true),
+  ('atividades_sociais',   'atividades_sociais',   true),
+  ('camadas_raster',       'camadas_raster',       true),
+  ('camadas_vetor',        'camadas_vetor',        true),
+  ('arquivos_resultados',  'arquivos_resultados',  true),
+  ('parceiros',            'parceiros',            true),
+  ('fotos_colaboradores',  'fotos_colaboradores',  true),
+  ('imagens',              'imagens',              true),
+  ('artigos_referencia',   'artigos_referencia',   true),
+  ('artigos_sacre',        'artigos_sacre',        true),
+  ('documentos',           'documentos',           true),
+  ('imagens_app',          'imagens_app',          true)
 ON CONFLICT (id) DO NOTHING;
+
+-- Garante public = true também em buckets já existentes
+UPDATE storage.buckets SET public = true;
 
 
 -- ── 2. Garante RLS habilitado na tabela de objetos ─────────

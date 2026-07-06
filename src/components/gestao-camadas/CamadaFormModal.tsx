@@ -108,7 +108,7 @@ export function CamadaFormModal({ open, onOpenChange, camada, categorias, onSucc
 
       if (file) {
         setProgress(20)
-        const bucket = form.tipo_dados === 'vetorial' ? 'camadas-vetor' : 'camadas-raster'
+        const bucket = form.tipo_dados === 'vetorial' ? 'camadas_vetor' : 'camadas_raster'
         const ext = form.tipo_dados === 'vetorial' ? 'zip' : 'tif'
         const { error } = await supabase.storage
           .from(bucket)
