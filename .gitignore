@@ -35,3 +35,7 @@ screenshot.png
 # Environment variables
 .env*
 !devops/.env.example
+
+# Supabase
+supabase/.temp/
+supabase-selfhosted/
