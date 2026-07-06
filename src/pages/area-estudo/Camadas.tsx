@@ -65,7 +65,10 @@ export default function Camadas() {
             supabase
               .rpc('obter_extensao_camada', { p_id_camada: primeiraAtiva.id_camada })
               .then(({ data: extensao, error }) => {
-                if (extensao && !error) {
+                // Proteção: só aceita o formato esperado [minLon, minLat,
+                // maxLon, maxLat]; qualquer outro (ex.: objeto GeoJSON de
+                // versões antigas da RPC) derrubaria o mapa no bounds.join.
+                if (!error && Array.isArray(extensao) && extensao.length === 4) {
                   setExtensaoInicial(extensao as number[])
                 } else {
                   // Não é um erro fatal (o mapa só abre na visão padrão em
