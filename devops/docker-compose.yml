@@ -118,6 +118,54 @@ services:
     networks:
       - sacre
 
+  storage:
+    image: supabase/storage-api:v1.48.26
+    container_name: sacre.storage
+    restart: unless-stopped
+    environment:
+      ANON_KEY: ${VITE_SUPABASE_PUBLISHABLE_KEY}
+      SERVICE_KEY: ${SERVICE_ROLE_KEY}
+      AUTH_JWT_SECRET: ${JWT_SECRET:-1aduOYIcIG2/UPJyaF/LdVYQQKoiX5SW+HBO7zHSk+k=}
+      DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD:-postgres}@sacre.db:5432/postgres
+      POSTGREST_URL: http://sacre.postgrest:3000
+      STORAGE_PUBLIC_URL: ${APP_DOMAIN:-https://localhost}/supabase
+      REQUEST_ALLOW_X_FORWARDED_PATH: "true"
+      # 500 MB — shapefiles/rasters grandes (mesmo limite na rota do nginx)
+      FILE_SIZE_LIMIT: 524288000
+      STORAGE_BACKEND: file
+      FILE_STORAGE_BACKEND_PATH: /var/lib/storage
+      GLOBAL_S3_BUCKET: stub
+      TENANT_ID: sacre
+      REGION: local
+      ENABLE_IMAGE_TRANSFORMATION: "true"
+      IMGPROXY_URL: http://sacre.imgproxy:5001
+    volumes:
+      # Volume externo nomeado: sobrevive a docker compose down -v.
+      # Criar antes com: docker volume create sacre-storage-data
+      - sacre-storage-data:/var/lib/storage
+    depends_on:
+      db:
+        condition: service_healthy
+      postgrest:
+        condition: service_started
+      imgproxy:
+        condition: service_started
+    networks:
+      - sacre
+
+  imgproxy:
+    image: darthsim/imgproxy:v3.30.1
+    container_name: sacre.imgproxy
+    restart: unless-stopped
+    environment:
+      IMGPROXY_BIND: ":5001"
+      IMGPROXY_LOCAL_FILESYSTEM_ROOT: /
+      IMGPROXY_USE_ETAG: "true"
+    volumes:
+      - sacre-storage-data:/var/lib/storage
+    networks:
+      - sacre
+
   nginx:
     build:
       context: ./nginx
@@ -138,4 +186,8 @@ services:
 
 networks:
   sacre:
+    external: true
+
+volumes:
+  sacre-storage-data:
     external: true
