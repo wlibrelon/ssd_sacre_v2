@@ -156,7 +156,7 @@ export async function importarCamadaVetorial(
 
     onProgress?.('Baixando arquivo .zip...')
     const { data: blob, error: downloadError } = await supabase.storage
-      .from('camadas-vetor')
+      .from('camadas_vetor')
       .download(`${camada.id_camada}/origem.zip`)
     if (downloadError || !blob) {
       throw new Error('Não foi possível baixar o arquivo .zip do storage.')
@@ -237,7 +237,7 @@ export async function importarCamadaRaster(camada: any): Promise<{ sucesso: true
   try {
     const caminho = `${camada.id_camada}/origem.tif`
     const { data: urlData, error: urlError } = await supabase.storage
-      .from('camadas-raster')
+      .from('camadas_raster')
       .createSignedUrl(caminho, 60 * 60 * 24 * 365)
     if (urlError || !urlData) {
       throw new Error('Não foi possível gerar a URL do arquivo raster.')

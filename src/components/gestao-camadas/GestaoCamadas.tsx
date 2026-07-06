@@ -64,7 +64,7 @@ export function GestaoCamadas() {
     const statuses: Record<string, boolean> = {}
     await Promise.all(
       data.map(async (c) => {
-        const b = c.tipo_dados === 'vetorial' ? 'camadas-vetor' : 'camadas-raster'
+        const b = c.tipo_dados === 'vetorial' ? 'camadas_vetor' : 'camadas_raster'
         const { data: files } = await supabase.storage.from(b).list(c.id_camada)
         statuses[c.id_camada] = !!(files && files.length > 0)
       }),
@@ -92,7 +92,7 @@ export function GestaoCamadas() {
     if (!deletingId) return
     const camada = camadas.find((c) => c.id_camada === deletingId)
     if (camada) {
-      const b = camada.tipo_dados === 'vetorial' ? 'camadas-vetor' : 'camadas-raster'
+      const b = camada.tipo_dados === 'vetorial' ? 'camadas_vetor' : 'camadas_raster'
       const { error } = await supabase.from('camadas_mapa').delete().eq('id_camada', deletingId)
       if (error) {
         toast({ title: 'Erro ao excluir', description: error.message, variant: 'destructive' })
