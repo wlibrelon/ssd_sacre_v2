@@ -3,6 +3,7 @@ import { WPsTab } from './WPsTab'
 import { ProjetosTab } from './ProjetosTab'
 import { ColaboradoresTab } from './ColaboradoresTab'
 import { ArtigosTab } from './ArtigosTab'
+import { ConfiguracoesTab } from './ConfiguracoesTab'
 
 export function GestaoProjetos() {
   return (
@@ -33,6 +34,12 @@ export function GestaoProjetos() {
           >
             Artigos / Relatórios
           </TabsTrigger>
+          <TabsTrigger
+            value="configuracoes"
+            className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+          >
+            Configurações
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="wps" className="mt-0">
@@ -49,6 +56,10 @@ export function GestaoProjetos() {
 
         <TabsContent value="artigos" className="mt-0">
           <ArtigosTab />
+        </TabsContent>
+
+        <TabsContent value="configuracoes" className="mt-0">
+          <ConfiguracoesTab />
         </TabsContent>
       </Tabs>
     </div>

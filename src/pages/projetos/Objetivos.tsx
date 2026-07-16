@@ -96,7 +96,10 @@ export default function Objetivos() {
               className="w-full justify-between"
             >
               {selectedWpId
-                ? wps.find((wp) => wp.id_wp === selectedWpId)?.titulo || `WP selecionado`
+                ? (() => {
+                    const wp = wps.find((w) => w.id_wp === selectedWpId)
+                    return wp ? `WP-${wp.wp} - ${wp.titulo}` : 'WP selecionado'
+                  })()
                 : 'Selecione um WP...'}
               <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
             </Button>
@@ -110,7 +113,7 @@ export default function Objetivos() {
                   {wps.map((wp) => (
                     <CommandItem
                       key={wp.id_wp}
-                      value={wp.titulo || ''}
+                      value={`WP-${wp.wp} - ${wp.titulo || ''}`}
                       onSelect={() => {
                         setSelectedWpId(wp.id_wp === selectedWpId ? null : wp.id_wp)
                         setOpen(false)
@@ -122,7 +125,9 @@ export default function Objetivos() {
                           selectedWpId === wp.id_wp ? 'opacity-100' : 'opacity-0',
                         )}
                       />
-                      <span className="truncate">{wp.titulo}</span>
+                      <span className="truncate">
+                        WP-{wp.wp} - {wp.titulo}
+                      </span>
                     </CommandItem>
                   ))}
                 </CommandGroup>

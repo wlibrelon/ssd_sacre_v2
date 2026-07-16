@@ -1,0 +1,26 @@
+# SACRE — Opção 1: volume externo nomeado para o Supabase Storage
+#
+# Salve este arquivo como docker-compose.override.yml NA MESMA PASTA do
+# docker-compose.yml oficial do Supabase (ex.: supabase/docker/).
+# O Docker Compose aplica o override automaticamente — não é preciso
+# editar o arquivo oficial, o que facilita futuras atualizações via git pull.
+#
+# Antes de subir, crie o volume (uma única vez):
+#   docker volume create sacre-storage-data
+#
+# O Compose v2 mescla os mounts pelo caminho de destino (/var/lib/storage),
+# então o volume abaixo SUBSTITUI o bind mount ./volumes/storage do arquivo
+# oficial nos dois serviços que o usam (storage e imgproxy).
+
+services:
+  storage:
+    volumes:
+      - sacre-storage-data:/var/lib/storage
+
+  imgproxy:
+    volumes:
+      - sacre-storage-data:/var/lib/storage
+
+volumes:
+  sacre-storage-data:
+    external: true

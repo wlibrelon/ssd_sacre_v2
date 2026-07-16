@@ -7,6 +7,7 @@ import Layout from './components/Layout'
 import Index from './pages/Index'
 import AuthPage from './pages/auth/AuthPage'
 import Dashboard from './pages/restrito/Dashboard'
+import TesteApiHidro from './pages/restrito/TesteApiHidro'
 import ResetPassword from './pages/auth/ResetPassword'
 import AreaEstudoObjetivos from './pages/area-estudo/Objetivos'
 import AreaEstudoDocumentos from './pages/area-estudo/Documentos'
@@ -59,6 +60,7 @@ const App = () => (
             <Route path="/restrito" element={<Dashboard />} />
             <Route path="/restrito/projetos" element={<GestaoProjetos />} />
             <Route path="/restrito/camadas" element={<GestaoCamadas />} />
+            <Route path="/restrito/api-hidro" element={<TesteApiHidro />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>

@@ -1118,6 +1118,167 @@ export type Database = {
           },
         ]
       }
+      resultado_tabela: {
+        Row: {
+          arquivo_original: string | null
+          atualizado_em: string | null
+          criado_em: string | null
+          criado_por: string | null
+          descricao_resumida: string | null
+          id: string
+          id_projeto: number | null
+          metodologia: string | null
+          objetivo_resultado: string | null
+          origem_pesquisa: string | null
+          status: string | null
+          titulo: string
+          total_linhas: number | null
+        }
+        Insert: {
+          arquivo_original?: string | null
+          atualizado_em?: string | null
+          criado_em?: string | null
+          criado_por?: string | null
+          descricao_resumida?: string | null
+          id?: string
+          id_projeto?: number | null
+          metodologia?: string | null
+          objetivo_resultado?: string | null
+          origem_pesquisa?: string | null
+          status?: string | null
+          titulo: string
+          total_linhas?: number | null
+        }
+        Update: {
+          arquivo_original?: string | null
+          atualizado_em?: string | null
+          criado_em?: string | null
+          criado_por?: string | null
+          descricao_resumida?: string | null
+          id?: string
+          id_projeto?: number | null
+          metodologia?: string | null
+          objetivo_resultado?: string | null
+          origem_pesquisa?: string | null
+          status?: string | null
+          titulo?: string
+          total_linhas?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'resultado_tabela_id_projeto_fkey'
+            columns: ['id_projeto']
+            isOneToOne: false
+            referencedRelation: 'projetos_wps'
+            referencedColumns: ['id_projeto']
+          },
+        ]
+      }
+      resultado_coluna: {
+        Row: {
+          agregacoes_permitidas: Json | null
+          id: string
+          id_tabela: string | null
+          nome_original: string
+          ordem: number | null
+          papel: string | null
+          rotulo_amigavel: string | null
+          tipo_detectado: string | null
+          unidade: string | null
+        }
+        Insert: {
+          agregacoes_permitidas?: Json | null
+          id?: string
+          id_tabela?: string | null
+          nome_original: string
+          ordem?: number | null
+          papel?: string | null
+          rotulo_amigavel?: string | null
+          tipo_detectado?: string | null
+          unidade?: string | null
+        }
+        Update: {
+          agregacoes_permitidas?: Json | null
+          id?: string
+          id_tabela?: string | null
+          nome_original?: string
+          ordem?: number | null
+          papel?: string | null
+          rotulo_amigavel?: string | null
+          tipo_detectado?: string | null
+          unidade?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'resultado_coluna_id_tabela_fkey'
+            columns: ['id_tabela']
+            isOneToOne: false
+            referencedRelation: 'resultado_tabela'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      resultado_linha: {
+        Row: {
+          id: number
+          id_tabela: string | null
+          linha: Json
+        }
+        Insert: {
+          id?: number
+          id_tabela?: string | null
+          linha?: Json
+        }
+        Update: {
+          id?: number
+          id_tabela?: string | null
+          linha?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'resultado_linha_id_tabela_fkey'
+            columns: ['id_tabela']
+            isOneToOne: false
+            referencedRelation: 'resultado_tabela'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      resultado_visao_salva: {
+        Row: {
+          config: Json
+          criado_em: string | null
+          id: string
+          id_tabela: string | null
+          id_usuario: string | null
+          nome: string
+        }
+        Insert: {
+          config?: Json
+          criado_em?: string | null
+          id?: string
+          id_tabela?: string | null
+          id_usuario?: string | null
+          nome: string
+        }
+        Update: {
+          config?: Json
+          criado_em?: string | null
+          id?: string
+          id_tabela?: string | null
+          id_usuario?: string | null
+          nome?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'resultado_visao_salva_id_tabela_fkey'
+            columns: ['id_tabela']
+            isOneToOne: false
+            referencedRelation: 'resultado_tabela'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       selecao_cenarios: {
         Row: {
           cenarios: Json | null
@@ -1667,6 +1828,10 @@ export type Database = {
       gettransactionid: { Args: never; Returns: unknown }
       importar_feicoes_lote: {
         Args: { p_feicoes: Json; p_id_camada: string }
+        Returns: number
+      }
+      importar_linhas_resultado_lote: {
+        Args: { p_id_tabela: string; p_linhas: Json }
         Returns: number
       }
       is_admin: { Args: never; Returns: boolean }

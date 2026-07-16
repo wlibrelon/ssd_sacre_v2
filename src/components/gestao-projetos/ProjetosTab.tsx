@@ -26,8 +26,10 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useToast } from '@/hooks/use-toast'
 import { Pencil, Trash2, Plus, Upload, FileText } from 'lucide-react'
+import { TabelasDadosPanel } from './TabelasDadosPanel'
 
 type ArqResultado = {
   id_arq_res: number
@@ -41,6 +43,7 @@ export function ProjetosTab() {
   const [wps, setWPs] = useState<any[]>([])
   const [open, setOpen] = useState(false)
   const [formData, setFormData] = useState<any>({})
+  const [filtroWp, setFiltroWp] = useState<string>('todos')
   const { toast } = useToast()
 
   // ── Projeto selecionado na tabela ────────────────────────────────────────────
@@ -56,6 +59,14 @@ export function ProjetosTab() {
 
   // ── Dialog Incluir Resultados ────────────────────────────────────────────────
   const [openResultados, setOpenResultados] = useState(false)
+
+  // ── Dialog Editar Resultado ──────────────────────────────────────────────────
+  const [openEditResultado, setOpenEditResultado] = useState(false)
+  const [editingResultado, setEditingResultado] = useState<ArqResultado | null>(null)
+  const [editResDescricao, setEditResDescricao] = useState('')
+  const [editResFile, setEditResFile] = useState<File | null>(null)
+  const [savingEditRes, setSavingEditRes] = useState(false)
+  const editFileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     loadData()
@@ -168,6 +179,54 @@ export function ProjetosTab() {
     }
   }
 
+  const handleAbrirEdicaoResultado = (res: ArqResultado) => {
+    setEditingResultado(res)
+    setEditResDescricao(res.descricao)
+    setEditResFile(null)
+    setOpenEditResultado(true)
+  }
+
+  const handleSalvarEdicaoResultado = async () => {
+    if (!editingResultado) return
+    if (!editResDescricao.trim())
+      return toast({ title: 'Descrição é obrigatória', variant: 'destructive' })
+
+    setSavingEditRes(true)
+    try {
+      let nomeArq = editingResultado.nome_arq
+
+      // Se um novo arquivo foi selecionado, substitui: sobe o novo, remove o antigo
+      if (editResFile) {
+        const ext = editResFile.name.split('.').pop()
+        const nomeUnico = `${Date.now()}_${Math.random().toString(36).substring(7)}.${ext}`
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('arquivos_resultados')
+          .upload(nomeUnico, editResFile)
+        if (uploadError) throw uploadError
+        await supabase.storage.from('arquivos_resultados').remove([editingResultado.nome_arq])
+        nomeArq = uploadData.path
+      }
+
+      const { error } = await supabase
+        .from('arq_resultados')
+        .update({ descricao: editResDescricao.trim(), nome_arq: nomeArq })
+        .eq('id_arq_res', editingResultado.id_arq_res)
+      if (error) throw error
+
+      toast({ title: 'Arquivo atualizado' })
+      setOpenEditResultado(false)
+      const idProjeto = editingResultado.id_projeto
+      setEditingResultado(null)
+      setEditResDescricao('')
+      setEditResFile(null)
+      loadResultados(idProjeto)
+    } catch (err: any) {
+      toast({ title: 'Erro ao salvar', description: err.message, variant: 'destructive' })
+    } finally {
+      setSavingEditRes(false)
+    }
+  }
+
   const handleDeleteResultado = async (res: ArqResultado) => {
     if (!confirm('Excluir este arquivo?')) return
     try {
@@ -187,11 +246,31 @@ export function ProjetosTab() {
   const getArquivoUrl = (nomeArq: string) =>
     supabase.storage.from('arquivos_resultados').getPublicUrl(nomeArq).data.publicUrl
 
+  // ── Filtro por WP ────────────────────────────────────────────────────────────
+  const itemsFiltrados =
+    filtroWp === 'todos' ? items : items.filter((item) => item.id_wp?.toString() === filtroWp)
+
   // ── Render ───────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-4 animate-fade-in-up">
-      {/* Botão Novo Projeto */}
-      <div className="flex justify-end">
+      {/* Filtro por WP + Botão Novo Projeto */}
+      <div className="flex justify-between items-center gap-4">
+        <div className="w-full max-w-xs space-y-1">
+          <Label className="text-xs text-muted-foreground">Filtrar por WP</Label>
+          <Select value={filtroWp} onValueChange={setFiltroWp}>
+            <SelectTrigger>
+              <SelectValue placeholder="Todos os WPs" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos os WPs</SelectItem>
+              {wps.map((w) => (
+                <SelectItem key={w.id_wp} value={w.id_wp.toString()}>
+                  WP-{w.wp} - {w.titulo}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button onClick={() => setFormData({})}>
@@ -222,7 +301,7 @@ export function ProjetosTab() {
                   <SelectContent>
                     {wps.map((w) => (
                       <SelectItem key={w.id_wp} value={w.id_wp.toString()}>
-                        WP {w.wp} - {w.titulo}
+                        WP-{w.wp} - {w.titulo}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -263,7 +342,7 @@ export function ProjetosTab() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {items.map((item) => {
+            {itemsFiltrados.map((item) => {
               const selecionado = projetoSelecionado?.id_projeto === item.id_projeto
               return (
                 <TableRow
@@ -307,10 +386,12 @@ export function ProjetosTab() {
                 </TableRow>
               )
             })}
-            {items.length === 0 && (
+            {itemsFiltrados.length === 0 && (
               <TableRow>
                 <TableCell colSpan={3} className="text-center py-4">
-                  Nenhum projeto encontrado.
+                  {items.length === 0
+                    ? 'Nenhum projeto encontrado.'
+                    : 'Nenhum projeto para o WP selecionado.'}
                 </TableCell>
               </TableRow>
             )}
@@ -321,20 +402,28 @@ export function ProjetosTab() {
       {/* ── Painel de Resultados (aparece ao selecionar um projeto) ── */}
       {projetoSelecionado && (
         <div className="border rounded-md overflow-hidden">
-          {/* Cabeçalho do painel */}
-          <div className="flex items-center justify-between px-4 py-3 bg-slate-50 border-b">
-            <div>
-              <p className="text-sm font-semibold text-slate-700">Arquivos de Resultados</p>
-              <p className="text-xs text-slate-500 mt-0.5">
-                {projetoSelecionado.titulo}
-                {projetoSelecionado.wps && (
-                  <span className="ml-2 text-primary">· WP {projetoSelecionado.wps.wp}</span>
-                )}
-              </p>
+          <div className="px-4 pt-3 bg-slate-50 border-b">
+            <p className="text-xs text-slate-500 mb-2">
+              {projetoSelecionado.titulo}
+              {projetoSelecionado.wps && (
+                <span className="ml-2 text-primary">· WP {projetoSelecionado.wps.wp}</span>
+              )}
+            </p>
+          </div>
+
+          <Tabs defaultValue="arquivos" className="w-full">
+            <div className="px-4 pt-3 bg-slate-50">
+              <TabsList>
+                <TabsTrigger value="arquivos">Arquivos de Resultados</TabsTrigger>
+                <TabsTrigger value="dados">Tabelas de Dados</TabsTrigger>
+              </TabsList>
             </div>
 
-            {/* Botão Incluir Resultados */}
-            <Dialog
+            <TabsContent value="arquivos" className="mt-0">
+              <div className="p-4 space-y-4">
+                <div className="flex justify-end">
+                  {/* Botão Incluir Resultados */}
+                  <Dialog
               open={openResultados}
               onOpenChange={(o) => {
                 setOpenResultados(o)
@@ -449,20 +538,105 @@ export function ProjetosTab() {
                       </a>
                     </TableCell>
                     <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-destructive"
-                        onClick={() => handleDeleteResultado(res)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleAbrirEdicaoResultado(res)}
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-destructive"
+                          onClick={() => handleDeleteResultado(res)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
               )}
             </TableBody>
           </Table>
+
+          {/* Dialog Editar Resultado */}
+          <Dialog
+            open={openEditResultado}
+            onOpenChange={(o) => {
+              setOpenEditResultado(o)
+              if (!o) {
+                setEditingResultado(null)
+                setEditResDescricao('')
+                setEditResFile(null)
+              }
+            }}
+          >
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Editar Resultado</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label>Descrição</Label>
+                  <Input
+                    placeholder="Ex: Relatório final WP1"
+                    value={editResDescricao}
+                    onChange={(e) => setEditResDescricao(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Arquivo</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      readOnly
+                      className="flex-1"
+                      placeholder="Manter arquivo atual"
+                      value={editResFile ? editResFile.name : ''}
+                      title={editingResultado?.nome_arq}
+                    />
+                    <input
+                      type="file"
+                      ref={editFileInputRef}
+                      className="hidden"
+                      onChange={(e) => setEditResFile(e.target.files?.[0] || null)}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => editFileInputRef.current?.click()}
+                    >
+                      <Upload className="w-4 h-4 mr-2" /> Substituir
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Deixe em branco para manter o arquivo atual.
+                  </p>
+                </div>
+              </div>
+              <Button
+                className="w-full"
+                disabled={savingEditRes || !editResDescricao.trim()}
+                onClick={handleSalvarEdicaoResultado}
+              >
+                {savingEditRes ? 'Salvando...' : 'Salvar alterações'}
+              </Button>
+            </DialogContent>
+          </Dialog>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="dados" className="mt-0">
+              <div className="p-4">
+                <TabelasDadosPanel
+                  idProjeto={projetoSelecionado.id_projeto}
+                  tituloProjeto={projetoSelecionado.titulo}
+                />
+              </div>
+            </TabsContent>
+          </Tabs>
         </div>
       )}
     </div>

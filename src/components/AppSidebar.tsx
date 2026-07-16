@@ -104,6 +104,7 @@ export const AppSidebar = ({ onOpenSobre }: { onOpenSobre: () => void }) => {
         { title: 'Painel Administrativo', url: '/restrito' },
         { title: 'Gestão de Projetos', url: '/restrito/projetos' },
         { title: 'Gestão de Camadas', url: '/restrito/camadas' },
+        { title: 'Teste API HidroWebService', url: '/restrito/api-hidro' },
       ],
     },
   ]

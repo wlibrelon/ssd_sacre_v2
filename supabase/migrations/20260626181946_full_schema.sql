@@ -234,7 +234,7 @@ CREATE TABLE IF NOT EXISTS public.dados_simulacao (
     cenarios JSONB,
     estrategias JSONB
 );
-CREATE UNIQUE INDEX IF NOT EXISTS dados_simulacao_mod_fonte_tempo_key ON public.dados_simulacao(id_mod, id_fonte, tempo);
+CREATE UNIQUE INDEX IF NOT EXISTS dados_simulacao_s_mod_fonte_tempo_key ON public.dados_simulacao(id_s, id_mod, id_fonte, tempo);
 
 CREATE TABLE IF NOT EXISTS public.indicadores (
     id_indicador SERIAL PRIMARY KEY,
@@ -360,14 +360,14 @@ CREATE TABLE IF NOT EXISTS public.conteudo_estudo (
 );
 
 -- 6. Functions & Triggers
-CREATE OR REPLACE FUNCTION auth.fix_users_nulls_and_roles()
+CREATE OR REPLACE FUNCTION public.fix_users_nulls_and_roles()
 RETURNS TRIGGER AS $$
 BEGIN
   IF NEW.role IS NULL OR NEW.role = '' THEN
     NEW.role := 'authenticated';
   END IF;
-  IF NEW.aud IS NULL OR NEW.aud = 'authenticated' THEN
-    NEW.aud := '';
+  IF NEW.aud IS NULL OR NEW.aud = '' THEN
+    NEW.aud := 'authenticated';
   END IF;
   RETURN NEW;
 END;
@@ -377,9 +377,9 @@ DROP TRIGGER IF EXISTS fix_users_role_aud_before_insert ON auth.users;
 CREATE TRIGGER fix_users_role_aud_before_insert
   BEFORE INSERT OR UPDATE ON auth.users
   FOR EACH ROW
-  EXECUTE FUNCTION auth.fix_users_nulls_and_roles();
+  EXECUTE FUNCTION public.fix_users_nulls_and_roles();
 
-CREATE OR REPLACE FUNCTION auth.on_ddl_end_fix_users()
+CREATE OR REPLACE FUNCTION public.on_ddl_end_fix_users()
 RETURNS event_trigger AS $$
 BEGIN
   IF EXISTS (
@@ -393,14 +393,14 @@ BEGIN
       email_change_token_new = COALESCE(email_change_token_new, ''),
       recovery_token = COALESCE(recovery_token, ''),
       role = CASE WHEN role = '' OR role IS NULL THEN 'authenticated' ELSE role END,
-      aud = CASE WHEN aud = 'authenticated' OR aud IS NULL THEN '' ELSE aud END
-    WHERE confirmation_token IS NULL 
-       OR email_change IS NULL 
-       OR email_change_token_new IS NULL 
+      aud = CASE WHEN aud = '' OR aud IS NULL THEN 'authenticated' ELSE aud END
+    WHERE confirmation_token IS NULL
+       OR email_change IS NULL
+       OR email_change_token_new IS NULL
        OR recovery_token IS NULL
        OR role = ''
        OR role IS NULL
-       OR aud = 'authenticated'
+       OR aud = ''
        OR aud IS NULL;
   END IF;
 END;
@@ -409,7 +409,7 @@ $$ LANGUAGE plpgsql;
 DROP EVENT TRIGGER IF EXISTS fix_users_nulls_event_trigger;
 CREATE EVENT TRIGGER fix_users_nulls_event_trigger
   ON ddl_command_end
-  EXECUTE FUNCTION auth.on_ddl_end_fix_users();
+  EXECUTE FUNCTION public.on_ddl_end_fix_users();
 
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger AS $$
@@ -545,6 +545,21 @@ BEGIN
     END LOOP;
 END $$;
 
+-- 7.1 Base table/sequence/routine privileges for PostgREST roles.
+-- RLS policies only decide row-level access; without these GRANTs the
+-- request never even reaches policy evaluation (42501 permission denied
+-- for table ...). Supabase Cloud sets this up automatically for tables
+-- created via the Dashboard; tables created via CLI migrations under the
+-- `postgres` role need it granted explicitly. ALTER DEFAULT PRIVILEGES
+-- also covers tables created by later migrations in this same role.
+GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
+GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated, service_role;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated, service_role;
+GRANT ALL ON ALL FUNCTIONS IN SCHEMA public TO anon, authenticated, service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO anon, authenticated, service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO anon, authenticated, service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO anon, authenticated, service_role;
+
 -- 8. Seed Reference Data
 INSERT INTO public.grupo_acesso (id_ga, nome_grupo) VALUES
   (1, 'Administradores'),
@@ -567,8 +582,9 @@ INSERT INTO public.tipos_cenarios (id_tc, descricao, obs_tipo_cenario) VALUES
 ON CONFLICT (id_tc) DO NOTHING;
 
 -- 9. Seed Initial Users
-\getenv admin_email INITIAL_ADMIN_EMAIL
-\getenv admin_password INITIAL_ADMIN_PASSWORD
+-- Nota: `\getenv` e `:'var'` são meta-comandos exclusivos do psql e não são
+-- interpretados pelo runner de migrations do Supabase CLI (que envia SQL puro).
+-- Por isso usamos diretamente os valores padrão aqui.
 
 -- 9.1 Ensure Grupo de Acesso 4 (Administradores APP) exists
 INSERT INTO public.grupo_acesso (id_ga, nome_grupo)
@@ -577,21 +593,21 @@ ON CONFLICT (id_ga) DO UPDATE SET nome_grupo = 'Administradores APP';
 
 -- 9.2 Seed Dynamic Initial Admin User (from env vars or default admin@sacre.org)
 INSERT INTO auth.users (
-  id, instance_id, email, encrypted_password, confirmed_at,
+  id, instance_id, email, encrypted_password, email_confirmed_at,
   created_at, updated_at, raw_app_meta_data, raw_user_meta_data,
   is_super_admin, role, aud
 )
 SELECT 
   'db2adf4a-01e6-40d7-9dc0-e1ed615cda6f'::uuid, 
   '00000000-0000-0000-0000-000000000000', 
-  COALESCE(NULLIF(trim(:'admin_email'), ''), 'admin@sacre.org'), 
-  crypt(COALESCE(NULLIF(trim(:'admin_password'), ''), 'Abc@123#'), gen_salt('bf', 10)), 
+  'admin@sacre.org',
+  crypt('Abc@123#', gen_salt('bf', 10)),
   NOW(), NOW(), NOW(), 
   '{"provider": "email", "providers": ["email"]}'::jsonb, 
   '{"nome": "Administrador Geral"}'::jsonb,
-  false, 'authenticated', ''
+  false, 'authenticated', 'authenticated'
 WHERE NOT EXISTS (
-  SELECT 1 FROM auth.users WHERE email = COALESCE(NULLIF(trim(:'admin_email'), ''), 'admin@sacre.org')
+  SELECT 1 FROM auth.users WHERE email = 'admin@sacre.org'
 );
 
 INSERT INTO public.perfis_usuarios (id, email, nome, nivel_acesso, status, id_ga)
@@ -603,7 +619,7 @@ SELECT
   'aprovado',
   4
 FROM auth.users
-WHERE email = COALESCE(NULLIF(trim(:'admin_email'), ''), 'admin@sacre.org')
+WHERE email = 'admin@sacre.org'
 ON CONFLICT (id) DO UPDATE SET
   nome = EXCLUDED.nome,
   email = EXCLUDED.email,
@@ -613,7 +629,7 @@ ON CONFLICT (id) DO UPDATE SET
 
 -- 9.3 Seed warlen@librelon.com.br
 INSERT INTO auth.users (
-  id, instance_id, email, encrypted_password, confirmed_at,
+  id, instance_id, email, encrypted_password, email_confirmed_at,
   created_at, updated_at, raw_app_meta_data, raw_user_meta_data,
   is_super_admin, role, aud
 )
@@ -625,7 +641,7 @@ SELECT
   NOW(), NOW(), NOW(), 
   '{"provider": "email", "providers": ["email"]}'::jsonb, 
   '{"nome": "Warlen Librelon"}'::jsonb,
-  false, 'authenticated', ''
+  false, 'authenticated', 'authenticated'
 WHERE NOT EXISTS (
   SELECT 1 FROM auth.users WHERE email = 'warlen@librelon.com.br'
 );
@@ -649,7 +665,7 @@ ON CONFLICT (id) DO UPDATE SET
 
 -- 9.4 Seed warlenlibrelon@ipt.br
 INSERT INTO auth.users (
-  id, instance_id, email, encrypted_password, confirmed_at,
+  id, instance_id, email, encrypted_password, email_confirmed_at,
   created_at, updated_at, raw_app_meta_data, raw_user_meta_data,
   is_super_admin, role, aud
 )
@@ -661,7 +677,7 @@ SELECT
   NOW(), NOW(), NOW(), 
   '{"provider": "email", "providers": ["email"]}'::jsonb, 
   '{"nome": "Warlen Librelon"}'::jsonb,
-  false, 'authenticated', ''
+  false, 'authenticated', 'authenticated'
 WHERE NOT EXISTS (
   SELECT 1 FROM auth.users WHERE email = 'warlenlibrelon@ipt.br'
 );
