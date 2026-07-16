@@ -95,13 +95,15 @@ export function ColaboradoresTab() {
       }
 
       if (formData.id_colaborador) {
-        await supabase
+        const { error } = await supabase
           .from('colaboradores')
           .update(payload)
           .eq('id_colaborador', formData.id_colaborador)
+        if (error) throw error
         toast({ title: 'Colaborador atualizado' })
       } else {
-        await supabase.from('colaboradores').insert(payload)
+        const { error } = await supabase.from('colaboradores').insert(payload)
+        if (error) throw error
         toast({ title: 'Colaborador adicionado' })
       }
 
@@ -123,7 +125,11 @@ export function ColaboradoresTab() {
       await supabase.storage.from('fotos_colaboradores').remove([colaborador.foto])
     }
 
-    await supabase.from('colaboradores').delete().eq('id_colaborador', id)
+    const { error } = await supabase.from('colaboradores').delete().eq('id_colaborador', id)
+    if (error) {
+      toast({ title: 'Erro ao excluir', description: error.message, variant: 'destructive' })
+      return
+    }
     toast({ title: 'Colaborador excluído' })
     loadData()
   }
@@ -158,7 +164,11 @@ export function ColaboradoresTab() {
 
   const handleDeleteGrupo = async (id: number) => {
     if (!confirm('Excluir este grupo? Colaboradores ficarão sem grupo.')) return
-    await supabase.from('grupo_colaboradores').delete().eq('id_grupo', id)
+    const { error } = await supabase.from('grupo_colaboradores').delete().eq('id_grupo', id)
+    if (error) {
+      toast({ title: 'Erro ao excluir grupo', description: error.message, variant: 'destructive' })
+      return
+    }
     toast({ title: 'Grupo excluído' })
     loadData()
   }

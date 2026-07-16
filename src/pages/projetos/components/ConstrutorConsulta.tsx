@@ -25,10 +25,13 @@ import { useToast } from '@/hooks/use-toast'
 import { ROTULOS_AGREGACAO, type Agregacao } from '@/lib/resultados/dicionario'
 import {
   executarConsulta,
+  CHAVE_CONTAGEM,
   type ConfigConsulta,
   type FiltroConsulta,
   type OperadorFiltro,
 } from '@/lib/resultados/consulta'
+
+const CORES_BARRAS = ['#2563eb', '#16a34a', '#dc2626', '#d97706', '#7c3aed', '#0891b2']
 
 const ROTULOS_OPERADOR: Record<OperadorFiltro, string> = {
   igual: 'é igual a',
@@ -50,11 +53,16 @@ export function ConstrutorConsulta({ idTabela }: ConstrutorConsultaProps) {
   const [colunas, setColunas] = useState<any[]>([])
   const [linhas, setLinhas] = useState<Record<string, any>[]>([])
 
-  const [metrica, setMetrica] = useState<string>('__contagem__')
+  const [metricas, setMetricas] = useState<string[]>([])
   const [agregacao, setAgregacao] = useState<Agregacao>('contagem')
   const [agruparPor, setAgruparPor] = useState<string[]>([])
   const [filtros, setFiltros] = useState<FiltroConsulta[]>([])
   const [resultado, setResultado] = useState<ReturnType<typeof executarConsulta> | null>(null)
+  // campos efetivamente usados para gerar `resultado` — snapshot tirado no
+  // momento do "Gerar"/aplicar visão, para não desalinhar com os checkboxes
+  // de "Campos para exibição" caso o usuário mude a seleção depois de gerar
+  // (sem isso, r.valores[campoNovo] fica undefined e quebra o render)
+  const [resultadoMetricas, setResultadoMetricas] = useState<string[]>([CHAVE_CONTAGEM])
 
   // ── Visões salvas (mesmo padrão de selecao_cenarios no SSD: tabela própria
   // + id_usuario preenchido via supabase.auth.getUser() no client) ──────────
@@ -96,12 +104,28 @@ export function ConstrutorConsulta({ idTabela }: ConstrutorConsultaProps) {
   )
 
   const agregacoesDisponiveis: Agregacao[] =
-    metrica === '__contagem__'
+    metricas.length === 0
       ? ['contagem']
-      : colunasMetrica.find((c) => c.nome_original === metrica)?.agregacoes_permitidas || []
+      : metricas.reduce<Agregacao[] | null>((acc, m) => {
+          const permitidas: Agregacao[] =
+            colunasMetrica.find((c) => c.nome_original === m)?.agregacoes_permitidas || []
+          return acc === null ? permitidas : acc.filter((a) => permitidas.includes(a))
+        }, null) ?? []
+
+  // mantém a agregação selecionada válida sempre que os campos escolhidos mudam
+  useEffect(() => {
+    if (!agregacoesDisponiveis.includes(agregacao)) {
+      setAgregacao(agregacoesDisponiveis[0] ?? 'contagem')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [metricas])
 
   const toggleAgruparPor = (nome: string) => {
     setAgruparPor((prev) => (prev.includes(nome) ? prev.filter((c) => c !== nome) : [...prev, nome]))
+  }
+
+  const toggleMetrica = (nome: string) => {
+    setMetricas((prev) => (prev.includes(nome) ? prev.filter((m) => m !== nome) : [...prev, nome]))
   }
 
   const addFiltro = () => {
@@ -121,14 +145,16 @@ export function ConstrutorConsulta({ idTabela }: ConstrutorConsultaProps) {
   }
 
   const montarConfig = (): ConfigConsulta => ({
-    metrica: metrica === '__contagem__' ? null : metrica,
+    metricas,
     agregacao,
     agruparPor,
     filtros: filtros.filter((f) => String(f.valor).trim() !== ''),
   })
 
   const gerar = () => {
-    setResultado(executarConsulta(linhas, montarConfig()))
+    const config = montarConfig()
+    setResultado(executarConsulta(linhas, config))
+    setResultadoMetricas(config.metricas.length > 0 ? config.metricas : [CHAVE_CONTAGEM])
   }
 
   const handleSalvarVisao = async () => {
@@ -161,19 +187,22 @@ export function ConstrutorConsulta({ idTabela }: ConstrutorConsultaProps) {
   }
 
   const handleAplicarVisao = (visao: any) => {
-    const config = (visao.config || {}) as Partial<ConfigConsulta>
-    setMetrica(config.metrica ?? '__contagem__')
+    // compatível com visões salvas no formato antigo (config.metrica: string | null)
+    const config = (visao.config || {}) as Partial<ConfigConsulta> & { metrica?: string | null }
+    const metricasCarregadas: string[] = config.metricas ?? (config.metrica ? [config.metrica] : [])
+    setMetricas(metricasCarregadas)
     setAgregacao((config.agregacao as Agregacao) ?? 'contagem')
     setAgruparPor(config.agruparPor ?? [])
     setFiltros(config.filtros ?? [])
     setResultado(
       executarConsulta(linhas, {
-        metrica: config.metrica ?? null,
+        metricas: metricasCarregadas,
         agregacao: (config.agregacao as Agregacao) ?? 'contagem',
         agruparPor: config.agruparPor ?? [],
         filtros: config.filtros ?? [],
       }),
     )
+    setResultadoMetricas(metricasCarregadas.length > 0 ? metricasCarregadas : [CHAVE_CONTAGEM])
   }
 
   const handleExcluirVisao = async (id: string) => {
@@ -188,21 +217,35 @@ export function ConstrutorConsulta({ idTabela }: ConstrutorConsultaProps) {
   const rotulo = (nomeOriginal: string) =>
     colunas.find((c) => c.nome_original === nomeOriginal)?.rotulo_amigavel || nomeOriginal
 
-  const exportarCsv = () => {
-    if (!resultado || resultado.length === 0) return
-    const cabecalho = [...agruparPor.map(rotulo), 'Valor']
-    const linhasCsv = resultado.map((r) => [
-      ...agruparPor.map((c) => r.grupo[c]),
-      r.valor.toLocaleString('pt-BR', { maximumFractionDigits: 4 }),
-    ])
+  const baixarCsv = (cabecalho: string[], linhasCsv: (string | number)[][], nomeArquivo: string) => {
     const csv = [cabecalho, ...linhasCsv].map((l) => l.map((v) => `"${v}"`).join(',')).join('\n')
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = 'analise.csv'
+    link.download = nomeArquivo
     link.click()
     URL.revokeObjectURL(url)
+  }
+
+  const exportarCsv = () => {
+    if (!resultado || resultado.length === 0) return
+    const cabecalho = [
+      ...agruparPor.map(rotulo),
+      ...resultadoMetricas.map((m) => (m === CHAVE_CONTAGEM ? 'Contagem' : rotulo(m))),
+    ]
+    const linhasCsv = resultado.map((r) => [
+      ...agruparPor.map((c) => r.grupo[c]),
+      ...resultadoMetricas.map((m) => (r.valores[m] ?? 0).toLocaleString('pt-BR', { maximumFractionDigits: 4 })),
+    ])
+    baixarCsv(cabecalho, linhasCsv, 'analise.csv')
+  }
+
+  const exportarDadosOriginaisCsv = () => {
+    if (colunas.length === 0 || linhas.length === 0) return
+    const cabecalho = colunas.map((c) => c.rotulo_amigavel || c.nome_original)
+    const linhasCsv = linhas.map((linha) => colunas.map((c) => String(linha[c.nome_original] ?? '')))
+    baixarCsv(cabecalho, linhasCsv, 'dados_originais.csv')
   }
 
   if (carregando) {
@@ -229,9 +272,19 @@ export function ConstrutorConsulta({ idTabela }: ConstrutorConsultaProps) {
       <div className="space-y-1.5 border rounded-md p-3 bg-slate-50/50 min-w-0">
         <div className="flex items-center justify-between gap-2">
           <Label className="text-xs uppercase text-slate-500">Dados originais</Label>
-          <span className="text-xs text-muted-foreground whitespace-nowrap">
-            {linhas.length} linha(s){linhas.length > 100 ? ' · exibindo as 100 primeiras' : ''}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground whitespace-nowrap">
+              {linhas.length} linha(s){linhas.length > 100 ? ' · exibindo as 100 primeiras' : ''}
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={exportarDadosOriginaisCsv}
+              disabled={linhas.length === 0}
+            >
+              <Download className="w-4 h-4 mr-1" /> Exportar CSV
+            </Button>
+          </div>
         </div>
         {/* table cru (sem o wrapper div do componente <Table>): esse div
             precisa ser o único contêiner de scroll nos dois eixos, senão a
@@ -266,32 +319,9 @@ export function ConstrutorConsulta({ idTabela }: ConstrutorConsultaProps) {
         </div>
       </div>
 
-      {/* ── Métrica ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="space-y-1.5">
-          <Label className="text-xs uppercase text-slate-500">O que quero ver</Label>
-          <Select
-            value={metrica}
-            onValueChange={(v) => {
-              setMetrica(v)
-              setAgregacao(v === '__contagem__' ? 'contagem' : 'soma')
-            }}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__contagem__">Contagem de linhas</SelectItem>
-              {colunasMetrica.map((c) => (
-                <SelectItem key={c.nome_original} value={c.nome_original}>
-                  {c.rotulo_amigavel} {c.unidade ? `(${c.unidade})` : ''}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-1.5">
+      {/* ── Agregação + Campos para exibição ── */}
+      <div className="space-y-4">
+        <div className="space-y-1.5 max-w-xs">
           <Label className="text-xs uppercase text-slate-500">Agregação</Label>
           <Select value={agregacao} onValueChange={(v) => setAgregacao(v as Agregacao)}>
             <SelectTrigger>
@@ -305,6 +335,28 @@ export function ConstrutorConsulta({ idTabela }: ConstrutorConsultaProps) {
               ))}
             </SelectContent>
           </Select>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label className="text-xs uppercase text-slate-500">Campos para exibição</Label>
+          <div className="flex flex-col gap-1.5">
+            <label className="flex items-center gap-2 text-sm border rounded-md px-2.5 py-1.5 cursor-pointer hover:bg-slate-50 w-fit">
+              <Checkbox checked={metricas.length === 0} onCheckedChange={() => setMetricas([])} />
+              Contagem de linhas
+            </label>
+            {colunasMetrica.map((c) => (
+              <label
+                key={c.nome_original}
+                className="flex items-center gap-2 text-sm border rounded-md px-2.5 py-1.5 cursor-pointer hover:bg-slate-50 w-fit"
+              >
+                <Checkbox
+                  checked={metricas.includes(c.nome_original)}
+                  onCheckedChange={() => toggleMetrica(c.nome_original)}
+                />
+                {c.rotulo_amigavel} {c.unidade ? `(${c.unidade})` : ''}
+              </label>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -471,12 +523,24 @@ export function ConstrutorConsulta({ idTabela }: ConstrutorConsultaProps) {
               {agruparPor.length === 1 && resultado.length > 1 && (
                 <div className="h-[280px]">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={resultado.map((r) => ({ nome: r.chave, valor: r.valor }))}>
+                    <BarChart
+                      data={resultado.map((r) => ({
+                        nome: r.chave,
+                        ...r.valores,
+                      }))}
+                    >
                       <CartesianGrid strokeDasharray="3 3" opacity={0.4} />
                       <XAxis dataKey="nome" tick={{ fontSize: 11 }} />
                       <YAxis tick={{ fontSize: 11 }} />
                       <Tooltip />
-                      <Bar dataKey="valor" fill="#2563eb" />
+                      {resultadoMetricas.map((m, i) => (
+                        <Bar
+                          key={m}
+                          dataKey={m}
+                          name={m === CHAVE_CONTAGEM ? 'Contagem' : rotulo(m)}
+                          fill={CORES_BARRAS[i % CORES_BARRAS.length]}
+                        />
+                      ))}
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -489,7 +553,9 @@ export function ConstrutorConsulta({ idTabela }: ConstrutorConsultaProps) {
                       {agruparPor.map((c) => (
                         <TableHead key={c}>{rotulo(c)}</TableHead>
                       ))}
-                      <TableHead>Valor</TableHead>
+                      {resultadoMetricas.map((m) => (
+                        <TableHead key={m}>{m === CHAVE_CONTAGEM ? 'Contagem' : rotulo(m)}</TableHead>
+                      ))}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -498,9 +564,11 @@ export function ConstrutorConsulta({ idTabela }: ConstrutorConsultaProps) {
                         {agruparPor.map((c) => (
                           <TableCell key={c}>{r.grupo[c]}</TableCell>
                         ))}
-                        <TableCell className="font-medium">
-                          {r.valor.toLocaleString('pt-BR', { maximumFractionDigits: 4 })}
-                        </TableCell>
+                        {resultadoMetricas.map((m) => (
+                          <TableCell key={m} className="font-medium">
+                            {(r.valores[m] ?? 0).toLocaleString('pt-BR', { maximumFractionDigits: 4 })}
+                          </TableCell>
+                        ))}
                       </TableRow>
                     ))}
                   </TableBody>

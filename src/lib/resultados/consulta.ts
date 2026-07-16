@@ -19,16 +19,18 @@ export interface FiltroConsulta {
 }
 
 export interface ConfigConsulta {
-  metrica: string | null // nome_original da coluna métrica; null = "contagem de linhas"
+  metricas: string[] // nomes_original das colunas métrica; [] = "contagem de linhas"
   agregacao: Agregacao
   agruparPor: string[] // nomes_original das colunas de dimensão escolhidas
   filtros: FiltroConsulta[]
 }
 
+export const CHAVE_CONTAGEM = '__contagem__'
+
 export interface LinhaResultadoConsulta {
   chave: string // rótulo do grupo, já concatenado (ex: "2024/Superficial")
   grupo: Record<string, string> // valores de cada dimensão de agrupamento, separados
-  valor: number
+  valores: Record<string, number> // um valor agregado por métrica selecionada (ou CHAVE_CONTAGEM)
 }
 
 function valorNumerico(v: unknown): number | null {
@@ -79,6 +81,48 @@ export function aplicarFiltros(
   return linhas.filter((linha) => filtros.every((f) => aplicaOperador(linha[f.coluna], f)))
 }
 
+// ── Ordenação "inteligente" dos grupos ──────────────────────────────────────
+// Por padrão os grupos seriam ordenados alfabeticamente pela chave, mas isso
+// deixa meses fora de ordem (Abril antes de Janeiro) e números tratados como
+// texto (10 antes de 2). Detecta o "formato" de cada coluna de agrupamento
+// pelos valores realmente presentes e ordena de forma apropriada.
+const NOMES_MES = [
+  'janeiro', 'fevereiro', 'marco', 'abril', 'maio', 'junho',
+  'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro',
+]
+const ABREV_MES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez']
+
+function semAcento(v: string): string {
+  return v.normalize('NFD').replace(/[̀-ͯ]/g, '')
+}
+
+function ordemMes(valor: string): number | null {
+  const norm = semAcento(valor.trim().toLowerCase())
+  let idx = NOMES_MES.indexOf(norm)
+  if (idx !== -1) return idx
+  idx = ABREV_MES.indexOf(norm)
+  if (idx !== -1) return idx
+  // aceita abreviações "coladas" tipo "jan." ou variações com ponto
+  idx = ABREV_MES.findIndex((abrev) => norm.startsWith(abrev))
+  return idx === -1 ? null : idx
+}
+
+function criarComparadorColuna(valores: string[]): (a: string, b: string) => number {
+  const valoresReais = valores.filter((v) => v !== '(vazio)')
+  const usaMes = valoresReais.length > 0 && valoresReais.every((v) => ordemMes(v) !== null)
+  const usaNumero =
+    !usaMes && valoresReais.length > 0 && valoresReais.every((v) => valorNumerico(v) != null)
+
+  return (a, b) => {
+    if (a === '(vazio)' && b === '(vazio)') return 0
+    if (a === '(vazio)') return 1
+    if (b === '(vazio)') return -1
+    if (usaMes) return (ordemMes(a) ?? 0) - (ordemMes(b) ?? 0)
+    if (usaNumero) return (valorNumerico(a) ?? 0) - (valorNumerico(b) ?? 0)
+    return a.localeCompare(b, 'pt-BR')
+  }
+}
+
 function agrega(valores: number[], agregacao: Agregacao): number {
   if (agregacao === 'contagem') return valores.length
   if (valores.length === 0) return 0
@@ -107,8 +151,12 @@ export function executarConsulta(
   config: ConfigConsulta,
 ): LinhaResultadoConsulta[] {
   const filtradas = aplicarFiltros(linhas, config.filtros)
+  const metricas = config.metricas.length > 0 ? config.metricas : [CHAVE_CONTAGEM]
 
-  const grupos = new Map<string, { grupo: Record<string, string>; valores: number[] }>()
+  const grupos = new Map<
+    string,
+    { grupo: Record<string, string>; valoresPorMetrica: Record<string, number[]> }
+  >()
 
   for (const linha of filtradas) {
     const grupoValores: Record<string, string> = {}
@@ -118,25 +166,48 @@ export function executarConsulta(
     const chave = config.agruparPor.length > 0 ? config.agruparPor.map((c) => grupoValores[c]).join(' / ') : 'Total'
 
     if (!grupos.has(chave)) {
-      grupos.set(chave, { grupo: grupoValores, valores: [] })
+      grupos.set(chave, {
+        grupo: grupoValores,
+        valoresPorMetrica: Object.fromEntries(metricas.map((m) => [m, []])),
+      })
     }
+    const entry = grupos.get(chave)!
 
     // para 'contagem' não precisa de valor numérico da métrica; para as
     // demais agregações, ignora silenciosamente linhas sem valor numérico
     // válido na métrica escolhida (dado ausente/mal formatado na origem)
     if (config.agregacao === 'contagem') {
-      grupos.get(chave)!.valores.push(1)
-    } else if (config.metrica) {
-      const v = valorNumerico(linha[config.metrica])
-      if (v != null) grupos.get(chave)!.valores.push(v)
+      for (const m of metricas) entry.valoresPorMetrica[m].push(1)
+    } else {
+      for (const m of metricas) {
+        if (m === CHAVE_CONTAGEM) continue
+        const v = valorNumerico(linha[m])
+        if (v != null) entry.valoresPorMetrica[m].push(v)
+      }
     }
   }
 
+  // comparador por coluna de agrupamento, construído a partir dos valores
+  // realmente presentes nela (assim "mês" ordena por Jan..Dez, não A-Z)
+  const comparadoresPorColuna = new Map<string, (a: string, b: string) => number>()
+  for (const col of config.agruparPor) {
+    const valoresColuna = Array.from(grupos.values()).map((g) => g.grupo[col])
+    comparadoresPorColuna.set(col, criarComparadorColuna(valoresColuna))
+  }
+
   return Array.from(grupos.entries())
-    .map(([chave, { grupo, valores }]) => ({
+    .map(([chave, { grupo, valoresPorMetrica }]) => ({
       chave,
       grupo,
-      valor: agrega(valores, config.agregacao),
+      valores: Object.fromEntries(
+        metricas.map((m) => [m, agrega(valoresPorMetrica[m], config.agregacao)]),
+      ),
     }))
-    .sort((a, b) => a.chave.localeCompare(b.chave))
+    .sort((a, b) => {
+      for (const col of config.agruparPor) {
+        const r = comparadoresPorColuna.get(col)!(a.grupo[col], b.grupo[col])
+        if (r !== 0) return r
+      }
+      return a.chave.localeCompare(b.chave, 'pt-BR')
+    })
 }

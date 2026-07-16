@@ -246,6 +246,17 @@ export default function Resultados() {
             </CardHeader>
           </Card>
 
+          {projetoSelecionado.objetivos && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Objetivo do Projeto</CardTitle>
+                <CardDescription className="text-foreground whitespace-pre-line">
+                  {projetoSelecionado.objetivos}
+                </CardDescription>
+              </CardHeader>
+            </Card>
+          )}
+
           {loadingProjeto ? (
             <div className="flex justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />

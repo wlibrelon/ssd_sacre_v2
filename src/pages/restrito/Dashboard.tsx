@@ -34,7 +34,7 @@ import { MidiaAdmin } from '@/components/admin/MidiaAdmin'
 import { CongressosAdmin } from '@/components/admin/CongressosAdmin'
 
 export default function Dashboard() {
-  const { user, profile, isAuthenticated } = useAuth()
+  const { user, profile, isAuthenticated, loading } = useAuth()
   const { toast } = useToast()
   const [pendingUsers, setPendingUsers] = useState<any[]>([])
   const [groups, setGroups] = useState<any[]>([])
@@ -127,6 +127,7 @@ export default function Dashboard() {
     )
   }, [])
 
+  if (loading) return null
   if (!isAuthenticated) return <Navigate to="/auth" replace />
 
   const isAdmin = profile?.id_ga === 4

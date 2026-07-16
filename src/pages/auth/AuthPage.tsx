@@ -30,14 +30,23 @@ export default function AuthPage() {
     const email = (document.getElementById('email') as HTMLInputElement).value
     const pass = (document.getElementById('password') as HTMLInputElement).value
 
-    const { error } = await signIn(email, pass)
-    setIsLoading(false)
+    try {
+      const { error } = await signIn(email, pass)
 
-    if (error) {
-      toast({ title: 'Erro no login', description: error.message, variant: 'destructive' })
-    } else {
-      toast({ title: 'Login realizado', description: 'Aguarde a verificação de status...' })
-      setTimeout(() => navigate('/restrito'), 1000)
+      if (error) {
+        toast({ title: 'Erro no login', description: error.message, variant: 'destructive' })
+      } else {
+        toast({ title: 'Login realizado', description: 'Aguarde a verificação de status...' })
+        setTimeout(() => navigate('/restrito'), 1000)
+      }
+    } catch (err: any) {
+      toast({
+        title: 'Erro no login',
+        description: err?.message ?? 'Falha de conexão. Verifique sua internet e tente novamente.',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsLoading(false)
     }
   }
 

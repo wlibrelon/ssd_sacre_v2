@@ -93,10 +93,18 @@ export function WPsTab() {
     }
 
     if (formData.id_wp) {
-      await supabase.from('wps').update(payload).eq('id_wp', formData.id_wp)
+      const { error } = await supabase.from('wps').update(payload).eq('id_wp', formData.id_wp)
+      if (error) {
+        toast({ title: 'Erro ao atualizar WP', description: error.message, variant: 'destructive' })
+        return
+      }
       toast({ title: 'WP atualizado' })
     } else {
-      await supabase.from('wps').insert(payload)
+      const { error } = await supabase.from('wps').insert(payload)
+      if (error) {
+        toast({ title: 'Erro ao criar WP', description: error.message, variant: 'destructive' })
+        return
+      }
       toast({ title: 'WP criado' })
     }
     setOpen(false)
@@ -106,7 +114,11 @@ export function WPsTab() {
 
   const handleDelete = async (id: number) => {
     if (!confirm('Excluir este Work Package?')) return
-    await supabase.from('wps').delete().eq('id_wp', id)
+    const { error } = await supabase.from('wps').delete().eq('id_wp', id)
+    if (error) {
+      toast({ title: 'Erro ao excluir WP', description: error.message, variant: 'destructive' })
+      return
+    }
     toast({ title: 'WP excluído' })
     if (selectedWp?.id_wp === id) {
       setSelectedWp(null)
@@ -137,7 +149,11 @@ export function WPsTab() {
 
   const handleRemoveColab = async (id_lista: number) => {
     if (!confirm('Remover colaborador deste WP?')) return
-    await supabase.from('lista_colab').delete().eq('id', id_lista)
+    const { error } = await supabase.from('lista_colab').delete().eq('id_lista_colab', id_lista)
+    if (error) {
+      toast({ title: 'Erro ao remover colaborador', description: error.message, variant: 'destructive' })
+      return
+    }
     toast({ title: 'Colaborador removido' })
     loadListaColab(selectedWp.id_wp)
   }
@@ -313,14 +329,14 @@ export function WPsTab() {
             </TableHeader>
             <TableBody>
               {listaColab.map((lc) => (
-                <TableRow key={lc.id}>
+                <TableRow key={lc.id_lista_colab}>
                   <TableCell>{lc.colaboradores?.nome || '-'}</TableCell>
                   <TableCell>
                     <Button
                       variant="ghost"
                       size="icon"
                       className="text-destructive"
-                      onClick={() => handleRemoveColab(lc.id)}
+                      onClick={() => handleRemoveColab(lc.id_lista_colab)}
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>

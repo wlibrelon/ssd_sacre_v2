@@ -117,7 +117,7 @@ async function readFunctionError(error: any): Promise<string | null> {
 }
 
 export default function TesteApiHidro() {
-  const { isAuthenticated, profile } = useAuth()
+  const { isAuthenticated, profile, loading } = useAuth()
 
   // Autenticação
   const [identificador, setIdentificador] = useState('')
@@ -145,6 +145,7 @@ export default function TesteApiHidro() {
   const [consultando, setConsultando] = useState(false)
   const [resposta, setResposta] = useState<RespostaConsulta | null>(null)
 
+  if (loading) return null
   if (!isAuthenticated) return <Navigate to="/auth" replace />
 
   const autenticar = async () => {
