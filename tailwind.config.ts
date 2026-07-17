@@ -28,6 +28,9 @@ export default {
       fontFamily: {
         sans: ['Inter', 'sans-serif'],
         display: ['Inter', 'sans-serif'],
+        // Usada no título "Soluções Integradas de Água para Cidades Resilientes" no Header,
+        // pra combinar com a serifa da logo SACRE (alternativa gratuita à Recoleta).
+        brand: ['Fraunces', 'serif'],
       },
       colors: {
         border: 'hsl(var(--border))',

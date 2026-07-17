@@ -22,7 +22,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Textarea } from '@/components/ui/textarea'
+import { RichTextEditor } from '@/components/ui/rich-text-editor'
+import { sanitizeHtml } from '@/lib/sanitize-html'
 import {
   Accordion,
   AccordionContent,
@@ -81,15 +82,16 @@ export default function Dashboard() {
   }
 
   const saveContent = async (secao: string, conteudo_html: string) => {
+    const sanitized = sanitizeHtml(conteudo_html)
     const { data } = await supabase
       .from('conteudo_estudo')
       .select('id')
       .eq('secao', secao)
       .maybeSingle()
     if (data?.id) {
-      await supabase.from('conteudo_estudo').update({ conteudo_html }).eq('id', data.id)
+      await supabase.from('conteudo_estudo').update({ conteudo_html: sanitized }).eq('id', data.id)
     } else {
-      await supabase.from('conteudo_estudo').insert({ secao, conteudo_html })
+      await supabase.from('conteudo_estudo').insert({ secao, conteudo_html: sanitized })
     }
     toast({ title: 'Conteúdo salvo' })
   }
@@ -262,40 +264,48 @@ export default function Dashboard() {
             </TabsContent>
 
             <TabsContent value="conteudo">
-              <div className="grid md:grid-cols-2 gap-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Contexto (Área de Estudo)</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <Textarea
-                      rows={10}
-                      value={contexto}
-                      onChange={(e) => setContexto(e.target.value)}
-                      placeholder="HTML permitido..."
-                    />
-                    <Button onClick={() => saveContent('contexto', contexto)}>
-                      Salvar Contexto
-                    </Button>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Objetivos (Área de Estudo)</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <Textarea
-                      rows={10}
-                      value={objetivos}
-                      onChange={(e) => setObjetivos(e.target.value)}
-                      placeholder="HTML permitido..."
-                    />
-                    <Button onClick={() => saveContent('objetivos', objetivos)}>
-                      Salvar Objetivos
-                    </Button>
-                  </CardContent>
-                </Card>
-              </div>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Gestão de Conteúdo</CardTitle>
+                  <CardDescription>
+                    Edite os textos exibidos na Área de Estudo.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Accordion type="single" collapsible className="w-full">
+                    <AccordionItem value="contexto">
+                      <AccordionTrigger className="text-lg">
+                        Contexto (Área de Estudo)
+                      </AccordionTrigger>
+                      <AccordionContent className="pt-4 border-t space-y-4">
+                        <RichTextEditor
+                          value={contexto}
+                          onChange={setContexto}
+                          placeholder="Escreva o conteúdo de Contexto..."
+                        />
+                        <Button onClick={() => saveContent('contexto', contexto)}>
+                          Salvar Contexto
+                        </Button>
+                      </AccordionContent>
+                    </AccordionItem>
+                    <AccordionItem value="objetivos">
+                      <AccordionTrigger className="text-lg">
+                        Objetivos (Área de Estudo)
+                      </AccordionTrigger>
+                      <AccordionContent className="pt-4 border-t space-y-4">
+                        <RichTextEditor
+                          value={objetivos}
+                          onChange={setObjetivos}
+                          placeholder="Escreva o conteúdo de Objetivos..."
+                        />
+                        <Button onClick={() => saveContent('objetivos', objetivos)}>
+                          Salvar Objetivos
+                        </Button>
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
+                </CardContent>
+              </Card>
             </TabsContent>
 
             <TabsContent value="documentos">

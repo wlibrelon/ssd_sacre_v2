@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { sanitizeHtml } from '@/lib/sanitize-html'
 import { supabase } from '@/lib/supabase/client'
 import { Card, CardContent } from '@/components/ui/card'
 
@@ -12,7 +13,7 @@ export default function Contexto() {
       .eq('secao', 'contexto')
       .maybeSingle()
       .then(({ data }) => {
-        if (data?.conteudo_html) setHtml(data.conteudo_html)
+        if (data?.conteudo_html) setHtml(sanitizeHtml(data.conteudo_html))
         else setHtml('<p>Nenhum conteúdo disponível.</p>')
       })
   }, [])
