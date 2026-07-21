@@ -9,7 +9,6 @@ import AuthPage from './pages/auth/AuthPage'
 import Dashboard from './pages/restrito/Dashboard'
 import TesteApiHidro from './pages/restrito/TesteApiHidro'
 import ResetPassword from './pages/auth/ResetPassword'
-import AreaEstudoObjetivos from './pages/area-estudo/Objetivos'
 import AreaEstudoDocumentos from './pages/area-estudo/Documentos'
 import Camadas from './pages/area-estudo/Camadas'
 import Projeto from './pages/institucional/Projeto'
@@ -27,7 +26,7 @@ import Congressos from './pages/divulgacao/Congressos'
 import AtividadesSociais from './pages/divulgacao/AtividadesSociais'
 import NotFound from './pages/NotFound'
 import Placeholder from './pages/Placeholder'
-import Contexto from './pages/area-estudo/Contexto'
+import ConteudoDinamico from './pages/area-estudo/ConteudoDinamico'
 import { GestaoProjetos } from '@/components/gestao-projetos/GestaoProjetos'
 
 const App = () => (
@@ -45,8 +44,7 @@ const App = () => (
             <Route path="/institucional/objetivos" element={<ObjetivosInstitucionais />} />
             <Route path="/institucional/parceiros" element={<Parceiros />} />
             <Route path="/institucional/equipe" element={<Equipe />} />
-            <Route path="/area-estudo/contexto" element={<Contexto />} />
-            <Route path="/area-estudo/objetivos" element={<AreaEstudoObjetivos />} />
+            <Route path="/area-estudo/pagina/:id" element={<ConteudoDinamico />} />
             <Route path="/area-estudo/documentos" element={<AreaEstudoDocumentos />} />
             <Route path="/area-estudo/camadas" element={<Camadas />} />
             <Route path="/projetos/objetivos" element={<ObjetivosProjetos />} />

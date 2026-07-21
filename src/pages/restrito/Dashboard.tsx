@@ -40,8 +40,11 @@ export default function Dashboard() {
   const [pendingUsers, setPendingUsers] = useState<any[]>([])
   const [groups, setGroups] = useState<any[]>([])
   const [documents, setDocuments] = useState<any[]>([])
-  const [contexto, setContexto] = useState('')
-  const [objetivos, setObjetivos] = useState('')
+  const [paginasEstudo, setPaginasEstudo] = useState<
+    { id: number; titulo: string; conteudo_html: string; ordem: number }[]
+  >([])
+  const [novaPaginaTitulo, setNovaPaginaTitulo] = useState('')
+  const [openPaginaId, setOpenPaginaId] = useState('')
   const [descricaoDoc, setDescricaoDoc] = useState('')
 
   useEffect(() => {
@@ -65,13 +68,12 @@ export default function Dashboard() {
       .order('criado_em', { ascending: false })
     if (docsData) setDocuments(docsData)
 
-    const { data: contData } = await supabase.from('conteudo_estudo').select('*')
-    if (contData) {
-      const ctx = contData.find((c) => c.secao === 'contexto')
-      const obj = contData.find((c) => c.secao === 'objetivos')
-      if (ctx) setContexto(ctx.conteudo_html || '')
-      if (obj) setObjetivos(obj.conteudo_html || '')
-    }
+    const { data: paginasData } = await supabase
+      .from('conteudo_estudo')
+      .select('*')
+      .order('ordem', { ascending: true })
+      .order('id', { ascending: true })
+    if (paginasData) setPaginasEstudo(paginasData)
   }
 
   const approveUser = async (id: string, id_ga: number) => {
@@ -81,19 +83,74 @@ export default function Dashboard() {
     loadData()
   }
 
-  const saveContent = async (secao: string, conteudo_html: string) => {
-    const sanitized = sanitizeHtml(conteudo_html)
-    const { data } = await supabase
-      .from('conteudo_estudo')
-      .select('id')
-      .eq('secao', secao)
-      .maybeSingle()
-    if (data?.id) {
-      await supabase.from('conteudo_estudo').update({ conteudo_html: sanitized }).eq('id', data.id)
-    } else {
-      await supabase.from('conteudo_estudo').insert({ secao, conteudo_html: sanitized })
-    }
+  const updatePaginaHtml = (id: number, html: string) => {
+    setPaginasEstudo((prev) => prev.map((p) => (p.id === id ? { ...p, conteudo_html: html } : p)))
+  }
+
+  const savePagina = async (id: number) => {
+    const pagina = paginasEstudo.find((p) => p.id === id)
+    if (!pagina) return
+    const sanitized = sanitizeHtml(pagina.conteudo_html)
+    await supabase.from('conteudo_estudo').update({ conteudo_html: sanitized }).eq('id', id)
     toast({ title: 'Conteúdo salvo' })
+  }
+
+  const addPagina = async () => {
+    const titulo = novaPaginaTitulo.trim()
+    if (!titulo) {
+      return toast({ title: 'Digite um título para a opção do menu', variant: 'destructive' })
+    }
+    const proximaOrdem = paginasEstudo.length
+      ? Math.max(...paginasEstudo.map((p) => p.ordem ?? 0)) + 1
+      : 1
+    const { data, error } = await supabase
+      .from('conteudo_estudo')
+      .insert({ titulo, conteudo_html: '', ordem: proximaOrdem })
+      .select()
+      .single()
+    if (error || !data) {
+      toast({ title: 'Erro ao criar opção', description: error?.message, variant: 'destructive' })
+      return
+    }
+    setPaginasEstudo((prev) => [...prev, data])
+    setNovaPaginaTitulo('')
+    setOpenPaginaId(String(data.id))
+    toast({ title: 'Opção criada — edite o conteúdo abaixo e salve' })
+  }
+
+  const renamePagina = async (id: number, tituloAtual: string) => {
+    const novo = window.prompt('Novo título da opção de menu:', tituloAtual)
+    if (!novo || !novo.trim() || novo.trim() === tituloAtual) return
+    const tituloLimpo = novo.trim()
+    await supabase.from('conteudo_estudo').update({ titulo: tituloLimpo }).eq('id', id)
+    setPaginasEstudo((prev) => prev.map((p) => (p.id === id ? { ...p, titulo: tituloLimpo } : p)))
+  }
+
+  const deletePagina = async (id: number, titulo: string) => {
+    if (!window.confirm(`Excluir a opção "${titulo}" do menu? O conteúdo dela será perdido.`)) return
+    await supabase.from('conteudo_estudo').delete().eq('id', id)
+    setPaginasEstudo((prev) => prev.filter((p) => p.id !== id))
+    toast({ title: 'Opção excluída' })
+  }
+
+  const movePagina = async (id: number, direction: -1 | 1) => {
+    const sorted = [...paginasEstudo].sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0) || a.id - b.id)
+    const index = sorted.findIndex((p) => p.id === id)
+    const targetIndex = index + direction
+    if (index === -1 || targetIndex < 0 || targetIndex >= sorted.length) return
+    const current = sorted[index]
+    const target = sorted[targetIndex]
+    const currentOrdem = current.ordem ?? 0
+    const targetOrdem = target.ordem ?? 0
+    await supabase.from('conteudo_estudo').update({ ordem: targetOrdem }).eq('id', current.id)
+    await supabase.from('conteudo_estudo').update({ ordem: currentOrdem }).eq('id', target.id)
+    setPaginasEstudo((prev) =>
+      prev.map((p) => {
+        if (p.id === current.id) return { ...p, ordem: targetOrdem }
+        if (p.id === target.id) return { ...p, ordem: currentOrdem }
+        return p
+      }),
+    )
   }
 
   const uploadDoc = async (e: any) => {
@@ -268,42 +325,86 @@ export default function Dashboard() {
                 <CardHeader>
                   <CardTitle>Gestão de Conteúdo</CardTitle>
                   <CardDescription>
-                    Edite os textos exibidos na Área de Estudo.
+                    Define as opções que aparecem no menu "Área de Estudo" (além de Documentos e
+                    Mapas, que são fixas) e o conteúdo de cada uma.
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <Accordion type="single" collapsible className="w-full">
-                    <AccordionItem value="contexto">
-                      <AccordionTrigger className="text-lg">
-                        Contexto (Área de Estudo)
-                      </AccordionTrigger>
-                      <AccordionContent className="pt-4 border-t space-y-4">
-                        <RichTextEditor
-                          value={contexto}
-                          onChange={setContexto}
-                          placeholder="Escreva o conteúdo de Contexto..."
-                        />
-                        <Button onClick={() => saveContent('contexto', contexto)}>
-                          Salvar Contexto
-                        </Button>
-                      </AccordionContent>
-                    </AccordionItem>
-                    <AccordionItem value="objetivos">
-                      <AccordionTrigger className="text-lg">
-                        Objetivos (Área de Estudo)
-                      </AccordionTrigger>
-                      <AccordionContent className="pt-4 border-t space-y-4">
-                        <RichTextEditor
-                          value={objetivos}
-                          onChange={setObjetivos}
-                          placeholder="Escreva o conteúdo de Objetivos..."
-                        />
-                        <Button onClick={() => saveContent('objetivos', objetivos)}>
-                          Salvar Objetivos
-                        </Button>
-                      </AccordionContent>
-                    </AccordionItem>
-                  </Accordion>
+                <CardContent className="space-y-6">
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <Input
+                      value={novaPaginaTitulo}
+                      onChange={(e) => setNovaPaginaTitulo(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') addPagina()
+                      }}
+                      placeholder="Título da nova opção de menu (ex: Metodologia)"
+                    />
+                    <Button onClick={addPagina} className="sm:shrink-0">
+                      Adicionar opção
+                    </Button>
+                  </div>
+
+                  {paginasEstudo.length === 0 ? (
+                    <p className="rounded-md bg-muted/20 p-4 text-center text-sm text-muted-foreground">
+                      Nenhuma opção cadastrada ainda.
+                    </p>
+                  ) : (
+                    <Accordion
+                      type="single"
+                      collapsible
+                      className="w-full"
+                      value={openPaginaId}
+                      onValueChange={setOpenPaginaId}
+                    >
+                      {[...paginasEstudo]
+                        .sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0) || a.id - b.id)
+                        .map((pagina, index, arr) => (
+                          <AccordionItem key={pagina.id} value={String(pagina.id)}>
+                            <AccordionTrigger className="text-lg">{pagina.titulo}</AccordionTrigger>
+                            <AccordionContent className="space-y-4 border-t pt-4">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => renamePagina(pagina.id, pagina.titulo)}
+                                >
+                                  Renomear
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  disabled={index === 0}
+                                  onClick={() => movePagina(pagina.id, -1)}
+                                >
+                                  Mover para cima
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  disabled={index === arr.length - 1}
+                                  onClick={() => movePagina(pagina.id, 1)}
+                                >
+                                  Mover para baixo
+                                </Button>
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  onClick={() => deletePagina(pagina.id, pagina.titulo)}
+                                >
+                                  Excluir opção
+                                </Button>
+                              </div>
+                              <RichTextEditor
+                                value={pagina.conteudo_html}
+                                onChange={(html) => updatePaginaHtml(pagina.id, html)}
+                                placeholder={`Escreva o conteúdo de "${pagina.titulo}"...`}
+                              />
+                              <Button onClick={() => savePagina(pagina.id)}>Salvar</Button>
+                            </AccordionContent>
+                          </AccordionItem>
+                        ))}
+                    </Accordion>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>

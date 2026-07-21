@@ -33,6 +33,7 @@ export const AppSidebar = ({ onOpenSobre }: { onOpenSobre: () => void }) => {
   const { isAuthenticated, signOut, user, profile } = useAuth()
   const location = useLocation()
   const [allowedResources, setAllowedResources] = useState<string[]>([])
+  const [areaEstudoItems, setAreaEstudoItems] = useState<{ id: number; titulo: string }[]>([])
 
   useEffect(() => {
     if (profile?.id_ga) {
@@ -47,6 +48,19 @@ export const AppSidebar = ({ onOpenSobre }: { onOpenSobre: () => void }) => {
       setAllowedResources([])
     }
   }, [profile?.id_ga])
+
+  // Opções "Contexto"/"Objetivos" (e outras que forem criadas) do menu Área de Estudo
+  // são definidas dinamicamente em Painel Administrativo > Gestão de Conteúdo.
+  useEffect(() => {
+    supabase
+      .from('conteudo_estudo')
+      .select('id, titulo')
+      .order('ordem', { ascending: true })
+      .order('id', { ascending: true })
+      .then(({ data }) => {
+        if (data) setAreaEstudoItems(data.filter((d) => d.titulo))
+      })
+  }, [])
 
   const isActive = (path: string) => location.pathname === path
 
@@ -65,8 +79,11 @@ export const AppSidebar = ({ onOpenSobre }: { onOpenSobre: () => void }) => {
       title: 'Área de Estudo',
       icon: MapIcon,
       items: [
-        { title: 'Contexto', url: '/area-estudo/contexto' },
-        { title: 'Objetivos', url: '/area-estudo/objetivos' },
+        ...areaEstudoItems.map((item) => ({
+          title: item.titulo,
+          url: `/area-estudo/pagina/${item.id}`,
+        })),
+        // Fixas — não gerenciadas pela Gestão de Conteúdo
         { title: 'Documentos', url: '/area-estudo/documentos' },
         { title: 'Mapas', url: '/area-estudo/camadas' },
       ],
@@ -139,7 +156,7 @@ export const AppSidebar = ({ onOpenSobre }: { onOpenSobre: () => void }) => {
                 <CollapsibleContent className="-mt-1">
                   <SidebarMenuSub>
                     {group.items.map((item) => (
-                      <SidebarMenuSubItem key={item.title}>
+                      <SidebarMenuSubItem key={item.url}>
                         <SidebarMenuSubButton asChild isActive={isActive(item.url)}>
                           <Link
                             to={item.url}
