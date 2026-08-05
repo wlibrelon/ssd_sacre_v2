@@ -1,9 +1,9 @@
-import { cn, storagePublicUrl } from '@/lib/utils'
+import { cn } from '@/lib/utils'
 
 export const Logo = ({ className = 'h-10 w-auto' }: { className?: string }) => {
   return (
     <img
-      src={storagePublicUrl('imagens_app', 'logo.png')}
+      src="/logo.png"
       alt="SACRE Logo"
       className={cn('object-contain', className)}
       onError={(e) => console.error('Logo falhou:', e.currentTarget.src)} // Debug sem fallback

@@ -5,7 +5,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Activity, Building2, BarChart2, Users, ArrowRight, ExternalLink } from 'lucide-react'
 
 import { supabase } from '@/lib/supabase/client'
-import { storagePublicUrl } from '@/lib/utils'
 
 // Configuração de cada tabela: nome de exibição, ícone usado no lugar da thumbnail,
 // campo que guarda o link de acesso (varia por tabela) e campo de data usado para
@@ -133,11 +132,11 @@ const Index = () => {
       {/* Hero Section */}
       <section className="relative rounded-2xl overflow-hidden min-h-[400px] flex items-center justify-center p-8 text-center text-white">
         {/* Imagem de fundo com overlays. bg-primary funciona como fallback
-            caso a imagem ainda não esteja disponível no storage. */}
+            caso a imagem não esteja disponível. */}
         <div
           className="absolute inset-0 z-0 bg-primary bg-cover bg-center object-cover brightness-110"
           style={{
-            backgroundImage: `url(${storagePublicUrl('imagens_app', 'image_abertura.png')})`,
+            backgroundImage: `url(/image_abertura.png)`,
           }}
         />
         <div className="absolute inset-0 z-10 bg-primary/40 mix-blend-overlay" />
