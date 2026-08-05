@@ -38,6 +38,7 @@ export function CamadaFormModal({ open, onOpenChange, camada, categorias, onSucc
     visivel: false,
     epsg_origem: 4674,
     campo_nome: '',
+    dbf_encoding: 'latin1',
   })
   const [estilo, setEstilo] = useState({
     fillColor: '#3388ff',
@@ -74,6 +75,7 @@ export function CamadaFormModal({ open, onOpenChange, camada, categorias, onSucc
         visivel: camada?.visivel_por_padrao ?? false,
         epsg_origem: camada?.epsg_origem || 4674,
         campo_nome: camada?.campo_nome || '',
+        dbf_encoding: camada?.dbf_encoding || 'latin1',
       })
       setEstilo({
         fillColor: '#3388ff',
@@ -112,11 +114,13 @@ export function CamadaFormModal({ open, onOpenChange, camada, categorias, onSucc
   // Ao selecionar um novo arquivo .zip (camada vetorial), lê o .dbf no
   // navegador para popular o combobox de "Campo de Nome da Feição" com as
   // colunas reais do shapefile, em vez de depender de digitação manual.
+  // Também reroda ao trocar a codificação, para conferir se os nomes de
+  // campo (que também podem ter acentos) ficam corretos com a nova opção.
   useEffect(() => {
     if (!file || form.tipo_dados !== 'vetorial') return
     let ativo = true
     setCarregandoCampos(true)
-    listarCamposShapefile(file)
+    listarCamposShapefile(file, form.dbf_encoding)
       .then((campos) => {
         if (ativo) setCamposDisponiveis(campos)
       })
@@ -130,7 +134,7 @@ export function CamadaFormModal({ open, onOpenChange, camada, categorias, onSucc
     return () => {
       ativo = false
     }
-  }, [file, form.tipo_dados])
+  }, [file, form.tipo_dados, form.dbf_encoding])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -152,6 +156,7 @@ export function CamadaFormModal({ open, onOpenChange, camada, categorias, onSucc
         epsg_origem: form.tipo_dados === 'vetorial' ? form.epsg_origem : null,
         campo_nome: form.tipo_dados === 'vetorial' ? form.campo_nome.trim() || null : null,
         campos_exibicao: form.tipo_dados === 'vetorial' ? camposExibicao : [],
+        dbf_encoding: form.tipo_dados === 'vetorial' ? form.dbf_encoding : null,
       }
 
       let id = camada?.id_camada
@@ -306,18 +311,39 @@ export function CamadaFormModal({ open, onOpenChange, camada, categorias, onSucc
 
               {form.tipo_dados === 'vetorial' && (
                 <>
-                  <div className="space-y-2 col-span-2">
-                    <Label>EPSG de Origem</Label>
-                    <Input
-                      type="number"
-                      value={form.epsg_origem}
-                      onChange={(e) => setForm({ ...form, epsg_origem: Number(e.target.value) })}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Sistema de coordenadas do shapefile original. 4674 = SIRGAS 2000 (padrão
-                      IBGE). 4326 = WGS84/GPS. Se o shapefile estiver em UTM, use o EPSG da zona
-                      (ex: 31983 para a zona 23S).
-                    </p>
+                  <div className="col-span-2 grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>EPSG de Origem</Label>
+                      <Input
+                        type="number"
+                        value={form.epsg_origem}
+                        onChange={(e) => setForm({ ...form, epsg_origem: Number(e.target.value) })}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Sistema de coordenadas do shapefile original. 4674 = SIRGAS 2000 (padrão
+                        IBGE). 4326 = WGS84/GPS. Se estiver em UTM, use o EPSG da zona (ex: 31983
+                        para a zona 23S).
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Codificação de Texto do .dbf</Label>
+                      <Select
+                        value={form.dbf_encoding}
+                        onValueChange={(v) => setForm({ ...form, dbf_encoding: v })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="latin1">ISO-8859-1 / Windows-1252 (Latin1)</SelectItem>
+                          <SelectItem value="utf-8">UTF-8</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        Se acentos aparecerem errados (ex: "Ã§Ã£o" em vez de "ção") depois de
+                        importar, troque essa opção e reimporte a camada.
+                      </p>
+                    </div>
                   </div>
 
                   <div className="col-span-2 grid grid-cols-2 gap-4">

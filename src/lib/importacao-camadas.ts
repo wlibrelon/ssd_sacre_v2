@@ -84,8 +84,12 @@ function encontrarArquivoNoZip(
   return chave ? arquivos[chave] : null
 }
 
-async function lerFeaturesDoShapefile(shpBytes: Uint8Array, dbfBytes: Uint8Array): Promise<any[]> {
-  const source = await shapefile.open(shpBytes, dbfBytes)
+async function lerFeaturesDoShapefile(
+  shpBytes: Uint8Array,
+  dbfBytes: Uint8Array,
+  encoding = 'latin1',
+): Promise<any[]> {
+  const source = await shapefile.open(shpBytes, dbfBytes, { encoding })
   const features: any[] = []
   let resultado = await source.read()
   while (!resultado.done) {
@@ -134,7 +138,10 @@ function extrairNome(
 
 const MAX_FEATURES_PARA_LISTAR_CAMPOS = 20
 
-export async function listarCamposShapefile(file: File): Promise<string[]> {
+export async function listarCamposShapefile(
+  file: File,
+  encoding = 'latin1',
+): Promise<string[]> {
   const zipBytes = new Uint8Array(await file.arrayBuffer())
   const arquivos = unzipSync(zipBytes)
   const shpBytes = encontrarArquivoNoZip(arquivos, 'shp')
@@ -143,7 +150,7 @@ export async function listarCamposShapefile(file: File): Promise<string[]> {
     throw new Error('O .zip não contém os arquivos .shp e .dbf esperados.')
   }
 
-  const source = await shapefile.open(shpBytes, dbfBytes)
+  const source = await shapefile.open(shpBytes, dbfBytes, { encoding })
   const campos = new Set<string>()
   let resultado = await source.read()
   let lidas = 0
@@ -201,7 +208,7 @@ export async function importarCamadaVetorial(
     }
 
     onProgress?.('Lendo feições do shapefile...')
-    const features = await lerFeaturesDoShapefile(shpBytes, dbfBytes)
+    const features = await lerFeaturesDoShapefile(shpBytes, dbfBytes, camada.dbf_encoding || 'latin1')
     if (features.length === 0) {
       throw new Error('Nenhuma feição encontrada no shapefile.')
     }
