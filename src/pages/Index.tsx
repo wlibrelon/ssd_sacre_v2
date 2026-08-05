@@ -130,13 +130,17 @@ const Index = () => {
   return (
     <div className="space-y-4">
       {/* Hero Section */}
-      <section className="relative rounded-2xl overflow-hidden min-h-[400px] flex items-center justify-center p-8 text-center text-white">
+      <section className="relative rounded-2xl overflow-hidden min-h-[480px] flex items-center justify-center p-8 text-center text-white">
         {/* Imagem de fundo com overlays. bg-primary funciona como fallback
-            caso a imagem não esteja disponível. */}
+            caso a imagem não esteja disponível. min-h maior + background-position
+            deslocada para cima preservam mais da imagem original (ponte/faixa
+            colorida), cortando um pouco menos de céu e um pouco mais do horizonte
+            da cidade ao fundo. */}
         <div
-          className="absolute inset-0 z-0 bg-primary bg-cover bg-center object-cover brightness-110"
+          className="absolute inset-0 z-0 bg-primary bg-cover object-cover brightness-110"
           style={{
             backgroundImage: `url(/image_abertura.png)`,
+            backgroundPosition: 'center 42%',
           }}
         />
         <div className="absolute inset-0 z-10 bg-primary/40 mix-blend-overlay" />
