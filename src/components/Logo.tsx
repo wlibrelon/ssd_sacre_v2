@@ -1,9 +1,9 @@
-import { cn } from '@/lib/utils'
+import { cn, storagePublicUrl } from '@/lib/utils'
 
 export const Logo = ({ className = 'h-10 w-auto' }: { className?: string }) => {
   return (
     <img
-      src="https://hyacuhtohjuzgvcqzdwe.supabase.co/storage/v1/object/public/imagens_app/logo.png"
+      src={storagePublicUrl('imagens_app', 'logo.png')}
       alt="SACRE Logo"
       className={cn('object-contain', className)}
       onError={(e) => console.error('Logo falhou:', e.currentTarget.src)} // Debug sem fallback

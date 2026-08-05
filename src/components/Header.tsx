@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { SidebarTrigger } from '@/components/ui/sidebar'
+import { storagePublicUrl } from '@/lib/utils'
 
 export const Header = () => {
   return (
@@ -11,7 +12,7 @@ export const Header = () => {
           className="flex items-center transition-transform hover:scale-105 active:scale-95"
         >
           <img
-            src="https://hyacuhtohjuzgvcqzdwe.supabase.co/storage/v1/object/public/imagens_app/logo.png"
+            src={storagePublicUrl('imagens_app', 'logo.png')}
             alt=""
             className="h-10 sm:h-12 w-auto drop-shadow-sm"
           />

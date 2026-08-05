@@ -1,5 +1,6 @@
 import { Card, CardContent } from '@/components/ui/card'
 import { Droplet, Recycle, Users, Sprout, ArrowRight } from 'lucide-react'
+import { storagePublicUrl } from '@/lib/utils'
 
 export default function Projeto() {
   return (
@@ -18,7 +19,7 @@ export default function Projeto() {
           <div
             className="absolute inset-0 bg-cover bg-center transition-transform duration-1000 group-hover:scale-105"
             style={{
-              backgroundImage: `url(https://hyacuhtohjuzgvcqzdwe.supabase.co/storage/v1/object/public/imagens_app/imagem_1_projeto.png)`,
+              backgroundImage: `url(${storagePublicUrl('imagens_app', 'imagem_1_projeto.png')})`,
             }}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-gray-900/80 via-gray-900/20 to-transparent" />
@@ -110,7 +111,7 @@ export default function Projeto() {
               <div
                 className="absolute inset-0 bg-cover bg-center hover:scale-105 transition-transform duration-700"
                 style={{
-                  backgroundImage: `url(https://hyacuhtohjuzgvcqzdwe.supabase.co/storage/v1/object/public/imagens_app/imagem_2_projeto.png)`,
+                  backgroundImage: `url(${storagePublicUrl('imagens_app', 'imagem_2_projeto.png')})`,
                 }}
               />
             </div>

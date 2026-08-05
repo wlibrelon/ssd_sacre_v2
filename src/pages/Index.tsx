@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Activity, Building2, BarChart2, Users, ArrowRight, ExternalLink } from 'lucide-react'
 
 import { supabase } from '@/lib/supabase/client'
+import { storagePublicUrl } from '@/lib/utils'
 
 // Configuração de cada tabela: nome de exibição, ícone usado no lugar da thumbnail,
 // campo que guarda o link de acesso (varia por tabela) e campo de data usado para
@@ -135,7 +136,7 @@ const Index = () => {
         <div
           className="absolute inset-0 z-0 bg-cover bg-center object-cover brightness-110"
           style={{
-            backgroundImage: `url(${'https://hyacuhtohjuzgvcqzdwe.supabase.co/storage/v1/object/public/imagens_app/image_abertura.png'})`,
+            backgroundImage: `url(${storagePublicUrl('imagens_app', 'image_abertura.png')})`,
           }}
         />
         <div className="absolute inset-0 z-10 bg-primary/40 mix-blend-overlay" />
