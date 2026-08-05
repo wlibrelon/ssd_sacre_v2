@@ -64,10 +64,16 @@ function obterDataOrdenacao(item) {
 
 // Texto de data exibido no card: para itens ordenados pela data do evento,
 // mostra "Em <data do evento>"; para os demais, "Publicado em <data_pub>".
+// Congresso prioriza o texto do Período (campo principal de exibição);
+// se não houver período preenchido, cai de volta para a data exata.
 function obterTextoData(item) {
+  if (item.fonte.tabela === 'congressos') {
+    if (item.periodo) return `Em ${item.periodo}`
+    if (item.data) return `Em ${formatarData(item.data)}`
+    return `Publicado em ${formatarData(item.data_pub)}`
+  }
   const dataEvento = item.fonte.campoData !== 'data_pub' ? item[item.fonte.campoData] : null
   if (dataEvento) return `Em ${formatarData(dataEvento)}`
-  if (item.fonte.tabela === 'congressos' && item.periodo) return `Em ${item.periodo}`
   return `Publicado em ${formatarData(item.data_pub)}`
 }
 
