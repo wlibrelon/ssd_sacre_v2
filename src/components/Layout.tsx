@@ -19,7 +19,7 @@ export default function Layout() {
     <SidebarProvider>
       <div className="flex flex-col h-screen w-full overflow-hidden bg-background">
         <Header />
-        <div className="flex flex-1 pt-16 overflow-hidden">
+        <div className="flex flex-1 pt-16 sm:pt-20 overflow-hidden">
           <AppSidebar onOpenSobre={() => setIsSobreOpen(true)} />
           <SidebarInset className="flex-1 overflow-y-auto w-full relative bg-background/50">
             <main

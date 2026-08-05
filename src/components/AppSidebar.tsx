@@ -137,7 +137,7 @@ export const AppSidebar = ({ onOpenSobre }: { onOpenSobre: () => void }) => {
     <Sidebar
       variant="sidebar"
       collapsible="icon"
-      className="top-16 h-[calc(100svh-4rem)] z-40 border-r-border/50 shadow-sm"
+      className="top-16 sm:top-20 h-[calc(100svh-4rem)] sm:h-[calc(100svh-5rem)] z-40 border-r-border/50 shadow-sm"
     >
       <SidebarContent className="pt-4">
         {filteredGroups.map((group) => (

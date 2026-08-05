@@ -145,8 +145,10 @@ const Index = () => {
         />
         <div className="absolute inset-0 z-10 bg-primary/40 mix-blend-overlay" />
         <div className="absolute inset-0 z-10 bg-gradient-to-t from-primary/60 via-transparent to-transparent" />
-        {/* Título MENOR no TOPO (uma linha) */}
-        <h1 className="absolute top-4 left-1/2 transform -translate-x-1/2 z-20 text-3xl md:text-5xl font-bold tracking-tight text-white drop-shadow-2xl whitespace-nowrap">
+        {/* Título no topo: menor e com quebra de linha liberada no mobile
+            (com w-full + px, para não cortar a frase em telas estreitas);
+            a partir de sm mantém em uma linha só. */}
+        <h1 className="absolute top-4 left-1/2 transform -translate-x-1/2 z-20 w-full px-6 text-center text-xl sm:text-2xl md:text-4xl lg:text-5xl font-bold tracking-tight text-white drop-shadow-2xl leading-tight sm:whitespace-nowrap">
           Gestão Hídrica Baseada em Dados
         </h1>
       </section>
