@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Select,
   SelectContent,
@@ -55,6 +56,9 @@ export function CamadaFormModal({ open, onOpenChange, camada, categorias, onSucc
   // gravada no banco.
   const [camposDisponiveis, setCamposDisponiveis] = useState<string[]>([])
   const [carregandoCampos, setCarregandoCampos] = useState(false)
+  // Atributos escolhidos para aparecer na janela de detalhes ao clicar numa
+  // feição no mapa. Vazio = mostra todos (comportamento de fallback).
+  const [camposExibicao, setCamposExibicao] = useState<string[]>([])
 
   useEffect(() => {
     if (open) {
@@ -81,6 +85,7 @@ export function CamadaFormModal({ open, onOpenChange, camada, categorias, onSucc
         ...(camada?.estilo || {}),
       })
       setLegenda((camada?.legenda || []).map((l: any) => ({ type: 'point', ...l })))
+      setCamposExibicao(Array.isArray(camada?.campos_exibicao) ? camada.campos_exibicao : [])
       setFile(null)
       setProgress(0)
 
@@ -146,6 +151,7 @@ export function CamadaFormModal({ open, onOpenChange, camada, categorias, onSucc
         legenda,
         epsg_origem: form.tipo_dados === 'vetorial' ? form.epsg_origem : null,
         campo_nome: form.tipo_dados === 'vetorial' ? form.campo_nome.trim() || null : null,
+        campos_exibicao: form.tipo_dados === 'vetorial' ? camposExibicao : [],
       }
 
       let id = camada?.id_camada
@@ -314,46 +320,100 @@ export function CamadaFormModal({ open, onOpenChange, camada, categorias, onSucc
                     </p>
                   </div>
 
-                  <div className="space-y-2 col-span-2">
-                    <Label>Campo de Nome da Feição (opcional)</Label>
-                    {camposDisponiveis.length > 0 ? (
-                      <Select
-                        value={form.campo_nome || '__nenhum__'}
-                        onValueChange={(v) =>
-                          setForm({ ...form, campo_nome: v === '__nenhum__' ? '' : v })
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione um campo..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="__nenhum__">
-                            (nenhum — usar adivinhação automática)
-                          </SelectItem>
-                          {camposDisponiveis.map((c) => (
-                            <SelectItem key={c} value={c}>
-                              {c}
+                  <div className="col-span-2 grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Campo de Nome da Feição (opcional)</Label>
+                      {camposDisponiveis.length > 0 ? (
+                        <Select
+                          value={form.campo_nome || '__nenhum__'}
+                          onValueChange={(v) =>
+                            setForm({ ...form, campo_nome: v === '__nenhum__' ? '' : v })
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione um campo..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__nenhum__">
+                              (nenhum — usar adivinhação automática)
                             </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    ) : (
-                      <Input
-                        placeholder={
-                          carregandoCampos
-                            ? 'Lendo campos do arquivo...'
-                            : 'ex: id_sacre, nm_municip, codigo...'
-                        }
-                        disabled={carregandoCampos}
-                        value={form.campo_nome}
-                        onChange={(e) => setForm({ ...form, campo_nome: e.target.value })}
-                      />
-                    )}
-                    <p className="text-xs text-muted-foreground">
-                      {camposDisponiveis.length > 0
-                        ? 'Coluna de atributo do shapefile (.dbf) usada como identificação/rótulo de cada feição ao importar.'
-                        : 'Envie o arquivo .zip (ou, ao editar uma camada já importada, isso é lido automaticamente) para escolher entre os campos disponíveis. Se deixar em branco, a importação tenta adivinhar usando nomes comuns (nome, name, rotulo...).'}
-                    </p>
+                            {camposDisponiveis.map((c) => (
+                              <SelectItem key={c} value={c}>
+                                {c}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <Input
+                          placeholder={
+                            carregandoCampos
+                              ? 'Lendo campos do arquivo...'
+                              : 'ex: id_sacre, nm_municip, codigo...'
+                          }
+                          disabled={carregandoCampos}
+                          value={form.campo_nome}
+                          onChange={(e) => setForm({ ...form, campo_nome: e.target.value })}
+                        />
+                      )}
+                      <p className="text-xs text-muted-foreground">
+                        Coluna usada como identificação/rótulo de cada feição ao importar. Em
+                        branco, a importação tenta adivinhar (nome, name, rotulo...).
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label>Atributos na janela de detalhes</Label>
+                        {camposDisponiveis.length > 0 && (
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              className="text-xs text-primary hover:underline"
+                              onClick={() => setCamposExibicao([...camposDisponiveis])}
+                            >
+                              Todos
+                            </button>
+                            <button
+                              type="button"
+                              className="text-xs text-muted-foreground hover:underline"
+                              onClick={() => setCamposExibicao([])}
+                            >
+                              Nenhum
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                      <div className="border rounded-md p-2 h-[88px] overflow-y-auto space-y-1">
+                        {camposDisponiveis.length === 0 && (
+                          <p className="text-xs text-muted-foreground p-1">
+                            {carregandoCampos
+                              ? 'Lendo campos do arquivo...'
+                              : 'Envie o .zip (ou edite uma camada já importada) para listar os atributos.'}
+                          </p>
+                        )}
+                        {camposDisponiveis.map((c) => (
+                          <label
+                            key={c}
+                            className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/50 rounded px-1 py-0.5"
+                          >
+                            <Checkbox
+                              checked={camposExibicao.includes(c)}
+                              onCheckedChange={(checked) =>
+                                setCamposExibicao((prev) =>
+                                  checked ? [...prev, c] : prev.filter((x) => x !== c),
+                                )
+                              }
+                            />
+                            {c}
+                          </label>
+                        ))}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Quais atributos aparecem ao clicar numa feição no mapa. Nenhum selecionado
+                        = mostra todos.
+                      </p>
+                    </div>
                   </div>
 
                   <div className="col-span-2 grid grid-cols-4 gap-4 p-4 border rounded-md">

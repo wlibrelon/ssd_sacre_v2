@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Layers, Loader2, Info, X } from 'lucide-react'
 import { SimpleMap } from '@/components/map/SimpleMap'
 import { TileLayer } from '@/components/map/TileLayer'
-import { GeoJSONLayer } from '@/components/map/GeoJSONLayer'
+import { GeoJSONLayer, poligonoRegular, estrelaPoints, dasharrayPara } from '@/components/map/GeoJSONLayer'
 
 // Rótulos amigáveis para os atributos internos que toda feição carrega além
 // dos campos originais do shapefile (ver função obter_feicoes_camada no
@@ -23,9 +23,95 @@ type Camada = {
   fonte_raster_url: string
   estilo: any
   legenda: any
+  campos_exibicao: string[] | null
   zoom_min: number
   zoom_max: number
   visivel_por_padrao: boolean
+}
+
+// Pequeno ícone SVG de legenda que reflete o símbolo de ponto / tipo de
+// linha configurados no estilo da camada, em vez de uma forma fixa — assim
+// a legenda mostra de fato o que aparece no mapa.
+function IconeLegenda({
+  tipo,
+  color,
+  estilo,
+}: {
+  tipo: 'point' | 'line' | 'polygon'
+  color: string
+  estilo: any
+}) {
+  const s = estilo || {}
+
+  if (tipo === 'point') {
+    const cx = 8
+    const cy = 8
+    const r = 6
+    const propsComuns = { fill: color, stroke: '#fff', strokeWidth: 1 }
+    let forma
+    switch (s.pointSymbol) {
+      case 'square':
+        forma = <rect x={cx - r} y={cy - r} width={r * 2} height={r * 2} {...propsComuns} />
+        break
+      case 'triangle':
+        forma = <polygon points={poligonoRegular(cx, cy, r, 3)} {...propsComuns} />
+        break
+      case 'diamond':
+        forma = <polygon points={poligonoRegular(cx, cy, r, 4)} {...propsComuns} />
+        break
+      case 'star':
+        forma = <polygon points={estrelaPoints(cx, cy, r)} {...propsComuns} />
+        break
+      case 'cross':
+        forma = (
+          <path
+            d={`M${cx - r},${cy} L${cx + r},${cy} M${cx},${cy - r} L${cx},${cy + r}`}
+            stroke={color}
+            strokeWidth={2}
+          />
+        )
+        break
+      default:
+        forma = <circle cx={cx} cy={cy} r={r} {...propsComuns} />
+    }
+    return (
+      <svg width={16} height={16} className="shrink-0">
+        {forma}
+      </svg>
+    )
+  }
+
+  if (tipo === 'line') {
+    return (
+      <svg width={20} height={12} className="shrink-0">
+        <line
+          x1={0}
+          y1={6}
+          x2={20}
+          y2={6}
+          stroke={color}
+          strokeWidth={2}
+          strokeDasharray={dasharrayPara(s.lineStyle, 2)}
+        />
+      </svg>
+    )
+  }
+
+  return (
+    <svg width={16} height={16} className="shrink-0">
+      <rect
+        x={1}
+        y={1}
+        width={14}
+        height={14}
+        fill={color}
+        fillOpacity={0.5}
+        stroke={color}
+        strokeWidth={1.5}
+        strokeDasharray={dasharrayPara(s.lineStyle, 1.5)}
+      />
+    </svg>
+  )
 }
 
 export default function Camadas() {
@@ -42,8 +128,13 @@ export default function Camadas() {
   const [extensaoInicial, setExtensaoInicial] = useState<number[] | null>(null)
   // Painel de camadas flutuante: começa expandido.
   const [painelExpandido, setPainelExpandido] = useState(true)
-  // Atributos da feição clicada no mapa, exibidos na janela de detalhes.
-  const [featureSelecionada, setFeatureSelecionada] = useState<Record<string, any> | null>(null)
+  // Atributos da feição clicada no mapa, exibidos na janela de detalhes,
+  // junto com a lista de campos que a camada escolheu exibir (quando vazia,
+  // mostra todos os atributos).
+  const [featureSelecionada, setFeatureSelecionada] = useState<{
+    properties: Record<string, any>
+    camposExibicao: string[] | null
+  } | null>(null)
 
   useEffect(() => {
     supabase
@@ -172,21 +263,7 @@ export default function Camadas() {
                   </div>
                   {c.legenda.map((leg: any, i: number) => (
                     <div key={i} className="flex items-center gap-2">
-                      {leg.type === 'line' && (
-                        <div className="w-5 h-0.5" style={{ backgroundColor: leg.color }} />
-                      )}
-                      {leg.type === 'polygon' && (
-                        <div
-                          className="w-4 h-4 rounded-sm opacity-60 border"
-                          style={{ backgroundColor: leg.color, borderColor: leg.color }}
-                        />
-                      )}
-                      {leg.type === 'point' && (
-                        <div
-                          className="w-3 h-3 rounded-full border border-white shadow-sm"
-                          style={{ backgroundColor: leg.color }}
-                        />
-                      )}
+                      <IconeLegenda tipo={leg.type} color={leg.color} estilo={c.estilo} />
                       <span className="text-xs text-foreground/80">{leg.label}</span>
                     </div>
                   ))}
@@ -231,7 +308,9 @@ export default function Camadas() {
                   key={c.id_camada}
                   data={data}
                   style={c.estilo}
-                  onFeatureClick={setFeatureSelecionada}
+                  onFeatureClick={(properties) =>
+                    setFeatureSelecionada({ properties, camposExibicao: c.campos_exibicao })
+                  }
                 />
               )
             })}
@@ -308,32 +387,39 @@ export default function Camadas() {
       <Dialog open={!!featureSelecionada} onOpenChange={(v) => !v && setFeatureSelecionada(null)}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>{featureSelecionada?.nome || 'Detalhes da Feição'}</DialogTitle>
+            <DialogTitle>{featureSelecionada?.properties?.nome || 'Detalhes da Feição'}</DialogTitle>
           </DialogHeader>
           <ScrollArea className="max-h-[60vh] pr-4">
-            {featureSelecionada && (
-              <dl className="divide-y">
-                {Object.entries(featureSelecionada)
-                  .filter(([chave]) => !CAMPOS_INTERNOS.has(chave) && chave !== 'nome')
-                  .map(([chave, valor]) => (
-                    <div key={chave} className="grid grid-cols-2 gap-2 py-2 text-sm">
-                      <dt className="font-medium text-muted-foreground break-words">{chave}</dt>
-                      <dd className="text-foreground break-words">
-                        {valor === null || valor === undefined || valor === ''
-                          ? '—'
-                          : String(valor)}
-                      </dd>
-                    </div>
-                  ))}
-                {Object.keys(featureSelecionada).filter(
-                  (chave) => !CAMPOS_INTERNOS.has(chave) && chave !== 'nome',
-                ).length === 0 && (
-                  <p className="text-sm text-muted-foreground py-2">
-                    Esta feição não possui outros atributos.
-                  </p>
-                )}
-              </dl>
-            )}
+            {featureSelecionada &&
+              (() => {
+                const { properties, camposExibicao } = featureSelecionada
+                const temSelecao = Array.isArray(camposExibicao) && camposExibicao.length > 0
+                const entradas = Object.entries(properties).filter(([chave]) => {
+                  if (CAMPOS_INTERNOS.has(chave) || chave === 'nome') return false
+                  // Sem seleção configurada na camada, mostra tudo (fallback).
+                  // Com seleção, só os atributos escolhidos pelo admin.
+                  return temSelecao ? camposExibicao!.includes(chave) : true
+                })
+                return (
+                  <dl className="divide-y">
+                    {entradas.map(([chave, valor]) => (
+                      <div key={chave} className="grid grid-cols-2 gap-2 py-2 text-sm">
+                        <dt className="font-medium text-muted-foreground break-words">{chave}</dt>
+                        <dd className="text-foreground break-words">
+                          {valor === null || valor === undefined || valor === ''
+                            ? '—'
+                            : String(valor)}
+                        </dd>
+                      </div>
+                    ))}
+                    {entradas.length === 0 && (
+                      <p className="text-sm text-muted-foreground py-2">
+                        Esta feição não possui outros atributos.
+                      </p>
+                    )}
+                  </dl>
+                )
+              })()}
           </ScrollArea>
         </DialogContent>
       </Dialog>

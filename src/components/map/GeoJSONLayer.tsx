@@ -8,7 +8,13 @@ import { MapContext } from './SimpleMap'
 // (elemento <circle>, mais simples/leve que um polígono aproximado).
 // ---------------------------------------------------------------------------
 
-function poligonoRegular(cx: number, cy: number, r: number, lados: number, rotacaoGraus = -90) {
+export function poligonoRegular(
+  cx: number,
+  cy: number,
+  r: number,
+  lados: number,
+  rotacaoGraus = -90,
+) {
   const pontos: string[] = []
   for (let i = 0; i < lados; i++) {
     const angulo = ((rotacaoGraus + (360 / lados) * i) * Math.PI) / 180
@@ -17,7 +23,7 @@ function poligonoRegular(cx: number, cy: number, r: number, lados: number, rotac
   return pontos.join(' ')
 }
 
-function estrelaPoints(cx: number, cy: number, rOuter: number, pontas = 5) {
+export function estrelaPoints(cx: number, cy: number, rOuter: number, pontas = 5) {
   const rInner = rOuter * 0.45
   const pontos: string[] = []
   for (let i = 0; i < pontas * 2; i++) {
@@ -33,7 +39,7 @@ function estrelaPoints(cx: number, cy: number, rOuter: number, pontas = 5) {
 // para um stroke-dasharray. Usado em linhas e na borda de polígonos.
 // ---------------------------------------------------------------------------
 
-function dasharrayPara(lineStyle: string | undefined, weight: number): string | undefined {
+export function dasharrayPara(lineStyle: string | undefined, weight: number): string | undefined {
   switch (lineStyle) {
     case 'dashed':
       return `${weight * 4},${weight * 2}`
