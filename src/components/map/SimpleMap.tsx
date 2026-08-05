@@ -62,6 +62,10 @@ type MapContextType = {
   project: (lon: number, lat: number) => [number, number]
   unproject: (px: number, py: number) => [number, number]
   bbox: [number, number, number, number]
+  /** true quando o gesto atual (ou o que acabou de terminar) moveu o mapa
+   * além de um pequeno limiar — usado para distinguir um clique real numa
+   * feição de um arrasto que começou/terminou em cima dela. */
+  dragMovedRef: React.MutableRefObject<boolean>
 }
 
 export const MapContext = React.createContext<MapContextType | null>(null)
@@ -154,10 +158,18 @@ export const SimpleMap = ({
 
   const isDragging = useRef(false)
   const lastPos = useRef([0, 0])
+  const dragStartPos = useRef([0, 0])
+  const dragMovedRef = useRef(false)
+  // Distância mínima (px) de movimento para considerar um gesto como
+  // arrasto — abaixo disso, um pointerdown+pointerup vira um clique normal
+  // (ex.: abrir os detalhes de uma feição), mesmo com pequeno tremor do mouse/dedo.
+  const LIMIAR_ARRASTO_PX = 4
 
   const handlePointerDown = (e: React.PointerEvent) => {
     isDragging.current = true
+    dragMovedRef.current = false
     lastPos.current = [e.clientX, e.clientY]
+    dragStartPos.current = [e.clientX, e.clientY]
     ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
   }
 
@@ -166,6 +178,12 @@ export const SimpleMap = ({
     const dx = e.clientX - lastPos.current[0]
     const dy = e.clientY - lastPos.current[1]
     lastPos.current = [e.clientX, e.clientY]
+    if (
+      Math.abs(e.clientX - dragStartPos.current[0]) > LIMIAR_ARRASTO_PX ||
+      Math.abs(e.clientY - dragStartPos.current[1]) > LIMIAR_ARRASTO_PX
+    ) {
+      dragMovedRef.current = true
+    }
     const cx = lon2x(center[0]) * scale
     const cy = lat2y(center[1]) * scale
     setCenter([x2lon((cx - dx) / scale), y2lat((cy - dy) / scale)])
@@ -193,7 +211,7 @@ export const SimpleMap = ({
       onWheel={handleWheel}
     >
       <MapContext.Provider
-        value={{ zoom, center, size, scale, project, unproject, bbox: bboxAtual }}
+        value={{ zoom, center, size, scale, project, unproject, bbox: bboxAtual, dragMovedRef }}
       >
         {size.width > 0 && children}
       </MapContext.Provider>

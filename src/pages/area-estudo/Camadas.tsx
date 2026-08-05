@@ -2,10 +2,17 @@ import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import { Checkbox } from '@/components/ui/checkbox'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Layers, Loader2, Info, X } from 'lucide-react'
 import { SimpleMap } from '@/components/map/SimpleMap'
 import { TileLayer } from '@/components/map/TileLayer'
 import { GeoJSONLayer } from '@/components/map/GeoJSONLayer'
+
+// Rótulos amigáveis para os atributos internos que toda feição carrega além
+// dos campos originais do shapefile (ver função obter_feicoes_camada no
+// banco). Não são um "atributo" do dado em si, por isso ficam de fora da
+// lista de atributos exibida na janela de detalhes.
+const CAMPOS_INTERNOS = new Set(['id_feicao'])
 
 type Camada = {
   id_camada: string
@@ -35,6 +42,8 @@ export default function Camadas() {
   const [extensaoInicial, setExtensaoInicial] = useState<number[] | null>(null)
   // Painel de camadas flutuante: começa expandido.
   const [painelExpandido, setPainelExpandido] = useState(true)
+  // Atributos da feição clicada no mapa, exibidos na janela de detalhes.
+  const [featureSelecionada, setFeatureSelecionada] = useState<Record<string, any> | null>(null)
 
   useEffect(() => {
     supabase
@@ -217,7 +226,14 @@ export default function Camadas() {
               if (zoom < c.zoom_min || zoom > c.zoom_max) return null
               const data = layerData[c.id_camada]
               if (!data) return null
-              return <GeoJSONLayer key={c.id_camada} data={data} style={c.estilo} />
+              return (
+                <GeoJSONLayer
+                  key={c.id_camada}
+                  data={data}
+                  style={c.estilo}
+                  onFeatureClick={setFeatureSelecionada}
+                />
+              )
             })}
         </SimpleMap>
 
@@ -288,6 +304,39 @@ export default function Camadas() {
 
         {renderLegend()}
       </div>
+
+      <Dialog open={!!featureSelecionada} onOpenChange={(v) => !v && setFeatureSelecionada(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{featureSelecionada?.nome || 'Detalhes da Feição'}</DialogTitle>
+          </DialogHeader>
+          <ScrollArea className="max-h-[60vh] pr-4">
+            {featureSelecionada && (
+              <dl className="divide-y">
+                {Object.entries(featureSelecionada)
+                  .filter(([chave]) => !CAMPOS_INTERNOS.has(chave) && chave !== 'nome')
+                  .map(([chave, valor]) => (
+                    <div key={chave} className="grid grid-cols-2 gap-2 py-2 text-sm">
+                      <dt className="font-medium text-muted-foreground break-words">{chave}</dt>
+                      <dd className="text-foreground break-words">
+                        {valor === null || valor === undefined || valor === ''
+                          ? '—'
+                          : String(valor)}
+                      </dd>
+                    </div>
+                  ))}
+                {Object.keys(featureSelecionada).filter(
+                  (chave) => !CAMPOS_INTERNOS.has(chave) && chave !== 'nome',
+                ).length === 0 && (
+                  <p className="text-sm text-muted-foreground py-2">
+                    Esta feição não possui outros atributos.
+                  </p>
+                )}
+              </dl>
+            )}
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

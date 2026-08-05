@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase/client'
+import { listarCamposShapefile } from '@/lib/importacao-camadas'
 import { useToast } from '@/hooks/use-toast'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -42,10 +43,18 @@ export function CamadaFormModal({ open, onOpenChange, camada, categorias, onSucc
     color: '#3388ff',
     weight: 2,
     opacity: 0.5,
+    pointSymbol: 'circle',
+    lineStyle: 'solid',
   })
   const [legenda, setLegenda] = useState<
     { color: string; label: string; type: 'point' | 'line' | 'polygon' }[]
   >([])
+  // Campos (colunas do .dbf) disponíveis para escolher como "Campo de Nome
+  // da Feição". Populado ao selecionar um novo .zip, ou (ao editar uma
+  // camada já importada, sem trocar o arquivo) a partir de uma feição já
+  // gravada no banco.
+  const [camposDisponiveis, setCamposDisponiveis] = useState<string[]>([])
+  const [carregandoCampos, setCarregandoCampos] = useState(false)
 
   useEffect(() => {
     if (open) {
@@ -62,14 +71,61 @@ export function CamadaFormModal({ open, onOpenChange, camada, categorias, onSucc
         epsg_origem: camada?.epsg_origem || 4674,
         campo_nome: camada?.campo_nome || '',
       })
-      setEstilo(
-        camada?.estilo || { fillColor: '#3388ff', color: '#3388ff', weight: 2, opacity: 0.5 },
-      )
+      setEstilo({
+        fillColor: '#3388ff',
+        color: '#3388ff',
+        weight: 2,
+        opacity: 0.5,
+        pointSymbol: 'circle',
+        lineStyle: 'solid',
+        ...(camada?.estilo || {}),
+      })
       setLegenda((camada?.legenda || []).map((l: any) => ({ type: 'point', ...l })))
       setFile(null)
       setProgress(0)
+
+      // Ao editar uma camada vetorial já importada, tenta descobrir os
+      // campos disponíveis a partir de uma feição já gravada — assim o
+      // combobox de "Campo de Nome" funciona mesmo sem reenviar o arquivo.
+      setCamposDisponiveis([])
+      if (camada?.id_camada && camada?.tipo_dados === 'vetorial') {
+        supabase
+          .from('feicoes_geoespaciais')
+          .select('propriedades')
+          .eq('id_camada', camada.id_camada)
+          .limit(1)
+          .then(({ data }) => {
+            const props = data?.[0]?.propriedades
+            if (props && typeof props === 'object') {
+              setCamposDisponiveis(Object.keys(props).sort((a, b) => a.localeCompare(b)))
+            }
+          })
+      }
     }
   }, [open, camada])
+
+  // Ao selecionar um novo arquivo .zip (camada vetorial), lê o .dbf no
+  // navegador para popular o combobox de "Campo de Nome da Feição" com as
+  // colunas reais do shapefile, em vez de depender de digitação manual.
+  useEffect(() => {
+    if (!file || form.tipo_dados !== 'vetorial') return
+    let ativo = true
+    setCarregandoCampos(true)
+    listarCamposShapefile(file)
+      .then((campos) => {
+        if (ativo) setCamposDisponiveis(campos)
+      })
+      .catch((err) => {
+        console.warn('[CamadaFormModal] Não foi possível ler os campos do shapefile:', err)
+        if (ativo) setCamposDisponiveis([])
+      })
+      .finally(() => {
+        if (ativo) setCarregandoCampos(false)
+      })
+    return () => {
+      ativo = false
+    }
+  }, [file, form.tipo_dados])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -260,15 +316,43 @@ export function CamadaFormModal({ open, onOpenChange, camada, categorias, onSucc
 
                   <div className="space-y-2 col-span-2">
                     <Label>Campo de Nome da Feição (opcional)</Label>
-                    <Input
-                      placeholder="ex: id_sacre, nm_municip, codigo..."
-                      value={form.campo_nome}
-                      onChange={(e) => setForm({ ...form, campo_nome: e.target.value })}
-                    />
+                    {camposDisponiveis.length > 0 ? (
+                      <Select
+                        value={form.campo_nome || '__nenhum__'}
+                        onValueChange={(v) =>
+                          setForm({ ...form, campo_nome: v === '__nenhum__' ? '' : v })
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione um campo..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__nenhum__">
+                            (nenhum — usar adivinhação automática)
+                          </SelectItem>
+                          {camposDisponiveis.map((c) => (
+                            <SelectItem key={c} value={c}>
+                              {c}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Input
+                        placeholder={
+                          carregandoCampos
+                            ? 'Lendo campos do arquivo...'
+                            : 'ex: id_sacre, nm_municip, codigo...'
+                        }
+                        disabled={carregandoCampos}
+                        value={form.campo_nome}
+                        onChange={(e) => setForm({ ...form, campo_nome: e.target.value })}
+                      />
+                    )}
                     <p className="text-xs text-muted-foreground">
-                      Nome exato da coluna de atributo do shapefile (.dbf) que deve ser usada como
-                      identificação/rótulo de cada feição ao importar. Se deixar em branco, a
-                      importação tenta adivinhar usando nomes comuns (nome, name, rotulo...).
+                      {camposDisponiveis.length > 0
+                        ? 'Coluna de atributo do shapefile (.dbf) usada como identificação/rótulo de cada feição ao importar.'
+                        : 'Envie o arquivo .zip (ou, ao editar uma camada já importada, isso é lido automaticamente) para escolher entre os campos disponíveis. Se deixar em branco, a importação tenta adivinhar usando nomes comuns (nome, name, rotulo...).'}
                     </p>
                   </div>
 
@@ -310,6 +394,48 @@ export function CamadaFormModal({ open, onOpenChange, camada, categorias, onSucc
                         value={estilo.opacity}
                         onChange={(e) => setEstilo({ ...estilo, opacity: Number(e.target.value) })}
                       />
+                    </div>
+                    <div className="space-y-2 col-span-2">
+                      <Label>Símbolo do Ponto</Label>
+                      <Select
+                        value={estilo.pointSymbol}
+                        onValueChange={(v) => setEstilo({ ...estilo, pointSymbol: v })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="circle">Círculo</SelectItem>
+                          <SelectItem value="square">Quadrado</SelectItem>
+                          <SelectItem value="triangle">Triângulo</SelectItem>
+                          <SelectItem value="star">Estrela</SelectItem>
+                          <SelectItem value="cross">Cruz</SelectItem>
+                          <SelectItem value="diamond">Losango</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        Usado quando a camada é do tipo ponto.
+                      </p>
+                    </div>
+                    <div className="space-y-2 col-span-2">
+                      <Label>Tipo de Linha</Label>
+                      <Select
+                        value={estilo.lineStyle}
+                        onValueChange={(v) => setEstilo({ ...estilo, lineStyle: v })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="solid">Sólida</SelectItem>
+                          <SelectItem value="dashed">Tracejada</SelectItem>
+                          <SelectItem value="dotted">Pontilhada</SelectItem>
+                          <SelectItem value="dashdot">Traço-ponto</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        Usado em linhas e na borda de polígonos.
+                      </p>
                     </div>
                   </div>
                 </>

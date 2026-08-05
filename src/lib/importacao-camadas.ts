@@ -127,6 +127,35 @@ function extrairNome(
 }
 
 // ---------------------------------------------------------------------------
+// Listagem de campos disponíveis num shapefile (.zip) — usada pelo formulário
+// de cadastro para popular o combobox de "Campo de Nome da Feição" com as
+// colunas reais do .dbf, em vez de exigir digitação manual.
+// ---------------------------------------------------------------------------
+
+const MAX_FEATURES_PARA_LISTAR_CAMPOS = 20
+
+export async function listarCamposShapefile(file: File): Promise<string[]> {
+  const zipBytes = new Uint8Array(await file.arrayBuffer())
+  const arquivos = unzipSync(zipBytes)
+  const shpBytes = encontrarArquivoNoZip(arquivos, 'shp')
+  const dbfBytes = encontrarArquivoNoZip(arquivos, 'dbf')
+  if (!shpBytes || !dbfBytes) {
+    throw new Error('O .zip não contém os arquivos .shp e .dbf esperados.')
+  }
+
+  const source = await shapefile.open(shpBytes, dbfBytes)
+  const campos = new Set<string>()
+  let resultado = await source.read()
+  let lidas = 0
+  while (!resultado.done && lidas < MAX_FEATURES_PARA_LISTAR_CAMPOS) {
+    Object.keys(resultado.value.properties || {}).forEach((chave) => campos.add(chave))
+    resultado = await source.read()
+    lidas++
+  }
+  return Array.from(campos).sort((a, b) => a.localeCompare(b))
+}
+
+// ---------------------------------------------------------------------------
 // Fluxo de importação — camadas vetoriais
 // ---------------------------------------------------------------------------
 
