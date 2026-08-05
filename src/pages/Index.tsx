@@ -2,16 +2,25 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Activity, Building2, BarChart2, ArrowRight, ExternalLink } from 'lucide-react'
+import { Activity, Building2, BarChart2, Users, ArrowRight, ExternalLink } from 'lucide-react'
 
 import { supabase } from '@/lib/supabase/client'
 
-// Configuração de cada tabela: nome de exibição, ícone usado no lugar da thumbnail
-// e nome do campo que guarda o link de acesso (varia por tabela)
+// Configuração de cada tabela: nome de exibição, ícone usado no lugar da thumbnail,
+// campo que guarda o link de acesso (varia por tabela) e campo de data usado para
+// ordenar/exibir o item. Congresso e Atividades Sociais usam a data do evento;
+// Mídia e Artigos usam a data de publicação.
 const FONTES = [
-  { tabela: 'artigos', label: 'Artigos', icon: BarChart2, campoLink: 'doi' },
-  { tabela: 'midia', label: 'Mídia', icon: Activity, campoLink: 'link' },
-  { tabela: 'congressos', label: 'Congresso', icon: Building2, campoLink: 'link' },
+  { tabela: 'artigos', label: 'Artigos', icon: BarChart2, campoLink: 'doi', campoData: 'data_pub' },
+  { tabela: 'midia', label: 'Mídia', icon: Activity, campoLink: 'link', campoData: 'data_pub' },
+  { tabela: 'congressos', label: 'Congresso', icon: Building2, campoLink: 'link', campoData: 'data' },
+  {
+    tabela: 'atividades_sociais',
+    label: 'Atividade Social',
+    icon: Users,
+    campoLink: 'link',
+    campoData: 'data_atividade',
+  },
 ]
 
 const MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
@@ -46,6 +55,22 @@ function obterLink(item) {
   return item.fonte.tabela === 'artigos' ? `https://doi.org/${valor}` : valor
 }
 
+// Data usada para ordenar cada item: Congresso e Atividades Sociais ordenam
+// pela data do evento; Mídia e Artigos ordenam pela data de publicação.
+// Se a data do evento não estiver preenchida, cai de volta para data_pub.
+function obterDataOrdenacao(item) {
+  return item[item.fonte.campoData] || item.data_pub
+}
+
+// Texto de data exibido no card: para itens ordenados pela data do evento,
+// mostra "Em <data do evento>"; para os demais, "Publicado em <data_pub>".
+function obterTextoData(item) {
+  const dataEvento = item.fonte.campoData !== 'data_pub' ? item[item.fonte.campoData] : null
+  if (dataEvento) return `Em ${formatarData(dataEvento)}`
+  if (item.fonte.tabela === 'congressos' && item.periodo) return `Em ${item.periodo}`
+  return `Publicado em ${formatarData(item.data_pub)}`
+}
+
 const Index = () => {
   const [atualizacoes, setAtualizacoes] = useState([])
   const [carregando, setCarregando] = useState(true)
@@ -60,9 +85,12 @@ const Index = () => {
         setErro(null)
 
         const resultados = await Promise.all(
-          FONTES.map(({ tabela, campoLink }) =>
-            supabase.from(tabela).select(`titulo, data_pub, ${campoLink}`).eq('ativar', true),
-          ),
+          FONTES.map(({ tabela, campoLink, campoData }) => {
+            // Monta a lista de campos sem duplicar 'data_pub' quando ele já é o campoData
+            const campos = new Set(['titulo', 'data_pub', campoData, campoLink])
+            if (tabela === 'congressos') campos.add('periodo')
+            return supabase.from(tabela).select([...campos].join(', ')).eq('ativar', true)
+          }),
         )
 
         const erroEncontrado = resultados.find((r) => r.error)
@@ -75,8 +103,9 @@ const Index = () => {
           })),
         )
 
-        // Ordena pelas mais recentes primeiro
-        combinadas.sort((a, b) => new Date(b.data_pub) - new Date(a.data_pub))
+        // Ordena pelas mais recentes primeiro: Congresso e Atividades Sociais
+        // pela data do evento, Mídia e Artigos pela data de publicação.
+        combinadas.sort((a, b) => new Date(obterDataOrdenacao(b)) - new Date(obterDataOrdenacao(a)))
 
         if (ativo) setAtualizacoes(combinadas)
       } catch (e) {
@@ -150,9 +179,7 @@ const Index = () => {
                       )}
                     </div>
                     <h3 className="text-sm font-medium leading-tight">{item.titulo}</h3>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Publicado em {formatarData(item.data_pub)}
-                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">{obterTextoData(item)}</p>
                   </div>
                 </>
               )

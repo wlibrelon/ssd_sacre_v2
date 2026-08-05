@@ -147,22 +147,20 @@ export function CongressosAdmin() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Data Principal</Label>
+                  <Label>Período (Ex: 15-18 Novembro, 2025)</Label>
                   <Input
-                    type="date"
-                    value={formData.data || ''}
-                    onChange={(e) => setFormData({ ...formData, data: e.target.value })}
+                    value={formData.periodo || ''}
+                    onChange={(e) => setFormData({ ...formData, periodo: e.target.value })}
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Data de Publicação</Label>
+                  <Label>Organizador</Label>
                   <Input
-                    type="date"
-                    value={formData.data_pub || ''}
-                    onChange={(e) => setFormData({ ...formData, data_pub: e.target.value })}
+                    value={formData.organizador || ''}
+                    onChange={(e) => setFormData({ ...formData, organizador: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
@@ -179,20 +177,25 @@ export function CongressosAdmin() {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label>Organizador</Label>
-                <Input
-                  value={formData.organizador || ''}
-                  onChange={(e) => setFormData({ ...formData, organizador: e.target.value })}
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Data do Evento (uso interno, para ordenação)</Label>
+                  <Input
+                    type="date"
+                    value={formData.data || ''}
+                    onChange={(e) => setFormData({ ...formData, data: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Data de Publicação</Label>
+                  <Input
+                    type="date"
+                    value={formData.data_pub || ''}
+                    onChange={(e) => setFormData({ ...formData, data_pub: e.target.value })}
+                  />
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label>Período (Ex: 15-18 Novembro, 2025)</Label>
-                <Input
-                  value={formData.periodo || ''}
-                  onChange={(e) => setFormData({ ...formData, periodo: e.target.value })}
-                />
-              </div>
+
               <div className="space-y-2">
                 <Label>Local (Ex: São Paulo, SP)</Label>
                 <Input
@@ -221,7 +224,7 @@ export function CongressosAdmin() {
           <TableHeader>
             <TableRow>
               <TableHead>Título</TableHead>
-              <TableHead>Data</TableHead>
+              <TableHead>Período</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Publicação</TableHead>
               <TableHead>Ativo</TableHead>
@@ -232,9 +235,7 @@ export function CongressosAdmin() {
             {items.map((item) => (
               <TableRow key={item.id_congresso}>
                 <TableCell className="font-medium">{item.titulo}</TableCell>
-                <TableCell>
-                  {item.data ? new Date(item.data).toLocaleDateString('pt-BR') : item.periodo}
-                </TableCell>
+                <TableCell>{item.periodo || '-'}</TableCell>
                 <TableCell>{item.status}</TableCell>
                 <TableCell>{toDateInputValue(item.data_pub) || '-'}</TableCell>
                 <TableCell>{item.ativar ? 'Sim' : 'Não'}</TableCell>
