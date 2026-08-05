@@ -132,9 +132,10 @@ const Index = () => {
     <div className="space-y-4">
       {/* Hero Section */}
       <section className="relative rounded-2xl overflow-hidden min-h-[400px] flex items-center justify-center p-8 text-center text-white">
-        {/* Imagem de fundo com overlays */}
+        {/* Imagem de fundo com overlays. bg-primary funciona como fallback
+            caso a imagem ainda não esteja disponível no storage. */}
         <div
-          className="absolute inset-0 z-0 bg-cover bg-center object-cover brightness-110"
+          className="absolute inset-0 z-0 bg-primary bg-cover bg-center object-cover brightness-110"
           style={{
             backgroundImage: `url(${storagePublicUrl('imagens_app', 'image_abertura.png')})`,
           }}
