@@ -81,20 +81,22 @@ export const GeoJSONLayer = ({ data, style, onFeatureClick }: PropsGeoJSONLayer)
     const weight = featureStyle.weight || 2
     const dasharray = dasharrayPara(featureStyle.lineStyle, weight)
 
+    // Handler de clique compartilhado por todos os tipos de geometria.
+    // Ignora o clique se o gesto foi na verdade um arrasto do mapa que
+    // começou ou terminou em cima desta feição.
+    const handleFeatureClick = onFeatureClick
+      ? (e: React.MouseEvent) => {
+          e.stopPropagation()
+          if (dragMovedRef?.current) return
+          onFeatureClick(properties)
+        }
+      : undefined
+
     // pointer-events só é ligado quando há um handler de clique — assim o
     // arrasto do mapa (por baixo do SVG, que tem pointer-events-none) não é
     // afetado quando ninguém está escutando cliques em feições.
-    const eventoClique = onFeatureClick
-      ? {
-          onClick: (e: React.MouseEvent) => {
-            e.stopPropagation()
-            // Ignora o clique se o gesto foi na verdade um arrasto do mapa
-            // que começou ou terminou em cima desta feição.
-            if (dragMovedRef?.current) return
-            onFeatureClick(properties)
-          },
-          style: { pointerEvents: 'auto' as const, cursor: 'pointer' },
-        }
+    const eventoClique = handleFeatureClick
+      ? { onClick: handleFeatureClick, style: { pointerEvents: 'auto' as const, cursor: 'pointer' } }
       : {}
 
     if (geom.type === 'LineString' || geom.type === 'MultiLineString') {
@@ -106,16 +108,28 @@ export const GeoJSONLayer = ({ data, style, onFeatureClick }: PropsGeoJSONLayer)
         })
         .join(' ')
       return (
-        <path
-          key={key}
-          d={d}
-          fill="none"
-          stroke={featureStyle.color || '#3b82f6'}
-          strokeWidth={weight}
-          strokeOpacity={opacidade ?? 1}
-          strokeDasharray={dasharray}
-          {...eventoClique}
-        />
+        <g key={key}>
+          <path
+            d={d}
+            fill="none"
+            stroke={featureStyle.color || '#3b82f6'}
+            strokeWidth={weight}
+            strokeOpacity={opacidade ?? 1}
+            strokeDasharray={dasharray}
+          />
+          {/* Área de clique invisível, mais larga que o traço visível — uma
+              linha fina de 2px é quase impossível de acertar no pixel exato. */}
+          {handleFeatureClick && (
+            <path
+              d={d}
+              fill="none"
+              stroke="transparent"
+              strokeWidth={Math.max(weight + 10, 14)}
+              style={{ pointerEvents: 'stroke', cursor: 'pointer' }}
+              onClick={handleFeatureClick}
+            />
+          )}
+        </g>
       )
     }
 
@@ -157,48 +171,55 @@ export const GeoJSONLayer = ({ data, style, onFeatureClick }: PropsGeoJSONLayer)
               fillOpacity: opacidade ?? 1,
               stroke: featureStyle.color || '#fff',
               strokeWidth: featureStyle.weight || 1,
-              ...eventoClique,
             }
             const symbolKey = `${key}-${i}`
 
+            let simbolo
             switch (featureStyle.pointSymbol) {
               case 'square':
-                return (
-                  <rect
-                    key={symbolKey}
-                    x={x - r}
-                    y={y - r}
-                    width={r * 2}
-                    height={r * 2}
-                    {...propsComuns}
-                  />
-                )
+                simbolo = <rect x={x - r} y={y - r} width={r * 2} height={r * 2} {...propsComuns} />
+                break
               case 'triangle':
-                return (
-                  <polygon key={symbolKey} points={poligonoRegular(x, y, r, 3)} {...propsComuns} />
-                )
+                simbolo = <polygon points={poligonoRegular(x, y, r, 3)} {...propsComuns} />
+                break
               case 'diamond':
-                return (
-                  <polygon key={symbolKey} points={poligonoRegular(x, y, r, 4)} {...propsComuns} />
-                )
+                simbolo = <polygon points={poligonoRegular(x, y, r, 4)} {...propsComuns} />
+                break
               case 'star':
-                return (
-                  <polygon key={symbolKey} points={estrelaPoints(x, y, r)} {...propsComuns} />
-                )
+                simbolo = <polygon points={estrelaPoints(x, y, r)} {...propsComuns} />
+                break
               case 'cross':
-                return (
+                simbolo = (
                   <path
-                    key={symbolKey}
                     d={`M${x - r},${y} L${x + r},${y} M${x},${y - r} L${x},${y + r}`}
                     stroke={propsComuns.fill}
                     strokeWidth={Math.max(2, featureStyle.weight || 2)}
                     strokeOpacity={opacidade ?? 1}
-                    {...eventoClique}
                   />
                 )
+                break
               default:
-                return <circle key={symbolKey} cx={x} cy={y} r={r} {...propsComuns} />
+                simbolo = <circle cx={x} cy={y} r={r} {...propsComuns} />
             }
+
+            return (
+              <g key={symbolKey}>
+                {simbolo}
+                {/* Área de clique invisível, bem maior que o símbolo visual —
+                    um ponto de 5px de raio é quase impossível de acertar no
+                    pixel exato. O símbolo continua pequeno visualmente. */}
+                {handleFeatureClick && (
+                  <circle
+                    cx={x}
+                    cy={y}
+                    r={Math.max(r + 6, 10)}
+                    fill="transparent"
+                    style={{ pointerEvents: 'all', cursor: 'pointer' }}
+                    onClick={handleFeatureClick}
+                  />
+                )}
+              </g>
+            )
           })}
         </g>
       )
