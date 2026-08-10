@@ -7,6 +7,7 @@ import { Layers, Loader2, Info, X } from 'lucide-react'
 import { SimpleMap } from '@/components/map/SimpleMap'
 import { TileLayer } from '@/components/map/TileLayer'
 import { GeoJSONLayer, poligonoRegular, estrelaPoints, dasharrayPara } from '@/components/map/GeoJSONLayer'
+import { normalizarCamposExibicao, type CampoExibicao } from '@/lib/campos-exibicao'
 
 // Rótulos amigáveis para os atributos internos que toda feição carrega além
 // dos campos originais do shapefile (ver função obter_feicoes_camada no
@@ -22,11 +23,27 @@ type Camada = {
   tipo_dados: 'vetorial' | 'raster'
   fonte_raster_url: string
   estilo: any
-  legenda: any
-  campos_exibicao: string[] | null
+  // Tipo de geometria detectado na importação (point/line/polygon), usado
+  // para desenhar automaticamente o símbolo certo na legenda — não depende
+  // mais de configuração manual por camada (ver IconeLegenda/renderLegend).
+  tipo_geometria: 'point' | 'line' | 'polygon' | null
+  campos_exibicao: unknown
   zoom_min: number
   zoom_max: number
   visivel_por_padrao: boolean
+}
+
+/** Deduz o tipo de geometria (ponto/linha/polígono) a partir das feições já
+ * carregadas para a camada — usado como reserva enquanto `tipo_geometria`
+ * ainda não está preenchido no banco (camadas antigas antes do backfill, ou
+ * alguma falha ao gravar na importação). */
+function inferirTipoGeometria(data: any): 'point' | 'line' | 'polygon' | null {
+  const tipo = data?.features?.[0]?.geometry?.type
+  if (!tipo) return null
+  if (tipo.includes('Point')) return 'point'
+  if (tipo.includes('Line')) return 'line'
+  if (tipo.includes('Polygon')) return 'polygon'
+  return null
 }
 
 // Pequeno ícone SVG de legenda que reflete o símbolo de ponto / tipo de
@@ -133,7 +150,7 @@ export default function Camadas() {
   // mostra todos os atributos).
   const [featureSelecionada, setFeatureSelecionada] = useState<{
     properties: Record<string, any>
-    camposExibicao: string[] | null
+    camposExibicao: CampoExibicao[]
   } | null>(null)
 
   useEffect(() => {
@@ -253,20 +270,21 @@ export default function Camadas() {
           <Info className="w-4 h-4 text-primary" /> Legenda
         </h3>
         <ScrollArea className="max-h-64 pr-3">
-          <div className="space-y-4">
+          <div className="space-y-2">
             {activeCamadas.map((c) => {
-              if (!c.legenda || !Array.isArray(c.legenda) || c.legenda.length === 0) return null
+              // Camadas raster não têm um símbolo de ponto/linha/polígono a
+              // desenhar; camadas vetoriais cujo tipo ainda não é conhecido
+              // (aguardando o primeiro carregamento de feições) também ficam
+              // de fora até que o tipo seja determinado — em vez de exigir
+              // configuração manual, como antes.
+              if (c.tipo_dados !== 'vetorial') return null
+              const tipo = c.tipo_geometria || inferirTipoGeometria(layerData[c.id_camada])
+              if (!tipo) return null
+              const cor = c.estilo?.fillColor || c.estilo?.color || '#3388ff'
               return (
-                <div key={c.id_camada} className="space-y-2">
-                  <div className="font-medium text-xs text-muted-foreground border-b pb-1">
-                    {c.nome}
-                  </div>
-                  {c.legenda.map((leg: any, i: number) => (
-                    <div key={i} className="flex items-center gap-2">
-                      <IconeLegenda tipo={leg.type} color={leg.color} estilo={c.estilo} />
-                      <span className="text-xs text-foreground/80">{leg.label}</span>
-                    </div>
-                  ))}
+                <div key={c.id_camada} className="flex items-center gap-2">
+                  <IconeLegenda tipo={tipo} color={cor} estilo={c.estilo} />
+                  <span className="text-xs text-foreground/80">{c.descricao || c.nome}</span>
                 </div>
               )
             })}
@@ -309,7 +327,10 @@ export default function Camadas() {
                   data={data}
                   style={c.estilo}
                   onFeatureClick={(properties) =>
-                    setFeatureSelecionada({ properties, camposExibicao: c.campos_exibicao })
+                    setFeatureSelecionada({
+                      properties,
+                      camposExibicao: normalizarCamposExibicao(c.campos_exibicao),
+                    })
                   }
                 />
               )
@@ -393,17 +414,23 @@ export default function Camadas() {
             {featureSelecionada &&
               (() => {
                 const { properties, camposExibicao } = featureSelecionada
-                const temSelecao = Array.isArray(camposExibicao) && camposExibicao.length > 0
-                const entradas = Object.entries(properties).filter(([chave]) => {
-                  if (CAMPOS_INTERNOS.has(chave) || chave === 'nome') return false
-                  // Sem seleção configurada na camada, mostra tudo (fallback).
-                  // Com seleção, só os atributos escolhidos pelo admin.
-                  return temSelecao ? camposExibicao!.includes(chave) : true
-                })
+                const temNomesDefinidos = camposExibicao.length > 0
+                // Com nomes de exibição definidos, mostra só os atributos
+                // nomeados (nessa ordem, com o rótulo digitado pelo admin).
+                // Sem nenhum nome definido ainda, cai de volta para mostrar
+                // todos os atributos com o nome original (comportamento
+                // padrão de uma camada recém-cadastrada).
+                const entradas: [string, any][] = temNomesDefinidos
+                  ? camposExibicao
+                      .filter(({ campo }) => campo in properties)
+                      .map(({ campo, nome_exibicao }) => [nome_exibicao, properties[campo]])
+                  : Object.entries(properties).filter(
+                      ([chave]) => !CAMPOS_INTERNOS.has(chave) && chave !== 'nome',
+                    )
                 return (
                   <dl className="divide-y">
-                    {entradas.map(([chave, valor]) => (
-                      <div key={chave} className="grid grid-cols-2 gap-2 py-2 text-sm">
+                    {entradas.map(([chave, valor], i) => (
+                      <div key={`${chave}-${i}`} className="grid grid-cols-2 gap-2 py-2 text-sm">
                         <dt className="font-medium text-muted-foreground break-words">{chave}</dt>
                         <dd className="text-foreground break-words">
                           {valor === null || valor === undefined || valor === ''

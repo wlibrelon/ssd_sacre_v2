@@ -163,6 +163,27 @@ export async function listarCamposShapefile(
 }
 
 // ---------------------------------------------------------------------------
+// Detecção do tipo de geometria — usado para desenhar automaticamente o
+// símbolo certo na legenda do mapa (ver Camadas.tsx), sem exigir
+// configuração manual por camada.
+// ---------------------------------------------------------------------------
+
+const TIPOS_GEOMETRIA_PONTO = new Set(['Point', 'MultiPoint'])
+const TIPOS_GEOMETRIA_LINHA = new Set(['LineString', 'MultiLineString'])
+const TIPOS_GEOMETRIA_POLIGONO = new Set(['Polygon', 'MultiPolygon'])
+
+function detectarTipoGeometria(features: any[]): 'point' | 'line' | 'polygon' | null {
+  for (const feature of features) {
+    const tipo = feature?.geometry?.type
+    if (!tipo) continue
+    if (TIPOS_GEOMETRIA_PONTO.has(tipo)) return 'point'
+    if (TIPOS_GEOMETRIA_LINHA.has(tipo)) return 'line'
+    if (TIPOS_GEOMETRIA_POLIGONO.has(tipo)) return 'polygon'
+  }
+  return null
+}
+
+// ---------------------------------------------------------------------------
 // Fluxo de importação — camadas vetoriais
 // ---------------------------------------------------------------------------
 
@@ -214,6 +235,7 @@ export async function importarCamadaVetorial(
     }
 
     const epsgOrigem = camada.epsg_origem || 4674
+    const tipoGeometria = detectarTipoGeometria(features)
     let totalImportado = 0
 
     for (let i = 0; i < features.length; i += TAMANHO_LOTE) {
@@ -244,6 +266,7 @@ export async function importarCamadaVetorial(
     const { error: finalError } = await supabase.rpc('finalizar_importacao_vetorial', {
       p_id_camada: camada.id_camada,
       p_total: totalImportado,
+      p_tipo_geometria: tipoGeometria,
     })
     if (finalError) throw new Error(finalError.message)
 

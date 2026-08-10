@@ -7,7 +7,6 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
-import { Checkbox } from '@/components/ui/checkbox'
 import {
   Select,
   SelectContent,
@@ -18,7 +17,7 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Progress } from '@/components/ui/progress'
-import { Plus, Trash2 } from 'lucide-react'
+import { normalizarCamposExibicao } from '@/lib/campos-exibicao'
 
 export function CamadaFormModal({ open, onOpenChange, camada, categorias, onSuccess }: any) {
   const { toast } = useToast()
@@ -48,18 +47,16 @@ export function CamadaFormModal({ open, onOpenChange, camada, categorias, onSucc
     pointSymbol: 'circle',
     lineStyle: 'solid',
   })
-  const [legenda, setLegenda] = useState<
-    { color: string; label: string; type: 'point' | 'line' | 'polygon' }[]
-  >([])
   // Campos (colunas do .dbf) disponíveis para escolher como "Campo de Nome
   // da Feição". Populado ao selecionar um novo .zip, ou (ao editar uma
   // camada já importada, sem trocar o arquivo) a partir de uma feição já
   // gravada no banco.
   const [camposDisponiveis, setCamposDisponiveis] = useState<string[]>([])
   const [carregandoCampos, setCarregandoCampos] = useState(false)
-  // Atributos escolhidos para aparecer na janela de detalhes ao clicar numa
-  // feição no mapa. Vazio = mostra todos (comportamento de fallback).
-  const [camposExibicao, setCamposExibicao] = useState<string[]>([])
+  // Nome de exibição digitado para cada atributo (campo -> nome amigável).
+  // Só os atributos com um nome preenchido aparecem na janela de detalhes ao
+  // clicar numa feição no mapa; os demais ficam ocultos.
+  const [nomesAtributos, setNomesAtributos] = useState<Record<string, string>>({})
 
   useEffect(() => {
     if (open) {
@@ -86,8 +83,11 @@ export function CamadaFormModal({ open, onOpenChange, camada, categorias, onSucc
         lineStyle: 'solid',
         ...(camada?.estilo || {}),
       })
-      setLegenda((camada?.legenda || []).map((l: any) => ({ type: 'point', ...l })))
-      setCamposExibicao(Array.isArray(camada?.campos_exibicao) ? camada.campos_exibicao : [])
+      const mapaNomes: Record<string, string> = {}
+      normalizarCamposExibicao(camada?.campos_exibicao).forEach(({ campo, nome_exibicao }) => {
+        mapaNomes[campo] = nome_exibicao
+      })
+      setNomesAtributos(mapaNomes)
       setFile(null)
       setProgress(0)
 
@@ -152,10 +152,14 @@ export function CamadaFormModal({ open, onOpenChange, camada, categorias, onSucc
         ativo: form.ativo,
         visivel_por_padrao: form.visivel,
         estilo: form.tipo_dados === 'vetorial' ? estilo : {},
-        legenda,
         epsg_origem: form.tipo_dados === 'vetorial' ? form.epsg_origem : null,
         campo_nome: form.tipo_dados === 'vetorial' ? form.campo_nome.trim() || null : null,
-        campos_exibicao: form.tipo_dados === 'vetorial' ? camposExibicao : [],
+        campos_exibicao:
+          form.tipo_dados === 'vetorial'
+            ? (camposDisponiveis.length > 0 ? camposDisponiveis : Object.keys(nomesAtributos))
+                .map((campo) => ({ campo, nome_exibicao: (nomesAtributos[campo] || '').trim() }))
+                .filter((c) => c.nome_exibicao !== '')
+            : [],
         dbf_encoding: form.tipo_dados === 'vetorial' ? form.dbf_encoding : null,
       }
 
@@ -388,56 +392,66 @@ export function CamadaFormModal({ open, onOpenChange, camada, categorias, onSucc
                       </p>
                     </div>
 
-                    <div className="space-y-2">
+                    <div className="space-y-2 col-span-2">
                       <div className="flex items-center justify-between">
-                        <Label>Atributos na janela de detalhes</Label>
+                        <Label>Nomes de exibição dos atributos</Label>
                         {camposDisponiveis.length > 0 && (
                           <div className="flex gap-2">
                             <button
                               type="button"
                               className="text-xs text-primary hover:underline"
-                              onClick={() => setCamposExibicao([...camposDisponiveis])}
+                              onClick={() =>
+                                setNomesAtributos(
+                                  Object.fromEntries(camposDisponiveis.map((c) => [c, c])),
+                                )
+                              }
                             >
-                              Todos
+                              Usar nomes originais
                             </button>
                             <button
                               type="button"
                               className="text-xs text-muted-foreground hover:underline"
-                              onClick={() => setCamposExibicao([])}
+                              onClick={() => setNomesAtributos({})}
                             >
-                              Nenhum
+                              Limpar
                             </button>
                           </div>
                         )}
                       </div>
-                      <div className="border rounded-md p-2 h-[88px] overflow-y-auto space-y-1">
-                        {camposDisponiveis.length === 0 && (
-                          <p className="text-xs text-muted-foreground p-1">
-                            {carregandoCampos
-                              ? 'Lendo campos do arquivo...'
-                              : 'Envie o .zip (ou edite uma camada já importada) para listar os atributos.'}
-                          </p>
-                        )}
-                        {camposDisponiveis.map((c) => (
-                          <label
-                            key={c}
-                            className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/50 rounded px-1 py-0.5"
-                          >
-                            <Checkbox
-                              checked={camposExibicao.includes(c)}
-                              onCheckedChange={(checked) =>
-                                setCamposExibicao((prev) =>
-                                  checked ? [...prev, c] : prev.filter((x) => x !== c),
-                                )
-                              }
-                            />
-                            {c}
-                          </label>
-                        ))}
+                      <div className="border rounded-md overflow-hidden">
+                        <div className="grid grid-cols-2 gap-2 px-2 py-1 text-xs font-medium text-muted-foreground border-b bg-muted/30">
+                          <span>Atributo</span>
+                          <span>Nome de exibição</span>
+                        </div>
+                        <div className="p-2 h-[140px] overflow-y-auto space-y-1">
+                          {camposDisponiveis.length === 0 && (
+                            <p className="text-xs text-muted-foreground p-1">
+                              {carregandoCampos
+                                ? 'Lendo campos do arquivo...'
+                                : 'Envie o .zip (ou edite uma camada já importada) para listar os atributos.'}
+                            </p>
+                          )}
+                          {camposDisponiveis.map((c) => (
+                            <div key={c} className="grid grid-cols-2 gap-2 items-center">
+                              <span className="text-sm truncate" title={c}>
+                                {c}
+                              </span>
+                              <Input
+                                className="h-8"
+                                placeholder="(oculto no mapa)"
+                                value={nomesAtributos[c] || ''}
+                                onChange={(e) =>
+                                  setNomesAtributos((prev) => ({ ...prev, [c]: e.target.value }))
+                                }
+                              />
+                            </div>
+                          ))}
+                        </div>
                       </div>
                       <p className="text-xs text-muted-foreground">
-                        Quais atributos aparecem ao clicar numa feição no mapa. Nenhum selecionado
-                        = mostra todos.
+                        Nome amigável exibido ao clicar numa feição no mapa. Atributos sem nome
+                        definido ficam ocultos. Se nenhum atributo tiver nome, todos são exibidos
+                        com o nome original (comportamento padrão).
                       </p>
                     </div>
                   </div>
@@ -526,75 +540,6 @@ export function CamadaFormModal({ open, onOpenChange, camada, categorias, onSucc
                   </div>
                 </>
               )}
-
-              <div className="col-span-2 p-4 border rounded-md space-y-4">
-                <div className="flex justify-between items-center">
-                  <Label className="text-base font-semibold">Legenda</Label>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() =>
-                      setLegenda([...legenda, { color: '#000000', label: '', type: 'point' }])
-                    }
-                  >
-                    <Plus className="w-4 h-4 mr-2" /> Adicionar
-                  </Button>
-                </div>
-                {legenda.map((l, i) => (
-                  <div key={i} className="flex gap-2 items-center">
-                    <Input
-                      type="color"
-                      value={l.color}
-                      className="w-16 h-10"
-                      onChange={(e) => {
-                        const n = [...legenda]
-                        n[i].color = e.target.value
-                        setLegenda(n)
-                      }}
-                    />
-                    <Select
-                      value={l.type}
-                      onValueChange={(v) => {
-                        const n = [...legenda]
-                        n[i].type = v as 'point' | 'line' | 'polygon'
-                        setLegenda(n)
-                      }}
-                    >
-                      <SelectTrigger className="w-32 shrink-0">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="point">Ponto</SelectItem>
-                        <SelectItem value="line">Linha</SelectItem>
-                        <SelectItem value="polygon">Polígono</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Input
-                      placeholder="Rótulo"
-                      value={l.label}
-                      onChange={(e) => {
-                        const n = [...legenda]
-                        n[i].label = e.target.value
-                        setLegenda(n)
-                      }}
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setLegenda(legenda.filter((_, idx) => idx !== i))}
-                    >
-                      <Trash2 className="w-4 h-4 text-destructive" />
-                    </Button>
-                  </div>
-                ))}
-                {legenda.length === 0 && (
-                  <p className="text-sm text-muted-foreground text-center">
-                    Nenhum item na legenda
-                  </p>
-                )}
-              </div>
             </div>
           </ScrollArea>
           <div className="flex justify-end gap-2 pt-4 border-t">

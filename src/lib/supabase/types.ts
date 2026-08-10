@@ -229,8 +229,10 @@ export type Database = {
           ativo: boolean | null
           bbox: unknown
           campo_nome: string | null
+          campos_exibicao: Json | null
           categoria: string
           created_at: string | null
+          dbf_encoding: string | null
           descricao: string | null
           epsg_origem: number | null
           estilo: Json | null
@@ -244,6 +246,7 @@ export type Database = {
           status_importacao: string | null
           tabela_origem: string | null
           tipo_dados: string
+          tipo_geometria: string | null
           total_feicoes: number | null
           visivel_por_padrao: boolean | null
           zoom_max: number | null
@@ -253,8 +256,10 @@ export type Database = {
           ativo?: boolean | null
           bbox?: unknown
           campo_nome?: string | null
+          campos_exibicao?: Json | null
           categoria: string
           created_at?: string | null
+          dbf_encoding?: string | null
           descricao?: string | null
           epsg_origem?: number | null
           estilo?: Json | null
@@ -268,6 +273,7 @@ export type Database = {
           status_importacao?: string | null
           tabela_origem?: string | null
           tipo_dados: string
+          tipo_geometria?: string | null
           total_feicoes?: number | null
           visivel_por_padrao?: boolean | null
           zoom_max?: number | null
@@ -277,8 +283,10 @@ export type Database = {
           ativo?: boolean | null
           bbox?: unknown
           campo_nome?: string | null
+          campos_exibicao?: Json | null
           categoria?: string
           created_at?: string | null
+          dbf_encoding?: string | null
           descricao?: string | null
           epsg_origem?: number | null
           estilo?: Json | null
@@ -292,6 +300,7 @@ export type Database = {
           status_importacao?: string | null
           tabela_origem?: string | null
           tipo_dados?: string
+          tipo_geometria?: string | null
           total_feicoes?: number | null
           visivel_por_padrao?: boolean | null
           zoom_max?: number | null
@@ -1724,7 +1733,7 @@ export type Database = {
       enablelongtransactions: { Args: never; Returns: string }
       equals: { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
       finalizar_importacao_vetorial: {
-        Args: { p_id_camada: string; p_total: number }
+        Args: { p_id_camada: string; p_total: number; p_tipo_geometria?: string | null }
         Returns: undefined
       }
       geometry: { Args: { '': string }; Returns: unknown }
