@@ -8,7 +8,12 @@ import { SimpleMap } from '@/components/map/SimpleMap'
 import { TileLayer } from '@/components/map/TileLayer'
 import { GeoJSONLayer, poligonoRegular, estrelaPoints, dasharrayPara } from '@/components/map/GeoJSONLayer'
 import { normalizarCamposExibicao, type CampoExibicao } from '@/lib/campos-exibicao'
-import { construirClassificacao, rotuloCategoria, rotuloClasse } from '@/lib/classificacao'
+import {
+  construirClassificacao,
+  rotuloAtributoClassificacao,
+  rotuloCategoria,
+  rotuloClasse,
+} from '@/lib/classificacao'
 
 // Rótulos amigáveis para os atributos internos que toda feição carrega além
 // dos campos originais do shapefile (ver função obter_feicoes_camada no
@@ -276,7 +281,13 @@ export default function Camadas() {
         <h3 className="font-semibold mb-3 flex items-center gap-2">
           <Info className="w-4 h-4 text-primary" /> Legenda
         </h3>
-        <ScrollArea className="max-h-64 pr-3">
+        {/* type="always" (em vez do padrão "hover" do Radix): sem isso, a
+            barra de rolagem só aparecia com o mouse sobre a legenda, então
+            camadas com muitas categorias (classificação) pareciam "cortadas"
+            em vez de roláveis — o usuário via só o que cabia nos ~256px
+            iniciais e achava que era o total. max-h maior (relativo à altura
+            da tela) + barra sempre visível deixa claro que dá pra rolar. */}
+        <ScrollArea type="always" className="max-h-[55vh] pr-3">
           <div className="space-y-3">
             {activeCamadas.map((c) => {
               // Camadas raster não têm um símbolo de ponto/linha/polígono a
@@ -305,6 +316,9 @@ export default function Camadas() {
                   <div key={c.id_camada} className="space-y-1.5">
                     <div className="font-medium text-xs text-muted-foreground border-b pb-1">
                       {c.descricao || c.nome}
+                      <span className="block font-normal normal-case text-foreground/60">
+                        {rotuloAtributoClassificacao(classificacao)}
+                      </span>
                     </div>
                     {itens.map((item, i) => (
                       <div key={i} className="flex items-center gap-2">

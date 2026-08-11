@@ -8,8 +8,14 @@ export type ClasseGraduada = { min: number; max: number; cor: string; rotulo?: s
 export type ModoGraduado = 'intervalo_igual' | 'quantidade_igual'
 
 export type Classificacao =
-  | { tipo: 'categorico'; campo: string; categorias: CategoriaClassificacao[] }
-  | { tipo: 'graduado'; campo: string; modo: ModoGraduado; classes: ClasseGraduada[] }
+  | { tipo: 'categorico'; campo: string; rotuloCampo?: string; categorias: CategoriaClassificacao[] }
+  | {
+      tipo: 'graduado'
+      campo: string
+      rotuloCampo?: string
+      modo: ModoGraduado
+      classes: ClasseGraduada[]
+    }
 
 /**
  * Monta a classificação "pronta para uso" a partir das colunas gravadas em
@@ -28,12 +34,14 @@ export function construirClassificacao(camada: {
     ? camada.classificacao
     : {}) as any
 
+  const rotuloCampo = typeof dados.rotulo_campo === 'string' && dados.rotulo_campo.trim() ? dados.rotulo_campo.trim() : undefined
+
   if (camada.tipo_classificacao === 'categorico') {
     const categorias: CategoriaClassificacao[] = Array.isArray(dados.categorias)
       ? dados.categorias.filter((c: any) => c && typeof c.valor === 'string' && typeof c.cor === 'string')
       : []
     if (categorias.length === 0) return null
-    return { tipo: 'categorico', campo: camada.campo_classificacao, categorias }
+    return { tipo: 'categorico', campo: camada.campo_classificacao, rotuloCampo, categorias }
   }
 
   if (camada.tipo_classificacao === 'graduado') {
@@ -46,12 +54,20 @@ export function construirClassificacao(camada: {
     return {
       tipo: 'graduado',
       campo: camada.campo_classificacao,
+      rotuloCampo,
       modo: dados.modo === 'quantidade_igual' ? 'quantidade_igual' : 'intervalo_igual',
       classes,
     }
   }
 
   return null
+}
+
+/** Nome amigável do atributo classificado, para mostrar na legenda junto do
+ * nome da camada — usa o rótulo digitado pelo admin, ou cai de volta para o
+ * nome bruto do atributo (`campo`) quando nenhum rótulo foi definido. */
+export function rotuloAtributoClassificacao(classificacao: Classificacao): string {
+  return classificacao.rotuloCampo || classificacao.campo
 }
 
 /** Cor da feição segundo a classificação, ou null se não houver

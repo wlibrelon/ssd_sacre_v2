@@ -73,6 +73,7 @@ export function CamadaFormModal({ open, onOpenChange, camada, categorias, onSucc
   // ver src/lib/classificacao.ts para o formato final gravado no banco.
   const [classificacao, setClassificacao] = useState<{
     campo: string
+    rotuloCampo: string
     tipo: '' | 'categorico' | 'graduado'
     categorias: CategoriaForm[]
     modo: ModoGraduado
@@ -82,6 +83,7 @@ export function CamadaFormModal({ open, onOpenChange, camada, categorias, onSucc
     classes: ClasseForm[]
   }>({
     campo: '',
+    rotuloCampo: '',
     tipo: '',
     categorias: [],
     modo: 'intervalo_igual',
@@ -130,6 +132,8 @@ export function CamadaFormModal({ open, onOpenChange, camada, categorias, onSucc
         : []
       setClassificacao({
         campo: camada?.campo_classificacao || '',
+        rotuloCampo:
+          typeof dadosClassificacao.rotulo_campo === 'string' ? dadosClassificacao.rotulo_campo : '',
         tipo:
           camada?.tipo_classificacao === 'categorico' || camada?.tipo_classificacao === 'graduado'
             ? camada.tipo_classificacao
@@ -343,6 +347,9 @@ export function CamadaFormModal({ open, onOpenChange, camada, categorias, onSucc
           ? {}
           : classificacao.tipo === 'categorico'
             ? {
+                ...(classificacao.rotuloCampo.trim()
+                  ? { rotulo_campo: classificacao.rotuloCampo.trim() }
+                  : {}),
                 categorias: classificacao.categorias
                   .filter((c) => c.valor.trim() !== '')
                   .map((c) => ({
@@ -352,6 +359,9 @@ export function CamadaFormModal({ open, onOpenChange, camada, categorias, onSucc
                   })),
               }
             : {
+                ...(classificacao.rotuloCampo.trim()
+                  ? { rotulo_campo: classificacao.rotuloCampo.trim() }
+                  : {}),
                 modo: classificacao.modo,
                 classes: classificacao.classes.map((c) => ({
                   min: c.min,
@@ -809,6 +819,27 @@ export function CamadaFormModal({ open, onOpenChange, camada, categorias, onSucc
                               </p>
                             </div>
                           </div>
+
+                          {classificacao.tipo !== '' && (
+                            <div className="space-y-2">
+                              <Label>Rótulo do Atributo</Label>
+                              <Input
+                                placeholder={classificacao.campo}
+                                value={classificacao.rotuloCampo}
+                                onChange={(e) =>
+                                  setClassificacao((prev) => ({
+                                    ...prev,
+                                    rotuloCampo: e.target.value,
+                                  }))
+                                }
+                              />
+                              <p className="text-xs text-muted-foreground">
+                                Nome amigável exibido na legenda do mapa junto ao nome da camada
+                                (ex.: "População" em vez de "pop_2020"). Em branco, usa o nome do
+                                atributo.
+                              </p>
+                            </div>
+                          )}
 
                           {classificacao.tipo === 'categorico' && (
                             <div className="space-y-2">
