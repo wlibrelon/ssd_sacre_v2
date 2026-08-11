@@ -1,5 +1,6 @@
 import { useContext } from 'react'
 import { MapContext } from './SimpleMap'
+import { corDaClassificacao } from '@/lib/classificacao'
 
 // ---------------------------------------------------------------------------
 // Símbolos de ponto — cada função devolve os pontos (x,y) de um polígono
@@ -81,6 +82,12 @@ export const GeoJSONLayer = ({ data, style, onFeatureClick }: PropsGeoJSONLayer)
     const weight = featureStyle.weight || 2
     const dasharray = dasharrayPara(featureStyle.lineStyle, weight)
 
+    // Quando a camada tem uma classificação (categórica ou graduada)
+    // configurada, a cor da feição vem do valor do atributo classificado —
+    // tem prioridade sobre a cor fixa do estilo. Sem classificação (ou
+    // valor fora de qualquer categoria/classe), cai para a cor fixa normal.
+    const corClassificada = corDaClassificacao(featureStyle.classificacao, properties)
+
     // Handler de clique compartilhado por todos os tipos de geometria.
     // Ignora o clique se o gesto foi na verdade um arrasto do mapa que
     // começou ou terminou em cima desta feição.
@@ -112,7 +119,7 @@ export const GeoJSONLayer = ({ data, style, onFeatureClick }: PropsGeoJSONLayer)
           <path
             d={d}
             fill="none"
-            stroke={featureStyle.color || '#3b82f6'}
+            stroke={corClassificada || featureStyle.color || '#3b82f6'}
             strokeWidth={weight}
             strokeOpacity={opacidade ?? 1}
             strokeDasharray={dasharray}
@@ -149,7 +156,7 @@ export const GeoJSONLayer = ({ data, style, onFeatureClick }: PropsGeoJSONLayer)
         <path
           key={key}
           d={d}
-          fill={featureStyle.fillColor || featureStyle.color || '#3b82f6'}
+          fill={corClassificada || featureStyle.fillColor || featureStyle.color || '#3b82f6'}
           fillOpacity={opacidade ?? 0.2}
           stroke={featureStyle.color || '#2563eb'}
           strokeWidth={featureStyle.weight || 1}
@@ -167,7 +174,7 @@ export const GeoJSONLayer = ({ data, style, onFeatureClick }: PropsGeoJSONLayer)
             const [x, y] = project(c[0], c[1])
             const r = featureStyle.radius || 5
             const propsComuns = {
-              fill: featureStyle.fillColor || featureStyle.color || '#3b82f6',
+              fill: corClassificada || featureStyle.fillColor || featureStyle.color || '#3b82f6',
               fillOpacity: opacidade ?? 1,
               stroke: featureStyle.color || '#fff',
               strokeWidth: featureStyle.weight || 1,

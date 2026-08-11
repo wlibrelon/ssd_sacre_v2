@@ -228,9 +228,11 @@ export type Database = {
         Row: {
           ativo: boolean | null
           bbox: unknown
+          campo_classificacao: string | null
           campo_nome: string | null
           campos_exibicao: Json | null
           categoria: string
+          classificacao: Json | null
           created_at: string | null
           dbf_encoding: string | null
           descricao: string | null
@@ -245,6 +247,7 @@ export type Database = {
           ordem_exibicao: number | null
           status_importacao: string | null
           tabela_origem: string | null
+          tipo_classificacao: string | null
           tipo_dados: string
           tipo_geometria: string | null
           total_feicoes: number | null
@@ -255,9 +258,11 @@ export type Database = {
         Insert: {
           ativo?: boolean | null
           bbox?: unknown
+          campo_classificacao?: string | null
           campo_nome?: string | null
           campos_exibicao?: Json | null
           categoria: string
+          classificacao?: Json | null
           created_at?: string | null
           dbf_encoding?: string | null
           descricao?: string | null
@@ -272,6 +277,7 @@ export type Database = {
           ordem_exibicao?: number | null
           status_importacao?: string | null
           tabela_origem?: string | null
+          tipo_classificacao?: string | null
           tipo_dados: string
           tipo_geometria?: string | null
           total_feicoes?: number | null
@@ -282,9 +288,11 @@ export type Database = {
         Update: {
           ativo?: boolean | null
           bbox?: unknown
+          campo_classificacao?: string | null
           campo_nome?: string | null
           campos_exibicao?: Json | null
           categoria?: string
+          classificacao?: Json | null
           created_at?: string | null
           dbf_encoding?: string | null
           descricao?: string | null
@@ -299,6 +307,7 @@ export type Database = {
           ordem_exibicao?: number | null
           status_importacao?: string | null
           tabela_origem?: string | null
+          tipo_classificacao?: string | null
           tipo_dados?: string
           tipo_geometria?: string | null
           total_feicoes?: number | null
@@ -1845,7 +1854,15 @@ export type Database = {
       }
       is_admin: { Args: never; Returns: boolean }
       longtransactionsenabled: { Args: never; Returns: boolean }
+      obter_estatisticas_numericas_atributo: {
+        Args: { p_campo: string; p_id_camada: string }
+        Returns: Json
+      }
       obter_extensao_camada: { Args: { p_id_camada: string }; Returns: Json }
+      obter_valores_distintos_atributo: {
+        Args: { p_campo: string; p_id_camada: string }
+        Returns: Json
+      }
       obter_feicoes_camada: {
         Args: {
           p_id_camada: string

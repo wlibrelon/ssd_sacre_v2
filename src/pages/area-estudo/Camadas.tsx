@@ -8,6 +8,7 @@ import { SimpleMap } from '@/components/map/SimpleMap'
 import { TileLayer } from '@/components/map/TileLayer'
 import { GeoJSONLayer, poligonoRegular, estrelaPoints, dasharrayPara } from '@/components/map/GeoJSONLayer'
 import { normalizarCamposExibicao, type CampoExibicao } from '@/lib/campos-exibicao'
+import { construirClassificacao, rotuloCategoria, rotuloClasse } from '@/lib/classificacao'
 
 // Rótulos amigáveis para os atributos internos que toda feição carrega além
 // dos campos originais do shapefile (ver função obter_feicoes_camada no
@@ -28,6 +29,12 @@ type Camada = {
   // mais de configuração manual por camada (ver IconeLegenda/renderLegend).
   tipo_geometria: 'point' | 'line' | 'polygon' | null
   campos_exibicao: unknown
+  // Classificação temática dos valores do atributo principal (categórico ou
+  // graduado) — ver src/lib/classificacao.ts. campo_classificacao null =
+  // camada usa a cor fixa do estilo, sem classificação.
+  campo_classificacao: string | null
+  tipo_classificacao: string | null
+  classificacao: unknown
   zoom_min: number
   zoom_max: number
   visivel_por_padrao: boolean
@@ -270,7 +277,7 @@ export default function Camadas() {
           <Info className="w-4 h-4 text-primary" /> Legenda
         </h3>
         <ScrollArea className="max-h-64 pr-3">
-          <div className="space-y-2">
+          <div className="space-y-3">
             {activeCamadas.map((c) => {
               // Camadas raster não têm um símbolo de ponto/linha/polígono a
               // desenhar; camadas vetoriais cujo tipo ainda não é conhecido
@@ -280,6 +287,35 @@ export default function Camadas() {
               if (c.tipo_dados !== 'vetorial') return null
               const tipo = c.tipo_geometria || inferirTipoGeometria(layerData[c.id_camada])
               if (!tipo) return null
+
+              const classificacao = construirClassificacao(c)
+              // Camada classificada (categórica ou graduada): um item de
+              // legenda por categoria/classe, com o nome da camada como
+              // cabeçalho — em vez de uma cor única representando a camada
+              // inteira.
+              if (classificacao) {
+                const itens =
+                  classificacao.tipo === 'categorico'
+                    ? classificacao.categorias.map((cat) => ({
+                        cor: cat.cor,
+                        rotulo: rotuloCategoria(cat),
+                      }))
+                    : classificacao.classes.map((cl) => ({ cor: cl.cor, rotulo: rotuloClasse(cl) }))
+                return (
+                  <div key={c.id_camada} className="space-y-1.5">
+                    <div className="font-medium text-xs text-muted-foreground border-b pb-1">
+                      {c.descricao || c.nome}
+                    </div>
+                    {itens.map((item, i) => (
+                      <div key={i} className="flex items-center gap-2">
+                        <IconeLegenda tipo={tipo} color={item.cor} estilo={c.estilo} />
+                        <span className="text-xs text-foreground/80">{item.rotulo}</span>
+                      </div>
+                    ))}
+                  </div>
+                )
+              }
+
               const cor = c.estilo?.fillColor || c.estilo?.color || '#3388ff'
               return (
                 <div key={c.id_camada} className="flex items-center gap-2">
@@ -325,7 +361,7 @@ export default function Camadas() {
                 <GeoJSONLayer
                   key={c.id_camada}
                   data={data}
-                  style={c.estilo}
+                  style={{ ...c.estilo, classificacao: construirClassificacao(c) }}
                   onFeatureClick={(properties) =>
                     setFeatureSelecionada({
                       properties,

@@ -17,7 +17,19 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Progress } from '@/components/ui/progress'
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
+import { Plus, Trash2, Wand2 } from 'lucide-react'
 import { normalizarCamposExibicao } from '@/lib/campos-exibicao'
+import {
+  type ModoGraduado,
+  calcularIntervaloIgual,
+  calcularQuantidadeIgual,
+  corCategoricaAutomatica,
+  gerarRampaCores,
+} from '@/lib/classificacao'
+
+type CategoriaForm = { valor: string; cor: string; rotulo: string }
+type ClasseForm = { min: number; max: number; cor: string; rotulo: string }
 
 export function CamadaFormModal({ open, onOpenChange, camada, categorias, onSuccess }: any) {
   const { toast } = useToast()
@@ -57,6 +69,28 @@ export function CamadaFormModal({ open, onOpenChange, camada, categorias, onSucc
   // Só os atributos com um nome preenchido aparecem na janela de detalhes ao
   // clicar numa feição no mapa; os demais ficam ocultos.
   const [nomesAtributos, setNomesAtributos] = useState<Record<string, string>>({})
+  // Classificação temática (bloco "Classificação" no fim do formulário) —
+  // ver src/lib/classificacao.ts para o formato final gravado no banco.
+  const [classificacao, setClassificacao] = useState<{
+    campo: string
+    tipo: '' | 'categorico' | 'graduado'
+    categorias: CategoriaForm[]
+    modo: ModoGraduado
+    numClasses: number
+    corInicial: string
+    corFinal: string
+    classes: ClasseForm[]
+  }>({
+    campo: '',
+    tipo: '',
+    categorias: [],
+    modo: 'intervalo_igual',
+    numClasses: 5,
+    corInicial: '#ffffb2',
+    corFinal: '#bd0026',
+    classes: [],
+  })
+  const [gerandoClassificacao, setGerandoClassificacao] = useState(false)
 
   useEffect(() => {
     if (open) {
@@ -88,6 +122,37 @@ export function CamadaFormModal({ open, onOpenChange, camada, categorias, onSucc
         mapaNomes[campo] = nome_exibicao
       })
       setNomesAtributos(mapaNomes)
+
+      const dadosClassificacao =
+        camada?.classificacao && typeof camada.classificacao === 'object' ? camada.classificacao : {}
+      const classesExistentes = Array.isArray(dadosClassificacao.classes)
+        ? dadosClassificacao.classes
+        : []
+      setClassificacao({
+        campo: camada?.campo_classificacao || '',
+        tipo:
+          camada?.tipo_classificacao === 'categorico' || camada?.tipo_classificacao === 'graduado'
+            ? camada.tipo_classificacao
+            : '',
+        categorias: Array.isArray(dadosClassificacao.categorias)
+          ? dadosClassificacao.categorias.map((c: any) => ({
+              valor: c?.valor ?? '',
+              cor: c?.cor || '#4e79a7',
+              rotulo: c?.rotulo || '',
+            }))
+          : [],
+        modo: dadosClassificacao.modo === 'quantidade_igual' ? 'quantidade_igual' : 'intervalo_igual',
+        numClasses: classesExistentes.length > 0 ? classesExistentes.length : 5,
+        corInicial: '#ffffb2',
+        corFinal: '#bd0026',
+        classes: classesExistentes.map((c: any) => ({
+          min: c?.min ?? 0,
+          max: c?.max ?? 0,
+          cor: c?.cor || '#bd0026',
+          rotulo: c?.rotulo || '',
+        })),
+      })
+
       setFile(null)
       setProgress(0)
 
@@ -136,10 +201,121 @@ export function CamadaFormModal({ open, onOpenChange, camada, categorias, onSucc
     }
   }, [file, form.tipo_dados, form.dbf_encoding])
 
+  function atualizarCategoria(indice: number, patch: Partial<CategoriaForm>) {
+    setClassificacao((prev) => ({
+      ...prev,
+      categorias: prev.categorias.map((c, i) => (i === indice ? { ...c, ...patch } : c)),
+    }))
+  }
+
+  function removerCategoria(indice: number) {
+    setClassificacao((prev) => ({
+      ...prev,
+      categorias: prev.categorias.filter((_, i) => i !== indice),
+    }))
+  }
+
+  function atualizarClasse(indice: number, patch: Partial<ClasseForm>) {
+    setClassificacao((prev) => ({
+      ...prev,
+      classes: prev.classes.map((c, i) => (i === indice ? { ...c, ...patch } : c)),
+    }))
+  }
+
+  function removerClasse(indice: number) {
+    setClassificacao((prev) => ({
+      ...prev,
+      classes: prev.classes.filter((_, i) => i !== indice),
+    }))
+  }
+
+  // Busca os valores distintos do atributo escolhido (via RPC, direto nas
+  // feições já importadas) e gera uma categoria colorida para cada um. Só
+  // funciona para uma camada já salva e importada — para uma camada nova,
+  // o admin pode montar as categorias manualmente.
+  async function gerarCategoriasAutomaticamente() {
+    if (!camada?.id_camada || !classificacao.campo) return
+    setGerandoClassificacao(true)
+    try {
+      const { data, error } = await supabase.rpc('obter_valores_distintos_atributo', {
+        p_id_camada: camada.id_camada,
+        p_campo: classificacao.campo,
+      })
+      if (error) throw error
+      const valores = Array.isArray(data) ? data : []
+      if (valores.length === 0) {
+        toast({
+          title: 'Nenhum valor encontrado',
+          description:
+            'Confira se a camada já foi importada e se o atributo escolhido existe nos dados.',
+          variant: 'destructive',
+        })
+        return
+      }
+      setClassificacao((prev) => ({
+        ...prev,
+        categorias: valores.map((v: any, i: number) => ({
+          valor: String(v.valor),
+          cor: corCategoricaAutomatica(i),
+          rotulo: '',
+        })),
+      }))
+    } catch (err: any) {
+      toast({ title: 'Erro ao gerar categorias', description: err.message, variant: 'destructive' })
+    } finally {
+      setGerandoClassificacao(false)
+    }
+  }
+
+  // Busca min/max/valores numéricos do atributo escolhido (via RPC) e
+  // calcula as faixas (Intervalo Igual ou Quantidade Igual, conforme o modo
+  // escolhido), com uma cor em degradê para cada classe.
+  async function gerarClassesAutomaticamente() {
+    if (!camada?.id_camada || !classificacao.campo) return
+    setGerandoClassificacao(true)
+    try {
+      const { data, error } = await supabase.rpc('obter_estatisticas_numericas_atributo', {
+        p_id_camada: camada.id_camada,
+        p_campo: classificacao.campo,
+      })
+      if (error) throw error
+      const min = (data as any)?.min
+      const max = (data as any)?.max
+      const valores: number[] = Array.isArray((data as any)?.valores) ? (data as any).valores : []
+      if (min == null || max == null || valores.length === 0) {
+        toast({
+          title: 'Nenhum valor numérico encontrado',
+          description:
+            'Confira se a camada já foi importada e se o atributo escolhido tem valores numéricos.',
+          variant: 'destructive',
+        })
+        return
+      }
+      const n = Math.max(2, Math.min(12, classificacao.numClasses || 5))
+      const faixas =
+        classificacao.modo === 'quantidade_igual'
+          ? calcularQuantidadeIgual(valores, n)
+          : calcularIntervaloIgual(min, max, n)
+      const cores = gerarRampaCores(classificacao.corInicial, classificacao.corFinal, faixas.length)
+      setClassificacao((prev) => ({
+        ...prev,
+        numClasses: n,
+        classes: faixas.map(([minF, maxF], i) => ({ min: minF, max: maxF, cor: cores[i], rotulo: '' })),
+      }))
+    } catch (err: any) {
+      toast({ title: 'Erro ao gerar classes', description: err.message, variant: 'destructive' })
+    } finally {
+      setGerandoClassificacao(false)
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     try {
+      const temClassificacao =
+        form.tipo_dados === 'vetorial' && classificacao.tipo !== '' && classificacao.campo !== ''
+
       const data = {
         nome: form.nome,
         descricao: form.descricao,
@@ -161,6 +337,29 @@ export function CamadaFormModal({ open, onOpenChange, camada, categorias, onSucc
                 .filter((c) => c.nome_exibicao !== '')
             : [],
         dbf_encoding: form.tipo_dados === 'vetorial' ? form.dbf_encoding : null,
+        campo_classificacao: temClassificacao ? classificacao.campo : null,
+        tipo_classificacao: temClassificacao ? classificacao.tipo : null,
+        classificacao: !temClassificacao
+          ? {}
+          : classificacao.tipo === 'categorico'
+            ? {
+                categorias: classificacao.categorias
+                  .filter((c) => c.valor.trim() !== '')
+                  .map((c) => ({
+                    valor: c.valor.trim(),
+                    cor: c.cor,
+                    ...(c.rotulo.trim() ? { rotulo: c.rotulo.trim() } : {}),
+                  })),
+              }
+            : {
+                modo: classificacao.modo,
+                classes: classificacao.classes.map((c) => ({
+                  min: c.min,
+                  max: c.max,
+                  cor: c.cor,
+                  ...(c.rotulo.trim() ? { rotulo: c.rotulo.trim() } : {}),
+                })),
+              },
       }
 
       let id = camada?.id_camada
@@ -537,6 +736,337 @@ export function CamadaFormModal({ open, onOpenChange, camada, categorias, onSucc
                         Usado em linhas e na borda de polígonos.
                       </p>
                     </div>
+                  </div>
+
+                  <div className="col-span-2">
+                    <Accordion type="single" collapsible>
+                      <AccordionItem value="classificacao" className="border rounded-md px-4">
+                        <AccordionTrigger className="text-base font-semibold hover:no-underline">
+                          Classificação
+                        </AccordionTrigger>
+                        <AccordionContent className="space-y-4">
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label>Atributo Principal</Label>
+                              {camposDisponiveis.length > 0 ? (
+                                <Select
+                                  value={classificacao.campo || '__nenhum__'}
+                                  onValueChange={(v) =>
+                                    setClassificacao((prev) => ({
+                                      ...prev,
+                                      campo: v === '__nenhum__' ? '' : v,
+                                      tipo: v === '__nenhum__' ? '' : prev.tipo,
+                                    }))
+                                  }
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Selecione um atributo..." />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="__nenhum__">(nenhum)</SelectItem>
+                                    {camposDisponiveis.map((c) => (
+                                      <SelectItem key={c} value={c}>
+                                        {c}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              ) : (
+                                <p className="text-xs text-muted-foreground">
+                                  Envie o .zip (ou edite uma camada já importada) para listar os
+                                  atributos.
+                                </p>
+                              )}
+                              <p className="text-xs text-muted-foreground">
+                                Atributo usado para classificar as feições — pode ser diferente do
+                                "Campo de Nome da Feição".
+                              </p>
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Tipo de Classificação</Label>
+                              <Select
+                                value={classificacao.tipo || 'nenhuma'}
+                                onValueChange={(v) =>
+                                  setClassificacao((prev) => ({
+                                    ...prev,
+                                    tipo: v === 'nenhuma' ? '' : (v as 'categorico' | 'graduado'),
+                                  }))
+                                }
+                                disabled={!classificacao.campo}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="nenhuma">Nenhuma (cor única)</SelectItem>
+                                  <SelectItem value="categorico">Categórico</SelectItem>
+                                  <SelectItem value="graduado">Graduado</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <p className="text-xs text-muted-foreground">
+                                Categórico: uma cor sólida por valor. Graduado: cores em faixas de
+                                valores numéricos.
+                              </p>
+                            </div>
+                          </div>
+
+                          {classificacao.tipo === 'categorico' && (
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between">
+                                <Label>Categorias</Label>
+                                <div className="flex gap-2">
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={!camada?.id_camada || gerandoClassificacao}
+                                    onClick={gerarCategoriasAutomaticamente}
+                                  >
+                                    <Wand2 className="w-4 h-4 mr-2" />
+                                    {gerandoClassificacao ? 'Gerando...' : 'Gerar a partir dos dados'}
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="icon"
+                                    onClick={() =>
+                                      setClassificacao((prev) => ({
+                                        ...prev,
+                                        categorias: [
+                                          ...prev.categorias,
+                                          {
+                                            valor: '',
+                                            cor: corCategoricaAutomatica(prev.categorias.length),
+                                            rotulo: '',
+                                          },
+                                        ],
+                                      }))
+                                    }
+                                  >
+                                    <Plus className="w-4 h-4" />
+                                  </Button>
+                                </div>
+                              </div>
+                              {!camada?.id_camada && (
+                                <p className="text-xs text-muted-foreground">
+                                  Salve a camada e importe os dados primeiro para gerar categorias
+                                  automaticamente — ou adicione manualmente.
+                                </p>
+                              )}
+                              <div className="border rounded-md overflow-hidden">
+                                <div className="grid grid-cols-[1fr_72px_1fr_32px] gap-2 px-2 py-1 text-xs font-medium text-muted-foreground border-b bg-muted/30">
+                                  <span>Valor</span>
+                                  <span>Cor</span>
+                                  <span>Rótulo (opcional)</span>
+                                  <span />
+                                </div>
+                                <div className="p-2 max-h-[180px] overflow-y-auto space-y-1">
+                                  {classificacao.categorias.length === 0 && (
+                                    <p className="text-xs text-muted-foreground p-1">
+                                      Nenhuma categoria configurada.
+                                    </p>
+                                  )}
+                                  {classificacao.categorias.map((cat, i) => (
+                                    <div
+                                      key={i}
+                                      className="grid grid-cols-[1fr_72px_1fr_32px] gap-2 items-center"
+                                    >
+                                      <Input
+                                        className="h-8"
+                                        value={cat.valor}
+                                        onChange={(e) => atualizarCategoria(i, { valor: e.target.value })}
+                                      />
+                                      <Input
+                                        type="color"
+                                        className="h-8 w-full"
+                                        value={cat.cor}
+                                        onChange={(e) => atualizarCategoria(i, { cor: e.target.value })}
+                                      />
+                                      <Input
+                                        className="h-8"
+                                        placeholder={cat.valor}
+                                        value={cat.rotulo}
+                                        onChange={(e) =>
+                                          atualizarCategoria(i, { rotulo: e.target.value })
+                                        }
+                                      />
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8"
+                                        onClick={() => removerCategoria(i)}
+                                      >
+                                        <Trash2 className="w-4 h-4 text-destructive" />
+                                      </Button>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {classificacao.tipo === 'graduado' && (
+                            <div className="space-y-3">
+                              <div className="grid grid-cols-4 gap-4">
+                                <div className="space-y-2 col-span-2">
+                                  <Label>Modo</Label>
+                                  <Select
+                                    value={classificacao.modo}
+                                    onValueChange={(v) =>
+                                      setClassificacao((prev) => ({ ...prev, modo: v as ModoGraduado }))
+                                    }
+                                  >
+                                    <SelectTrigger>
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="intervalo_igual">Intervalo Igual</SelectItem>
+                                      <SelectItem value="quantidade_igual">Quantidade Igual</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div className="space-y-2">
+                                  <Label>Nº de Classes</Label>
+                                  <Input
+                                    type="number"
+                                    min={2}
+                                    max={12}
+                                    value={classificacao.numClasses}
+                                    onChange={(e) =>
+                                      setClassificacao((prev) => ({
+                                        ...prev,
+                                        numClasses: Number(e.target.value),
+                                      }))
+                                    }
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label>Rampa de Cores</Label>
+                                  <div className="flex gap-1">
+                                    <Input
+                                      type="color"
+                                      className="h-10 w-full"
+                                      value={classificacao.corInicial}
+                                      onChange={(e) =>
+                                        setClassificacao((prev) => ({
+                                          ...prev,
+                                          corInicial: e.target.value,
+                                        }))
+                                      }
+                                    />
+                                    <Input
+                                      type="color"
+                                      className="h-10 w-full"
+                                      value={classificacao.corFinal}
+                                      onChange={(e) =>
+                                        setClassificacao((prev) => ({
+                                          ...prev,
+                                          corFinal: e.target.value,
+                                        }))
+                                      }
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  disabled={!camada?.id_camada || gerandoClassificacao}
+                                  onClick={gerarClassesAutomaticamente}
+                                >
+                                  <Wand2 className="w-4 h-4 mr-2" />
+                                  {gerandoClassificacao ? 'Gerando...' : 'Gerar classes a partir dos dados'}
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="icon"
+                                  onClick={() =>
+                                    setClassificacao((prev) => ({
+                                      ...prev,
+                                      classes: [...prev.classes, { min: 0, max: 0, cor: '#bd0026', rotulo: '' }],
+                                    }))
+                                  }
+                                >
+                                  <Plus className="w-4 h-4" />
+                                </Button>
+                              </div>
+                              {!camada?.id_camada && (
+                                <p className="text-xs text-muted-foreground">
+                                  Salve a camada e importe os dados primeiro para gerar as classes
+                                  automaticamente — ou adicione manualmente.
+                                </p>
+                              )}
+                              <div className="border rounded-md overflow-hidden">
+                                <div className="grid grid-cols-[1fr_1fr_72px_1fr_32px] gap-2 px-2 py-1 text-xs font-medium text-muted-foreground border-b bg-muted/30">
+                                  <span>Min</span>
+                                  <span>Max</span>
+                                  <span>Cor</span>
+                                  <span>Rótulo (opcional)</span>
+                                  <span />
+                                </div>
+                                <div className="p-2 max-h-[180px] overflow-y-auto space-y-1">
+                                  {classificacao.classes.length === 0 && (
+                                    <p className="text-xs text-muted-foreground p-1">
+                                      Nenhuma classe configurada.
+                                    </p>
+                                  )}
+                                  {classificacao.classes.map((cl, i) => (
+                                    <div
+                                      key={i}
+                                      className="grid grid-cols-[1fr_1fr_72px_1fr_32px] gap-2 items-center"
+                                    >
+                                      <Input
+                                        className="h-8"
+                                        type="number"
+                                        value={cl.min}
+                                        onChange={(e) =>
+                                          atualizarClasse(i, { min: Number(e.target.value) })
+                                        }
+                                      />
+                                      <Input
+                                        className="h-8"
+                                        type="number"
+                                        value={cl.max}
+                                        onChange={(e) =>
+                                          atualizarClasse(i, { max: Number(e.target.value) })
+                                        }
+                                      />
+                                      <Input
+                                        type="color"
+                                        className="h-8 w-full"
+                                        value={cl.cor}
+                                        onChange={(e) => atualizarClasse(i, { cor: e.target.value })}
+                                      />
+                                      <Input
+                                        className="h-8"
+                                        placeholder={`${cl.min} – ${cl.max}`}
+                                        value={cl.rotulo}
+                                        onChange={(e) =>
+                                          atualizarClasse(i, { rotulo: e.target.value })
+                                        }
+                                      />
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8"
+                                        onClick={() => removerClasse(i)}
+                                      >
+                                        <Trash2 className="w-4 h-4 text-destructive" />
+                                      </Button>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </AccordionContent>
+                      </AccordionItem>
+                    </Accordion>
                   </div>
                 </>
               )}
