@@ -8,13 +8,6 @@ import { Button } from '@/components/ui/button'
 import { useToast } from '@/hooks/use-toast'
 import { Input } from '@/components/ui/input'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import {
   Table,
   TableBody,
   TableCell,
@@ -33,12 +26,11 @@ import {
 import { ArtigosTab } from '@/components/gestao-projetos/ArtigosTab'
 import { MidiaAdmin } from '@/components/admin/MidiaAdmin'
 import { CongressosAdmin } from '@/components/admin/CongressosAdmin'
+import { UsuariosAdmin } from '@/components/admin/UsuariosAdmin'
 
 export default function Dashboard() {
   const { user, profile, isAuthenticated, loading } = useAuth()
   const { toast } = useToast()
-  const [pendingUsers, setPendingUsers] = useState<any[]>([])
-  const [groups, setGroups] = useState<any[]>([])
   const [documents, setDocuments] = useState<any[]>([])
   const [paginasEstudo, setPaginasEstudo] = useState<
     { id: number; titulo: string; conteudo_html: string; ordem: number }[]
@@ -53,15 +45,6 @@ export default function Dashboard() {
   }, [isAuthenticated])
 
   const loadData = async () => {
-    const { data: usersData } = await supabase
-      .from('perfis_usuarios')
-      .select('*')
-      .eq('status', 'pendente')
-    if (usersData) setPendingUsers(usersData)
-
-    const { data: groupsData } = await supabase.from('grupo_acesso').select('*')
-    if (groupsData) setGroups(groupsData)
-
     const { data: docsData } = await supabase
       .from('documentos_publicos')
       .select('*')
@@ -74,13 +57,6 @@ export default function Dashboard() {
       .order('ordem', { ascending: true })
       .order('id', { ascending: true })
     if (paginasData) setPaginasEstudo(paginasData)
-  }
-
-  const approveUser = async (id: string, id_ga: number) => {
-    if (!id_ga) return toast({ title: 'Selecione um grupo', variant: 'destructive' })
-    await supabase.from('perfis_usuarios').update({ status: 'aprovado', id_ga }).eq('id', id)
-    toast({ title: 'Usuário aprovado' })
-    loadData()
   }
 
   const updatePaginaHtml = (id: number, html: string) => {
@@ -205,7 +181,7 @@ export default function Dashboard() {
       <Tabs defaultValue="divulgacao" className="w-full">
         <TabsList className="flex flex-wrap h-auto gap-2 mb-6">
           <TabsTrigger value="divulgacao">Divulgação</TabsTrigger>
-          {isAdmin && <TabsTrigger value="usuarios">Aprovação de Usuários</TabsTrigger>}
+          {isAdmin && <TabsTrigger value="usuarios">Usuários da plataforma</TabsTrigger>}
           {isAdmin && <TabsTrigger value="conteudo">Gestão de Conteúdo</TabsTrigger>}
           {isAdmin && <TabsTrigger value="documentos">Documentos Públicos</TabsTrigger>}
         </TabsList>
@@ -256,68 +232,7 @@ export default function Dashboard() {
         {isAdmin && (
           <>
             <TabsContent value="usuarios">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Usuários Pendentes</CardTitle>
-                  <CardDescription>
-                    Aprove os usuários e defina seus grupos de acesso.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="overflow-auto max-h-[400px]">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Nome</TableHead>
-                          <TableHead>E-mail</TableHead>
-                          <TableHead>Organização</TableHead>
-                          <TableHead>Grupo</TableHead>
-                          <TableHead>Ação</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {pendingUsers.map((u) => (
-                          <TableRow key={u.id}>
-                            <TableCell>{u.nome}</TableCell>
-                            <TableCell>{u.email}</TableCell>
-                            <TableCell>{u.organizacao}</TableCell>
-                            <TableCell>
-                              <Select
-                                onValueChange={(val) => {
-                                  u.selectedGa = parseInt(val)
-                                }}
-                              >
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Selecione..." />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {groups.map((g) => (
-                                    <SelectItem key={g.id_ga} value={g.id_ga.toString()}>
-                                      {g.nome_grupo}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </TableCell>
-                            <TableCell>
-                              <Button size="sm" onClick={() => approveUser(u.id, u.selectedGa)}>
-                                Aprovar
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                        {pendingUsers.length === 0 && (
-                          <TableRow>
-                            <TableCell colSpan={5} className="text-center">
-                              Nenhum usuário pendente.
-                            </TableCell>
-                          </TableRow>
-                        )}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </CardContent>
-              </Card>
+              <UsuariosAdmin />
             </TabsContent>
 
             <TabsContent value="conteudo">
