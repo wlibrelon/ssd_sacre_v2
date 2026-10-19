@@ -66,30 +66,24 @@ const TEXTO_SELECAO_SIMULACAO =
   'Selecione as fontes de água que farão parte da simulação, combinando cenários climáticos ou de demanda com estratégias de intervenção. Cada combinação corresponde a um conjunto de dados previamente importado na base — só é possível adicionar combinações que já possuam dados de simulação disponíveis.'
 
 const TEXTO_PARAMETROS_SISTEMA =
-  'Defina os parâmetros gerais do modelo de abastecimento: o ponto de partida da população atendida, o comportamento das perdas no sistema ao longo do tempo e os limiares que classificam a situação de segurança hídrica da região (Seguro, Alerta, Crise ou Colapso).'
+  'Defina os limiares que classificam a segurança hídrica da região e escolha se a demanda e as perdas serão calculadas pelo sistema ou lidas dos dados importados.'
 
-const TEXTO_PROJECAO_DEMANDA =
-  'Quando a demanda ou as perdas são calculadas automaticamente, selecione aqui os cenários de referência — crescimento populacional e consumo per capita — que serão usados para projetar a demanda futura.'
+const TEXTO_INDICE_SEGURANCA =
+  'O Índice de Segurança Hídrica é a razão entre o volume distribuído e a demanda, de 0 a 1 (1 = demanda totalmente atendida). Os limiares definem as faixas que classificam cada mês da simulação. Devem obedecer à ordem Alerta > Crise > Colapso.'
 
 const TEXTO_DEMANDA_AUTOMATICA =
-  'Quando marcada, a demanda de cada mês é calculada pelo sistema: a população inicial cresce a cada ano conforme o cenário de demanda escolhido e é multiplicada pelo consumo per capita do cenário de consumo. Quando desmarcada, são usados os valores de demanda importados com os dados de simulação.'
+  'A demanda de cada mês é calculada pelo sistema: a população inicial cresce a cada ano conforme o cenário de demanda e é multiplicada pelo consumo per capita do cenário de consumo. Desmarcada, são usados os valores de demanda importados.'
 const TEXTO_PERDAS_AUTOMATICAS =
-  'Quando marcada, o percentual de perdas é calculado pelo sistema: mantém-se no valor inicial até a data de início da redução e, a partir dela, diminui de forma linear até atingir a meta do cenário de perdas escolhido no fim do período simulado. Quando desmarcada, são usados os valores de perdas importados com os dados de simulação.'
+  'O percentual de perdas é calculado pelo sistema: mantém-se no valor inicial até o início da redução e, a partir dele, diminui de forma linear até a meta do cenário de perdas no fim do período simulado. Desmarcada, são usados os valores de perdas importados.'
 
-// ── Textos de ajuda exibidos abaixo dos campos da aba
-// "Parâmetros do Sistema de Abastecimento" ──
-const AJUDA_POP_INICIAL =
-  'População atendida no início do período simulado. Usada apenas com a Demanda automática, como ponto de partida da projeção populacional.'
-const AJUDA_PERC_INICIAL_PERDAS =
-  'Percentual de perdas na distribuição no início do período. Usado apenas com as Perdas automáticas, como ponto de partida da redução até a meta.'
+// ── Textos de ajuda exibidos abaixo dos campos da aba "Parâmetros da simulação" ──
+const AJUDA_POP_INICIAL = 'População atendida no início do período simulado.'
+const AJUDA_PERC_INICIAL_PERDAS = 'Perdas na distribuição no início do período.'
 const AJUDA_INICIO_PERDAS =
-  'Mês em que começa a redução de perdas (formato AAAA/MM). Antes dele, as perdas permanecem no percentual inicial. Usado apenas com as Perdas automáticas.'
-const AJUDA_LIMIAR_ALERTA =
-  'O Índice de Segurança Hídrica é a razão entre o volume distribuído e a demanda (1 = demanda totalmente atendida). Índice igual ou acima deste valor: Seguro. Abaixo dele: Alerta.'
-const AJUDA_LIMIAR_CRISE =
-  'Abaixo deste valor do índice, a situação passa de Alerta para Crise — o volume distribuído atende uma parcela menor da demanda.'
-const AJUDA_LIMIAR_COLAPSO =
-  'Abaixo deste valor do índice, a situação passa de Crise para Colapso, o nível mais crítico de déficit de abastecimento.'
+  'Mês em que começa a redução (AAAA/MM). Antes dele, as perdas ficam no percentual inicial.'
+const AJUDA_LIMIAR_ALERTA = 'Abaixo deste valor: Alerta. Igual ou acima: Seguro.'
+const AJUDA_LIMIAR_CRISE = 'Abaixo deste valor: Crise.'
+const AJUDA_LIMIAR_COLAPSO = 'Abaixo deste valor: Colapso.'
 
 type StatusSeg = 'seguro' | 'alerta' | 'crise' | 'colapso'
 
@@ -350,6 +344,37 @@ const TooltipSeguranca = ({
 // entre re-renders.
 // Exibe, abaixo de um combobox de cenário, a descrição (premissa) cadastrada
 // para o cenário selecionado. Não renderiza nada se não houver descrição.
+// Faixa colorida com as quatro classes do índice, conforme os limiares atuais.
+function FaixasIndice({ alerta, crise, colapso }: { alerta: number; crise: number; colapso: number }) {
+  const lim = (v: number) => Math.min(1, Math.max(0, v))
+  const [a, c, k] = [lim(alerta), lim(crise), lim(colapso)]
+  const f = (v: number) => v.toLocaleString('pt-BR', { maximumFractionDigits: 2 })
+  const faixas: { st: StatusSeg; w: number; txt: string }[] = [
+    { st: 'colapso', w: k, txt: `< ${f(k)}` },
+    { st: 'crise', w: c - k, txt: `${f(k)}–${f(c)}` },
+    { st: 'alerta', w: a - c, txt: `${f(c)}–${f(a)}` },
+    { st: 'seguro', w: 1 - a, txt: `≥ ${f(a)}` },
+  ]
+  return (
+    <div className="space-y-1">
+      <div className="flex h-3 w-full overflow-hidden rounded-full border">
+        {faixas.map((x) => (
+          <div key={x.st} className={STATUS_BADGE[x.st].split(' ')[0]} style={{ width: `${x.w * 100}%` }} />
+        ))}
+      </div>
+      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
+        {faixas.map((x) => (
+          <span key={x.st} className="inline-flex items-center gap-1">
+            <span className={`inline-block h-2 w-2 rounded-full ${STATUS_BADGE[x.st].split(' ')[0]}`} />
+            <span className="font-medium">{STATUS_LABEL[x.st]}</span>
+            <span className="text-muted-foreground">{x.txt}</span>
+          </span>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function DescricaoCenario({ item }: { item?: any }) {
   if (!item?.descricao) return null
   return <p className="text-xs text-muted-foreground -mt-1">{item.descricao}</p>
@@ -1113,7 +1138,32 @@ export default function Cenarios() {
       ? '–'
       : Number(v).toLocaleString('pt-BR', { maximumFractionDigits: 2 })
 
-  const temAutomatico = !!(simObj?.demanda_auto || simObj?.perdas_auto)
+  // Há alterações nos parâmetros ainda não salvas? A simulação usa sempre a
+  // configuração salva (simObj), então a execução fica bloqueada até salvar.
+  const simAlterada = (() => {
+    if (!simEdit || !simObj) return false
+    const norm = (v: any) => (v === undefined || v === null ? '' : String(v))
+    return Object.keys(simEdit).some(
+      (k) => k !== 'id_s' && k !== 'descricao' && norm(simEdit[k]) !== norm(simObj[k]),
+    )
+  })()
+
+  // Os campos de demanda/perdas reagem ao que está marcado na tela (rascunho);
+  // a execução só é liberada depois de salvar, o que garante coerência.
+  // Resultados refletem a configuração salva (a que foi usada na simulação)
+  const temAutomaticoSalvo = !!(simObj?.demanda_auto || simObj?.perdas_auto)
+
+  // Validação dos limiares: valores entre 0 e 1, em ordem Alerta > Crise > Colapso
+  const erroLimiares = (() => {
+    if (!simEdit) return null
+    const vals = [simEdit.limiar_alerta, simEdit.limiar_crise, simEdit.limiar_colapso]
+    if (vals.some((v) => v === '' || v === null || v === undefined || Number.isNaN(Number(v))))
+      return 'Preencha os três limiares.'
+    const [a, c, k] = vals.map(Number)
+    if (!(a > c && c > k))
+      return 'Os limiares devem obedecer à ordem Alerta > Crise > Colapso.'
+    return null
+  })()
 
   return (
     <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
@@ -1141,7 +1191,7 @@ export default function Cenarios() {
             <Tabs defaultValue="fontes" className="w-full">
               <TabsList className="flex-wrap h-auto">
                 <TabsTrigger value="fontes">Seleção da Simulação</TabsTrigger>
-                <TabsTrigger value="parametros">Parâmetros do Sistema de Abastecimento</TabsTrigger>
+                <TabsTrigger value="parametros">Parâmetros da simulação</TabsTrigger>
                 <TabsTrigger value="periodo">Período</TabsTrigger>
               </TabsList>
 
@@ -1492,43 +1542,21 @@ export default function Cenarios() {
                 </div>
               </TabsContent>
 
-              {/* ── TAB: Parâmetros do Modelo ── */}
+              {/* ── TAB: Parâmetros da simulação ── */}
               <TabsContent value="parametros" className="space-y-4 pt-4">
                 <p className="text-xs text-muted-foreground -mt-1 mb-2">
                   {TEXTO_PARAMETROS_SISTEMA}
                 </p>
                 {simEdit && (
-                  <>
-                    <div className="space-y-6">
-                      {/* Parâmetros gerais do modelo */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                        <SimField
-                          label="População Inicial (hab.)"
-                          field="pop_inicial"
-                          type="number"
-                          ajuda={AJUDA_POP_INICIAL}
-                          simEdit={simEdit}
-                          setSimEdit={setSimEdit}
-                        />
-                        <SimField
-                          label="Perc. Inicial de Perdas (%)"
-                          field="perc_inicial_perdas"
-                          type="number"
-                          ajuda={AJUDA_PERC_INICIAL_PERDAS}
-                          simEdit={simEdit}
-                          setSimEdit={setSimEdit}
-                        />
-                        <SimField
-                          label="Início da Redução de Perdas"
-                          field="inicio_perdas"
-                          type="text"
-                          ajuda={AJUDA_INICIO_PERDAS}
-                          simEdit={simEdit}
-                          setSimEdit={setSimEdit}
-                        />
+                  <div className="space-y-4">
+                    {/* Quadro: limiares do Índice de Segurança Hídrica */}
+                    <div className="rounded-lg border p-4 space-y-4">
+                      <div>
+                        <h3 className="text-sm font-semibold text-primary">
+                          Parâmetros para índice de segurança hídrica
+                        </h3>
+                        <p className="text-xs text-muted-foreground mt-1">{TEXTO_INDICE_SEGURANCA}</p>
                       </div>
-
-                      {/* Limiares de segurança hídrica — restritos ao intervalo 0–1 */}
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <SimField
                           label="Limiar de Alerta (0–1)"
@@ -1564,111 +1592,135 @@ export default function Cenarios() {
                           setSimEdit={setSimEdit}
                         />
                       </div>
+                      {erroLimiares ? (
+                        <p className="text-xs text-red-600 font-medium">{erroLimiares}</p>
+                      ) : (
+                        <FaixasIndice
+                          alerta={Number(simEdit.limiar_alerta)}
+                          crise={Number(simEdit.limiar_crise)}
+                          colapso={Number(simEdit.limiar_colapso)}
+                        />
+                      )}
+                    </div>
 
-                      {/* Opções automáticas — cada uma em linha separada, com texto explicativo */}
-                      <div className="space-y-4 pt-2 border-t">
-                        <div className="pt-4">
-                          <SimToggle
-                            label="Demanda automática"
-                            field="demanda_auto"
-                            simEdit={simEdit}
-                            setSimEdit={setSimEdit}
-                          />
-                          <p className="text-xs text-muted-foreground mt-1 ml-7">
-                            {TEXTO_DEMANDA_AUTOMATICA}
-                          </p>
-                        </div>
-                        <div>
-                          <SimToggle
-                            label="Perdas automáticas"
-                            field="perdas_auto"
-                            simEdit={simEdit}
-                            setSimEdit={setSimEdit}
-                          />
-                          <p className="text-xs text-muted-foreground mt-1 ml-7">
-                            {TEXTO_PERDAS_AUTOMATICAS}
-                          </p>
-                        </div>
+                    {/* Quadros lado a lado: Demanda automática | Perdas automáticas */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="rounded-lg border p-4 space-y-3">
+                        <SimToggle
+                          label="Demanda automática"
+                          field="demanda_auto"
+                          simEdit={simEdit}
+                          setSimEdit={setSimEdit}
+                        />
+                        <p className="text-xs text-muted-foreground">{TEXTO_DEMANDA_AUTOMATICA}</p>
+                        {simEdit.demanda_auto && (
+                          <div className="space-y-3 pt-3 border-t">
+                            <SimField
+                              label="População Inicial (hab.)"
+                              field="pop_inicial"
+                              type="number"
+                              ajuda={AJUDA_POP_INICIAL}
+                              simEdit={simEdit}
+                              setSimEdit={setSimEdit}
+                            />
+                            <div className="space-y-1">
+                              <label className="text-xs font-semibold text-muted-foreground">
+                                Cenário de crescimento populacional (% a.a.)
+                              </label>
+                              <NativeSelect
+                                className="w-full"
+                                options={cenario_demanda.map((o: any) => ({
+                                  value: o.id_cd,
+                                  label: `${o.nome_cenario_demanda} (${fmtNum(o.percentual)} % a.a.)`,
+                                }))}
+                                value={filters.id_cd_auto || ''}
+                                onChange={(v: any) => setFilters({ ...filters, id_cd_auto: v })}
+                                placeholder="Cenário Demanda"
+                              />
+                              <DescricaoCenario
+                                item={cenario_demanda.find(
+                                  (o: any) => String(o.id_cd) === String(filters.id_cd_auto),
+                                )}
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-xs font-semibold text-muted-foreground">
+                                Cenário de consumo per capita (L/hab./dia)
+                              </label>
+                              <NativeSelect
+                                className="w-full"
+                                options={cenario_consumo.map((o: any) => ({
+                                  value: o.id_cc,
+                                  label: `${o.nome_cenario_consumo} (${fmtNum(o.vol_hab)} L/hab./dia)`,
+                                }))}
+                                value={filters.id_cc_auto || ''}
+                                onChange={(v: any) => setFilters({ ...filters, id_cc_auto: v })}
+                                placeholder="Cenário Consumo"
+                              />
+                              <DescricaoCenario
+                                item={cenario_consumo.find(
+                                  (o: any) => String(o.id_cc) === String(filters.id_cc_auto),
+                                )}
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="rounded-lg border p-4 space-y-3">
+                        <SimToggle
+                          label="Perdas automáticas"
+                          field="perdas_auto"
+                          simEdit={simEdit}
+                          setSimEdit={setSimEdit}
+                        />
+                        <p className="text-xs text-muted-foreground">{TEXTO_PERDAS_AUTOMATICAS}</p>
+                        {simEdit.perdas_auto && (
+                          <div className="space-y-3 pt-3 border-t">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              <SimField
+                                label="Perc. Inicial de Perdas (%)"
+                                field="perc_inicial_perdas"
+                                type="number"
+                                ajuda={AJUDA_PERC_INICIAL_PERDAS}
+                                simEdit={simEdit}
+                                setSimEdit={setSimEdit}
+                              />
+                              <SimField
+                                label="Início da Redução de Perdas"
+                                field="inicio_perdas"
+                                type="text"
+                                ajuda={AJUDA_INICIO_PERDAS}
+                                simEdit={simEdit}
+                                setSimEdit={setSimEdit}
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-xs font-semibold text-muted-foreground">
+                                Cenário de meta de perdas (%)
+                              </label>
+                              <NativeSelect
+                                className="w-full"
+                                options={cenario_perdas.map((o: any) => ({
+                                  value: o.id_cp,
+                                  label: `${o.nome_cenario_perdas} (${fmtNum(o.percentual)} %)`,
+                                }))}
+                                value={filters.id_cp_auto || ''}
+                                onChange={(v: any) => setFilters({ ...filters, id_cp_auto: v })}
+                                placeholder="Cenário Perdas"
+                              />
+                              <DescricaoCenario
+                                item={cenario_perdas.find(
+                                  (o: any) => String(o.id_cp) === String(filters.id_cp_auto),
+                                )}
+                              />
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
-                    <div className="flex justify-end">
-                      <Button onClick={handleSaveSim} disabled={simSaving} className="w-48">
-                        {simSaving ? 'Salvando...' : 'Salvar Configuração'}
-                      </Button>
-                    </div>
-                  </>
+                  </div>
                 )}
-                {/* ── Projeção da demanda urbana (antiga aba própria) ──
-                    Habilitada apenas quando Demanda automática e/ou Perdas automáticas
-                    estão ativas na configuração salva (mesma regra da antiga aba). */}
-                <div className="space-y-4 pt-4 border-t">
-                  <h3 className="text-sm font-semibold text-primary">Projeção da demanda urbana</h3>
-                  <p className="text-xs text-muted-foreground mb-2">{TEXTO_PROJECAO_DEMANDA}</p>
-                  {simObj && temAutomatico && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {simObj.demanda_auto && (
-                        <div className="space-y-3">
-                          <h4 className="text-sm font-semibold text-muted-foreground">
-                            Cenário de População Atendida (hab.)
-                          </h4>
-                          <NativeSelect
-                            className="w-full"
-                            options={cenario_demanda.map((o: any) => ({
-                              value: o.id_cd,
-                              label: `${o.nome_cenario_demanda} (${fmtNum(o.percentual)} % a.a.)`,
-                            }))}
-                            value={filters.id_cd_auto || ''}
-                            onChange={(v: any) => setFilters({ ...filters, id_cd_auto: v })}
-                            placeholder="Cenário Demanda"
-                          />
-                          <DescricaoCenario
-                            item={cenario_demanda.find((o: any) => String(o.id_cd) === String(filters.id_cd_auto))}
-                          />
-                          <h4 className="text-sm font-semibold text-muted-foreground">
-                            Cenário de Consumo (L/hab./dia)
-                          </h4>
-                          <NativeSelect
-                            className="w-full"
-                            options={cenario_consumo.map((o: any) => ({
-                              value: o.id_cc,
-                              label: `${o.nome_cenario_consumo} (${fmtNum(o.vol_hab)} L/hab./dia)`,
-                            }))}
-                            value={filters.id_cc_auto || ''}
-                            onChange={(v: any) => setFilters({ ...filters, id_cc_auto: v })}
-                            placeholder="Cenário Consumo"
-                          />
-                          <DescricaoCenario
-                            item={cenario_consumo.find((o: any) => String(o.id_cc) === String(filters.id_cc_auto))}
-                          />
-                        </div>
-                      )}
-                      {simObj.perdas_auto && (
-                        <div className="space-y-3">
-                          <h4 className="text-sm font-semibold text-muted-foreground">Perdas</h4>
-                          <NativeSelect
-                            className="w-full"
-                            options={cenario_perdas.map((o: any) => ({
-                              value: o.id_cp,
-                              label: `${o.nome_cenario_perdas} (${fmtNum(o.percentual)} %)`,
-                            }))}
-                            value={filters.id_cp_auto || ''}
-                            onChange={(v: any) => setFilters({ ...filters, id_cp_auto: v })}
-                            placeholder="Cenário Perdas"
-                          />
-                          <DescricaoCenario
-                            item={cenario_perdas.find((o: any) => String(o.id_cp) === String(filters.id_cp_auto))}
-                          />
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  {!temAutomatico && (
-                    <p className="text-xs text-muted-foreground py-4 text-center">
-                      Ative "Demanda automática" ou "Perdas automáticas" acima e salve a configuração
-                      para habilitar a projeção da demanda urbana.
-                    </p>
-                  )}
-                </div>
               </TabsContent>
 
               {/* ── TAB: Período ── */}
@@ -1763,10 +1815,30 @@ export default function Cenarios() {
             </Tabs>
 
             {/* Botão Executar Simulação — fixo dentro do accordion de Configurações */}
-            <div className="pt-6 border-t mt-6">
+            <div className="pt-6 border-t mt-6 space-y-3">
+              {/* Salvar Configuração — antes da execução; a simulação usa a configuração salva */}
+              <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-2">
+                <p
+                  className={`text-xs font-medium ${erroLimiares ? 'text-red-600' : 'text-amber-600'}`}
+                >
+                  {erroLimiares
+                    ? `Corrija os limiares na aba Parâmetros da simulação: ${erroLimiares}`
+                    : simAlterada
+                      ? 'Há alterações não salvas. Salve a configuração para executar a simulação.'
+                      : ''}
+                </p>
+                <Button
+                  variant="outline"
+                  onClick={handleSaveSim}
+                  disabled={simSaving || !simAlterada || !!erroLimiares}
+                  className="self-end sm:self-auto shrink-0"
+                >
+                  {simSaving ? 'Salvando...' : simAlterada ? 'Salvar Configuração' : 'Configuração salva'}
+                </Button>
+              </div>
               <Button
                 onClick={handleSimulate}
-                disabled={loading || !simObj || selecoes.length === 0}
+                disabled={loading || !simObj || selecoes.length === 0 || simAlterada}
                 className="w-full h-11 shadow-sm text-base disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? 'Processando...' : 'Executar Simulação'}
@@ -1804,7 +1876,7 @@ export default function Cenarios() {
                     Indicadores
                   </TabsTrigger>
                   <TabsTrigger value="financeiro">Financeiro</TabsTrigger>
-                  <TabsTrigger value="projecao_populacional" disabled={!temAutomatico}>
+                  <TabsTrigger value="projecao_populacional" disabled={!temAutomaticoSalvo}>
                     Projeção Populacional
                   </TabsTrigger>
                 </TabsList>
@@ -2188,7 +2260,7 @@ export default function Cenarios() {
 
                 {/* ── TAB: Projeção Populacional ── */}
                 <TabsContent value="projecao_populacional" className="pt-4">
-                  {temAutomatico ? (
+                  {temAutomaticoSalvo ? (
                     (() => {
                       const cdObj = cenario_demanda?.find(
                         (c: any) => c.id_cd === parseInt(filters.id_cd_auto),
