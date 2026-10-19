@@ -900,9 +900,9 @@ export default function Cenarios() {
     }
 
     if (simObj?.demanda_auto || simObj?.perdas_auto) {
-      const cd = cenario_demanda.find((c: any) => c.id_cd === parseInt(filters.id_cd_auto))
-      const cc = cenario_consumo.find((c: any) => c.id_cc === parseInt(filters.id_cc_auto))
-      const cp = cenario_perdas.find((c: any) => c.id_cp === parseInt(filters.id_cp_auto))
+      const cd = cenario_demanda.find((c: any) => c.id_cd === simObj?.id_cd)
+      const cc = cenario_consumo.find((c: any) => c.id_cc === simObj?.id_cc)
+      const cp = cenario_perdas.find((c: any) => c.id_cp === simObj?.id_cp)
       resData = aplicarCalculosModulares(resData, simObj, cd, cc, cp)
     }
 
@@ -1164,6 +1164,21 @@ export default function Cenarios() {
       return 'Os limiares devem obedecer à ordem Alerta > Crise > Colapso.'
     return null
   })()
+
+  // Campos obrigatórios quando o cálculo automático está marcado
+  const erroAuto = (() => {
+    if (!simEdit) return null
+    const vazio = (v: any) => v === '' || v === null || v === undefined
+    if (simEdit.demanda_auto && (vazio(simEdit.pop_inicial) || vazio(simEdit.id_cd) || vazio(simEdit.id_cc)))
+      return 'Demanda automática: informe a população inicial e escolha os cenários de crescimento e de consumo.'
+    if (
+      simEdit.perdas_auto &&
+      (vazio(simEdit.perc_inicial_perdas) || vazio(simEdit.inicio_perdas) || vazio(simEdit.id_cp))
+    )
+      return 'Perdas automáticas: informe o percentual inicial, o início da redução e o cenário de meta.'
+    return null
+  })()
+  const erroParametros = erroLimiares || erroAuto
 
   return (
     <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
@@ -1633,13 +1648,18 @@ export default function Cenarios() {
                                   value: o.id_cd,
                                   label: `${o.nome_cenario_demanda} (${fmtNum(o.percentual)} % a.a.)`,
                                 }))}
-                                value={filters.id_cd_auto || ''}
-                                onChange={(v: any) => setFilters({ ...filters, id_cd_auto: v })}
+                                value={simEdit.id_cd ?? ''}
+                                onChange={(v: any) =>
+                                  setSimEdit((prev: any) => ({
+                                    ...prev,
+                                    id_cd: v === '' || v === null ? null : parseInt(v),
+                                  }))
+                                }
                                 placeholder="Cenário Demanda"
                               />
                               <DescricaoCenario
                                 item={cenario_demanda.find(
-                                  (o: any) => String(o.id_cd) === String(filters.id_cd_auto),
+                                  (o: any) => String(o.id_cd) === String(simEdit.id_cd),
                                 )}
                               />
                             </div>
@@ -1653,13 +1673,18 @@ export default function Cenarios() {
                                   value: o.id_cc,
                                   label: `${o.nome_cenario_consumo} (${fmtNum(o.vol_hab)} L/hab./dia)`,
                                 }))}
-                                value={filters.id_cc_auto || ''}
-                                onChange={(v: any) => setFilters({ ...filters, id_cc_auto: v })}
+                                value={simEdit.id_cc ?? ''}
+                                onChange={(v: any) =>
+                                  setSimEdit((prev: any) => ({
+                                    ...prev,
+                                    id_cc: v === '' || v === null ? null : parseInt(v),
+                                  }))
+                                }
                                 placeholder="Cenário Consumo"
                               />
                               <DescricaoCenario
                                 item={cenario_consumo.find(
-                                  (o: any) => String(o.id_cc) === String(filters.id_cc_auto),
+                                  (o: any) => String(o.id_cc) === String(simEdit.id_cc),
                                 )}
                               />
                             </div>
@@ -1705,13 +1730,18 @@ export default function Cenarios() {
                                   value: o.id_cp,
                                   label: `${o.nome_cenario_perdas} (${fmtNum(o.percentual)} %)`,
                                 }))}
-                                value={filters.id_cp_auto || ''}
-                                onChange={(v: any) => setFilters({ ...filters, id_cp_auto: v })}
+                                value={simEdit.id_cp ?? ''}
+                                onChange={(v: any) =>
+                                  setSimEdit((prev: any) => ({
+                                    ...prev,
+                                    id_cp: v === '' || v === null ? null : parseInt(v),
+                                  }))
+                                }
                                 placeholder="Cenário Perdas"
                               />
                               <DescricaoCenario
                                 item={cenario_perdas.find(
-                                  (o: any) => String(o.id_cp) === String(filters.id_cp_auto),
+                                  (o: any) => String(o.id_cp) === String(simEdit.id_cp),
                                 )}
                               />
                             </div>
@@ -1819,10 +1849,10 @@ export default function Cenarios() {
               {/* Salvar Configuração — antes da execução; a simulação usa a configuração salva */}
               <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-2">
                 <p
-                  className={`text-xs font-medium ${erroLimiares ? 'text-red-600' : 'text-amber-600'}`}
+                  className={`text-xs font-medium ${erroParametros ? 'text-red-600' : 'text-amber-600'}`}
                 >
-                  {erroLimiares
-                    ? `Corrija os limiares na aba Parâmetros da simulação: ${erroLimiares}`
+                  {erroParametros && simAlterada
+                    ? `Parâmetros da simulação: ${erroParametros}`
                     : simAlterada
                       ? 'Há alterações não salvas. Salve a configuração para executar a simulação.'
                       : ''}
@@ -1830,7 +1860,7 @@ export default function Cenarios() {
                 <Button
                   variant="outline"
                   onClick={handleSaveSim}
-                  disabled={simSaving || !simAlterada || !!erroLimiares}
+                  disabled={simSaving || !simAlterada || !!erroParametros}
                   className="self-end sm:self-auto shrink-0"
                 >
                   {simSaving ? 'Salvando...' : simAlterada ? 'Salvar Configuração' : 'Configuração salva'}
@@ -2263,10 +2293,10 @@ export default function Cenarios() {
                   {temAutomaticoSalvo ? (
                     (() => {
                       const cdObj = cenario_demanda?.find(
-                        (c: any) => c.id_cd === parseInt(filters.id_cd_auto),
+                        (c: any) => c.id_cd === simObj?.id_cd,
                       )
                       const ccObj = cenario_consumo?.find(
-                        (c: any) => c.id_cc === parseInt(filters.id_cc_auto),
+                        (c: any) => c.id_cc === simObj?.id_cc,
                       )
                       return (
                         <ProjecaoPopulacional

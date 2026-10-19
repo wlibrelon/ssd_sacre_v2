@@ -1372,6 +1372,9 @@ export type Database = {
         Row: {
           demanda_auto: boolean | null
           descricao: string | null
+          id_cc: number | null
+          id_cd: number | null
+          id_cp: number | null
           id_s: number
           inicio_perdas: string | null
           limiar_alerta: number | null
@@ -1386,6 +1389,9 @@ export type Database = {
         Insert: {
           demanda_auto?: boolean | null
           descricao?: string | null
+          id_cc?: number | null
+          id_cd?: number | null
+          id_cp?: number | null
           id_s?: number
           inicio_perdas?: string | null
           limiar_alerta?: number | null
@@ -1400,6 +1406,9 @@ export type Database = {
         Update: {
           demanda_auto?: boolean | null
           descricao?: string | null
+          id_cc?: number | null
+          id_cd?: number | null
+          id_cp?: number | null
           id_s?: number
           inicio_perdas?: string | null
           limiar_alerta?: number | null
