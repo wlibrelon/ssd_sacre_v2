@@ -11,7 +11,7 @@ export function Grupo4() {
           cols={[
             { key: 'nome_cenario_demanda', label: 'Nome' },
             { key: 'descricao', label: 'Descrição' },
-            { key: 'percentual', label: 'Percentual (%)' },
+            { key: 'percentual', label: 'Crescimento populacional (% a.a.)' },
           ]}
         />
         <CrudTable
@@ -21,7 +21,7 @@ export function Grupo4() {
           cols={[
             { key: 'nome_cenario_consumo', label: 'Nome' },
             { key: 'descricao', label: 'Descrição' },
-            { key: 'vol_hab', label: 'Vol/Hab (m³)' },
+            { key: 'vol_hab', label: 'Consumo per capita (L/hab./dia)' },
           ]}
         />
         <CrudTable
@@ -30,7 +30,8 @@ export function Grupo4() {
           pk="id_cp"
           cols={[
             { key: 'nome_cenario_perdas', label: 'Nome' },
-            { key: 'percentual', label: 'Percentual (%)' },
+            { key: 'descricao', label: 'Descrição' },
+            { key: 'percentual', label: 'Meta de perdas (%)' },
           ]}
         />
       </div>

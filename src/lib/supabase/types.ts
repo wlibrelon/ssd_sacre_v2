@@ -408,16 +408,19 @@ export type Database = {
       }
       cenario_perdas: {
         Row: {
+          descricao: string | null
           id_cp: number
           nome_cenario_perdas: string | null
           percentual: number | null
         }
         Insert: {
+          descricao?: string | null
           id_cp?: number
           nome_cenario_perdas?: string | null
           percentual?: number | null
         }
         Update: {
+          descricao?: string | null
           id_cp?: number
           nome_cenario_perdas?: string | null
           percentual?: number | null
