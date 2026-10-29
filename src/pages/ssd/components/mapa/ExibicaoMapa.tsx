@@ -10,7 +10,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
-import { Info, Layers, Loader2, Map as MapIcon, X } from 'lucide-react'
+import { Info, Layers, Loader2, Map as MapIcon, Maximize2, X } from 'lucide-react'
 import { SimpleMap } from '@/components/map/SimpleMap'
 import { TileLayer } from '@/components/map/TileLayer'
 import { GeoJSONLayer } from '@/components/map/GeoJSONLayer'
@@ -77,6 +77,14 @@ type Exibido =
       descricao: string
     }
 
+/** Extensão válida em graus (lon/lat)? Coordenadas fora disso indicam, em
+ * geral, um EPSG de origem errado (ex.: dados em UTM lidos como graus). */
+function extensaoValida(e: Extensao | null | undefined): e is Extensao {
+  if (!e || e.some((v) => !Number.isFinite(v))) return false
+  const [x0, y0, x1, y1] = e
+  return x0 >= -180 && x1 <= 180 && y0 >= -85 && y1 <= 85 && x0 <= x1 && y0 <= y1
+}
+
 const chave = (v: any) => JSON.stringify((Array.isArray(v) ? v : []).map(String).sort())
 const fmt = (v: number) => v.toLocaleString('pt-BR', { maximumFractionDigits: 4 })
 
@@ -96,6 +104,36 @@ export function ExibicaoMapa({ selecoes }: { selecoes: Selecao[] }) {
   const buffers = useRef<Record<string, ArrayBuffer>>({})
 
   const [exibido, setExibido] = useState<Exibido | null>(null)
+  // Incrementado para (re)enquadrar o mapa na extensão do mapa exibido: ao
+  // exibir um mapa com extensão diferente da anterior e no botão "Enquadrar".
+  const [enquadramento, setEnquadramento] = useState(0)
+  const ultimaExtensao = useRef<string>('')
+  const containerMapa = useRef<HTMLDivElement | null>(null)
+
+  // A roda do mouse sobre o mapa deve só dar zoom, sem rolar a página. O
+  // listener precisa ser nativo e não-passivo — o onWheel do React é passivo
+  // e não consegue impedir a rolagem.
+  useEffect(() => {
+    const el = containerMapa.current
+    if (!el) return
+    const bloquear = (e: WheelEvent) => e.preventDefault()
+    el.addEventListener('wheel', bloquear, { passive: false })
+    return () => el.removeEventListener('wheel', bloquear)
+  }, [!!exibido])
+
+  const aplicarExtensao = (ext: Extensao | null) => {
+    if (!extensaoValida(ext)) {
+      toast.warning(
+        'As coordenadas do mapa ficaram fora da faixa esperada — confira o EPSG de origem na Configuração de mapa.',
+      )
+      return
+    }
+    const k = ext.map((v) => v.toFixed(6)).join(',')
+    if (k !== ultimaExtensao.current) {
+      ultimaExtensao.current = k
+      setEnquadramento((n) => n + 1)
+    }
+  }
   const [gerando, setGerando] = useState(false)
   const [camadasAtivas, setCamadasAtivas] = useState<Set<string>>(new Set())
   const [painelExpandido, setPainelExpandido] = useState(true)
@@ -223,7 +261,9 @@ export function ExibicaoMapa({ selecoes }: { selecoes: Selecao[] }) {
           if (!epsgSuportado(epsg)) throw new Error(`EPSG ${epsg} não é suportado. Informe outro EPSG de origem.`)
           return prepararCamadaShape(s, epsg)
         })
-        setExibido({ tipo: 'shape', camadas, cfg: cfgShape, extensao: unirExtensoes(camadas.map((c) => c.extensao)) })
+        const extensao = unirExtensoes(camadas.map((c) => c.extensao))
+        setExibido({ tipo: 'shape', camadas, cfg: cfgShape, extensao })
+        aplicarExtensao(extensao)
         setCamadasAtivas(new Set(camadas.map((c) => c.nome)))
       } else {
         if (!raster || !banda) return
@@ -237,6 +277,7 @@ export function ExibicaoMapa({ selecoes }: { selecoes: Selecao[] }) {
         const rep = reprojetarRaster(raster, banda, epsg)
         const imagem = colorirRaster(banda, rep, cfgRaster, nodataEfetivo)
         setExibido({ tipo: 'raster', imagem, rep, cfg: cfgRaster, epsg, banda, descricao: modelo.desc_raster || 'Raster' })
+        aplicarExtensao(rep.extensaoLonLat)
         setCamadasAtivas(new Set(['__raster__']))
       }
       await salvarConfig()
@@ -402,11 +443,15 @@ export function ExibicaoMapa({ selecoes }: { selecoes: Selecao[] }) {
 
       {/* Mapa */}
       {exibido && (
-        <div className="relative h-[560px] w-full rounded-lg border overflow-hidden">
+        <div ref={containerMapa} className="relative h-[560px] w-full rounded-lg border overflow-hidden">
           <SimpleMap
+            key={enquadramento}
             defaultCenter={[-49.06, -22.31]}
             defaultZoom={10}
-            bounds={exibido.tipo === 'shape' ? exibido.extensao : exibido.rep.extensaoLonLat}
+            bounds={(() => {
+              const ext = exibido.tipo === 'shape' ? exibido.extensao : exibido.rep.extensaoLonLat
+              return extensaoValida(ext) ? ext : null
+            })()}
           >
             <TileLayer urlTemplate="https://tile.openstreetmap.org/{z}/{x}/{y}.png" />
             {exibido.tipo === 'raster' && camadasAtivas.has('__raster__') && (
@@ -428,6 +473,16 @@ export function ExibicaoMapa({ selecoes }: { selecoes: Selecao[] }) {
                   )
                 })}
           </SimpleMap>
+
+          {/* Enquadrar o mapa na extensão da camada */}
+          <button
+            type="button"
+            onClick={() => setEnquadramento((n) => n + 1)}
+            className="absolute top-3 right-3 z-30 bg-background/95 rounded-md shadow border p-2 hover:bg-muted"
+            title="Enquadrar no mapa"
+          >
+            <Maximize2 className="h-4 w-4 text-primary" />
+          </button>
 
           {/* Painel de camadas */}
           {painelExpandido ? (
