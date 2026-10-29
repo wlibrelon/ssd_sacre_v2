@@ -61,7 +61,7 @@ export default function Configuracoes() {
 
         <AccordionItem value="g2" className="border rounded-lg px-4 bg-white shadow-sm">
           <AccordionTrigger className="text-xl font-bold hover:no-underline text-left">
-            Associações de Referência
+            Associação de referências para fontes de água, cenários e ações
           </AccordionTrigger>
           <AccordionContent className="pt-2 pb-6">
             <ErrorBoundary>
@@ -83,7 +83,7 @@ export default function Configuracoes() {
 
         <AccordionItem value="upload" className="border rounded-lg px-4 bg-white shadow-sm">
           <AccordionTrigger className="text-xl font-bold hover:no-underline text-left">
-            Upload de arquivos de dados
+            Upload de arquivos de dados dos modelos para simulação
           </AccordionTrigger>
           <AccordionContent className="pt-2 pb-6">
             <ErrorBoundary>
@@ -94,7 +94,7 @@ export default function Configuracoes() {
 
         <AccordionItem value="importacao" className="border rounded-lg px-4 bg-white shadow-sm">
           <AccordionTrigger className="text-xl font-bold hover:no-underline text-left">
-            Importação de dados
+            Construção de modelos para simulação
           </AccordionTrigger>
           <AccordionContent className="pt-2 pb-6">
             <ErrorBoundary>

@@ -19,12 +19,26 @@ export function GrupoUpload() {
     'capex_perdas',
     'opex',
     'indicadores',
+    'mapas_shape',
+    'mapas_raster',
   ]
+
+  // Extensões aceitas por pasta: shapefiles compactados (.zip) e rasters
+  // GeoTIFF (.tif/.tiff) para os mapas dos modelos; CSV para as demais.
+  const extensoesPorPasta: Record<string, string[]> = {
+    mapas_shape: ['.zip'],
+    mapas_raster: ['.tif', '.tiff'],
+  }
+  const extensoes = extensoesPorPasta[folder] || ['.csv']
+  const extensaoValida = (nome: string) =>
+    extensoes.some((ext) => nome.toLowerCase().endsWith(ext))
+  const rotuloTipo =
+    folder === 'mapas_shape' ? 'Shape (.zip)' : folder === 'mapas_raster' ? 'Raster (.tif)' : 'CSV'
 
   const load = async () => {
     setLoading(true)
     const data = await listFiles('dados_brutos', folder)
-    setFiles(data.filter((f: any) => f.name.endsWith('.csv')))
+    setFiles(data.filter((f: any) => extensaoValida(f.name)))
     setLoading(false)
   }
 
@@ -35,8 +49,12 @@ export function GrupoUpload() {
   const handleUpload = async (e: any) => {
     const file = e.target.files[0]
     if (!file) return
-    if (!file.name.endsWith('.csv')) {
-      return toast({ title: 'Apenas arquivos .csv são permitidos.', variant: 'destructive' })
+    if (!extensaoValida(file.name)) {
+      e.target.value = ''
+      return toast({
+        title: `Apenas arquivos ${extensoes.join(' / ')} são permitidos nesta pasta.`,
+        variant: 'destructive',
+      })
     }
 
     // Clear input so same file can be selected again
@@ -77,13 +95,13 @@ export function GrupoUpload() {
         <div className="relative w-full sm:w-auto">
           <input
             type="file"
-            accept=".csv"
+            accept={extensoes.join(',')}
             onChange={handleUpload}
             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-            title="Escolher arquivo CSV"
+            title={`Escolher arquivo ${rotuloTipo}`}
           />
           <Button className="w-full">
-            <Upload className="w-4 h-4 mr-2" /> Upload CSV
+            <Upload className="w-4 h-4 mr-2" /> Upload {rotuloTipo}
           </Button>
         </div>
       </div>

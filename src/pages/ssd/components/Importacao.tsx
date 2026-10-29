@@ -166,6 +166,10 @@ type ModeloRow = {
   arq_capex_perdas: string | null
   arq_opex: string | null
   arq_indicador: ArqIndicadorMap | null // JSONB { id_indicador: path }
+  arq_shape: string | null // .zip com o shapefile do mapa do modelo
+  desc_shape: string | null
+  arq_raster: string | null // GeoTIFF do mapa do modelo
+  desc_raster: string | null
   fonte_agua?: { nome_fonte: string }
 }
 
@@ -185,6 +189,10 @@ type EditingModelo = {
   arq_capex_estrategias: string
   arq_capex_perdas: string
   arq_opex: string
+  arq_shape: string
+  desc_shape: string
+  arq_raster: string
+  desc_raster: string
   /** Cópia editável do JSONB de indicadores, serializado como string JSON para o Input */
   arq_indicador_raw: string
 }
@@ -235,6 +243,10 @@ export function Importacao() {
     arq_capex_estrategias: '',
     arq_capex_perdas: '',
     arq_opex: '',
+    arq_shape: '',
+    desc_shape: '',
+    arq_raster: '',
+    desc_raster: '',
   })
 
   // Edição inline da tabela modelos
@@ -358,6 +370,10 @@ export function Importacao() {
         arq_capex_perdas: files.arq_capex_perdas || null,
         arq_opex: files.arq_opex || null,
         arq_indicador: arqIndicadorJsonb,
+        arq_shape: files.arq_shape || null,
+        desc_shape: files.arq_shape ? files.desc_shape.trim() || null : null,
+        arq_raster: files.arq_raster || null,
+        desc_raster: files.arq_raster ? files.desc_raster.trim() || null : null,
       })
       .select('*, fonte_agua(nome_fonte)')
       .single()
@@ -377,6 +393,10 @@ export function Importacao() {
       arq_capex_estrategias: '',
       arq_capex_perdas: '',
       arq_opex: '',
+      arq_shape: '',
+      desc_shape: '',
+      arq_raster: '',
+      desc_raster: '',
     })
   }
 
@@ -390,6 +410,10 @@ export function Importacao() {
       arq_capex_estrategias: m.arq_capex_estrategias || '',
       arq_capex_perdas: m.arq_capex_perdas || '',
       arq_opex: m.arq_opex || '',
+      arq_shape: m.arq_shape || '',
+      desc_shape: m.desc_shape || '',
+      arq_raster: m.arq_raster || '',
+      desc_raster: m.desc_raster || '',
       // Exibe o JSONB serializado para edição direta
       arq_indicador_raw: m.arq_indicador ? JSON.stringify(m.arq_indicador, null, 2) : '',
     })
@@ -760,6 +784,10 @@ export function Importacao() {
     { key: 'arq_capex_estrategias', label: 'CAPEX Est.' },
     { key: 'arq_capex_perdas', label: 'CAPEX Per.' },
     { key: 'arq_opex', label: 'OPEX' },
+    { key: 'arq_shape', label: 'Shape' },
+    { key: 'desc_shape', label: 'Desc. Shape' },
+    { key: 'arq_raster', label: 'Raster' },
+    { key: 'desc_raster', label: 'Desc. Raster' },
   ]
 
   // ── Render ───────────────────────────────────────────────────────────────────
@@ -1053,6 +1081,67 @@ export function Importacao() {
             value={files.arq_opex}
             onChange={(v) => setFiles((p) => ({ ...p, arq_opex: v }))}
           />
+
+          {/* Mapas do modelo (opcionais) — exibidos na aba "Mapa" da Simulação
+              como informação complementar para interpretar os resultados. */}
+          <div className="col-span-full border-t pt-4 mt-1">
+            <p className="text-xs font-semibold text-slate-700">Mapas do modelo (opcional)</p>
+            <p className="text-xs text-muted-foreground">
+              Mapas exibidos na aba Mapa da Simulação para ajudar na interpretação dos
+              resultados. Envie os arquivos pelo bloco de upload, nas pastas mapas_shape (.zip
+              com .shp, .shx, .dbf e .prj) e mapas_raster (GeoTIFF .tif).
+            </p>
+          </div>
+          <div className="space-y-2">
+            <FileSelectDialog
+              label="Arquivo Shape (.zip)"
+              value={files.arq_shape}
+              onChange={(v) => setFiles((p) => ({ ...p, arq_shape: v }))}
+            />
+            <div className="flex gap-2">
+              <Input
+                value={files.desc_shape}
+                onChange={(e) => setFiles((p) => ({ ...p, desc_shape: e.target.value }))}
+                placeholder="Descrição do mapa (shape)"
+                className="flex-1 text-xs"
+              />
+              {files.arq_shape && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  type="button"
+                  onClick={() => setFiles((p) => ({ ...p, arq_shape: '', desc_shape: '' }))}
+                >
+                  Remover
+                </Button>
+              )}
+            </div>
+          </div>
+          <div className="space-y-2">
+            <FileSelectDialog
+              label="Arquivo Raster (GeoTIFF)"
+              value={files.arq_raster}
+              onChange={(v) => setFiles((p) => ({ ...p, arq_raster: v }))}
+            />
+            <div className="flex gap-2">
+              <Input
+                value={files.desc_raster}
+                onChange={(e) => setFiles((p) => ({ ...p, desc_raster: e.target.value }))}
+                placeholder="Descrição do mapa (raster)"
+                className="flex-1 text-xs"
+              />
+              {files.arq_raster && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  type="button"
+                  onClick={() => setFiles((p) => ({ ...p, arq_raster: '', desc_raster: '' }))}
+                >
+                  Remover
+                </Button>
+              )}
+            </div>
+          </div>
           <div className="col-span-full mt-2">
             <Button onClick={handleSaveModel}>Salvar Configuração</Button>
           </div>

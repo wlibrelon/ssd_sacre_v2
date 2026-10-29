@@ -975,7 +975,12 @@ export type Database = {
           arq_mod: string | null
           arq_opex: string | null
           arq_perdas: string | null
+          arq_raster: string | null
+          arq_shape: string | null
           cenario: Json | null
+          config_mapa: Json | null
+          desc_raster: string | null
+          desc_shape: string | null
           estrategia: Json | null
           id_fonte: number | null
           id_mod: number
@@ -988,7 +993,12 @@ export type Database = {
           arq_mod?: string | null
           arq_opex?: string | null
           arq_perdas?: string | null
+          arq_raster?: string | null
+          arq_shape?: string | null
           cenario?: Json | null
+          config_mapa?: Json | null
+          desc_raster?: string | null
+          desc_shape?: string | null
           estrategia?: Json | null
           id_fonte?: number | null
           id_mod?: number
@@ -1001,7 +1011,12 @@ export type Database = {
           arq_mod?: string | null
           arq_opex?: string | null
           arq_perdas?: string | null
+          arq_raster?: string | null
+          arq_shape?: string | null
           cenario?: Json | null
+          config_mapa?: Json | null
+          desc_raster?: string | null
+          desc_shape?: string | null
           estrategia?: Json | null
           id_fonte?: number | null
           id_mod?: number

@@ -11,6 +11,7 @@ import {
   FinanceiroTab,
 } from './components/CenariosDashboard'
 import { ProjecaoPopulacional } from './ProjecaoPopulacional'
+import { ExibicaoMapa } from './components/mapa/ExibicaoMapa'
 import { Checkbox } from '@/components/ui/checkbox'
 import { toast } from 'sonner'
 import { Trash2, Plus } from 'lucide-react'
@@ -1208,6 +1209,7 @@ export default function Cenarios() {
                 <TabsTrigger value="fontes">Seleção da Simulação</TabsTrigger>
                 <TabsTrigger value="parametros">Parâmetros da simulação</TabsTrigger>
                 <TabsTrigger value="periodo">Período</TabsTrigger>
+                <TabsTrigger value="mapa">Mapa</TabsTrigger>
               </TabsList>
 
               {/* ── TAB: Seleção da Simulação ── */}
@@ -1841,6 +1843,11 @@ export default function Cenarios() {
                   </div>
                 </div>
                 */}
+              </TabsContent>
+
+              {/* ── TAB: Mapa — mapas (shape/raster) associados aos modelos ── */}
+              <TabsContent value="mapa" forceMount className="pt-4 data-[state=inactive]:hidden">
+                <ExibicaoMapa selecoes={selecoes.filter((s) => s.selecionado)} />
               </TabsContent>
             </Tabs>
 
