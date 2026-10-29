@@ -111,6 +111,7 @@ export type ShapeBruto = {
   features: any[] // coordenadas no sistema original
   campos: string[]
   epsgPrj: number | null
+  prjWkt: string | null // conteúdo do .prj (WKT), usado direto pelo proj4
 }
 
 export type CamadaShape = {
@@ -154,6 +155,7 @@ export async function lerShapesDoZip(buffer: ArrayBuffer, encoding: string): Pro
       features,
       campos: Array.from(campos).sort((a, b) => a.localeCompare(b)),
       epsgPrj: g.prj ? detectarEpsgPrj(strFromU8(g.prj)) : null,
+      prjWkt: g.prj ? strFromU8(g.prj).trim() || null : null,
     })
   }
   return resultado
@@ -172,9 +174,27 @@ function tipoDaGeometria(features: any[]): TipoGeometria {
   return null
 }
 
+/** Transformação para WGS84 de uma camada shape. Ordem de prioridade:
+ * EPSG informado na configuração → definição completa do .prj (WKT, lida
+ * pelo proj4 — funciona com os .prj do ArcGIS/QGIS mesmo sem código EPSG)
+ * → EPSG reconhecido no .prj → 4674 (SIRGAS 2000). */
+function transformadorDaCamada(bruto: ShapeBruto, epsgInformado: number | null) {
+  if (epsgInformado) return transformadorParaWgs84(epsgInformado)
+  if (bruto.prjWkt) {
+    try {
+      registrarProjecoes()
+      const conv = proj4(bruto.prjWkt, 'EPSG:4326')
+      return (xy: [number, number]) => conv.forward(xy) as [number, number]
+    } catch {
+      // .prj não reconhecido pelo proj4 — segue para as alternativas abaixo
+    }
+  }
+  return transformadorParaWgs84(bruto.epsgPrj ?? 4674)
+}
+
 /** Reprojeta as feições para WGS84 e calcula a extensão da camada. */
-export function prepararCamadaShape(bruto: ShapeBruto, epsg: number): CamadaShape {
-  const f = transformadorParaWgs84(epsg)
+export function prepararCamadaShape(bruto: ShapeBruto, epsgInformado: number | null): CamadaShape {
+  const f = transformadorDaCamada(bruto, epsgInformado)
   let minX = Infinity
   let minY = Infinity
   let maxX = -Infinity

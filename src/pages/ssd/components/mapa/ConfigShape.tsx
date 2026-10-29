@@ -39,6 +39,7 @@ export function ConfigShapeForm({
   const cc: ConfigCamadaShape = config.camadas[shape.nome] || configCamadaPadrao()
   const campos = shape.campos
   const epsgPrj = shapes.map((s) => s.epsgPrj).find((e) => e) || null
+  const temPrj = shapes.some((s) => s.prjWkt)
 
   const setCamada = (patch: Partial<ConfigCamadaShape>) =>
     onChange({ ...config, camadas: { ...config.camadas, [shape.nome]: { ...cc, ...patch } } })
@@ -86,12 +87,12 @@ export function ConfigShapeForm({
           <Label>EPSG de Origem</Label>
           <Input
             type="number"
-            placeholder={epsgPrj ? `${epsgPrj} (detectado no .prj)` : '4674'}
+            placeholder={epsgPrj ? `${epsgPrj} (lido do .prj)` : temPrj ? 'lido do .prj' : '4674 (sem .prj)'}
             value={config.epsg ?? ''}
             onChange={(e) => onChange({ ...config, epsg: e.target.value === '' ? null : Number(e.target.value) })}
           />
           <p className="text-xs text-muted-foreground">
-            Em branco, usa o sistema identificado no arquivo .prj (ou 4674 = SIRGAS 2000, se não houver).
+            Em branco, usa o sistema de coordenadas do arquivo .prj{temPrj ? '' : ' — este .zip não tem .prj, então é usado 4674 (SIRGAS 2000)'}.
             Se estiver em UTM, use o EPSG da zona (ex: 31982 para a zona 22S).
           </p>
         </div>

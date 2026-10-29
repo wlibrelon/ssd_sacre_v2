@@ -256,11 +256,15 @@ export function ExibicaoMapa({ selecoes }: { selecoes: Selecao[] }) {
     try {
       if (tipo === 'shape') {
         if (!shapes) return
-        const camadas = shapes.map((s) => {
-          const epsg = cfgShape.epsg ?? s.epsgPrj ?? 4674
-          if (!epsgSuportado(epsg)) throw new Error(`EPSG ${epsg} não é suportado. Informe outro EPSG de origem.`)
-          return prepararCamadaShape(s, epsg)
-        })
+        if (cfgShape.epsg && !epsgSuportado(cfgShape.epsg))
+          throw new Error(`EPSG ${cfgShape.epsg} não é suportado. Informe outro EPSG de origem.`)
+        const camadas = shapes.map((s) => prepararCamadaShape(s, cfgShape.epsg))
+        // Camadas com coordenadas fora da faixa de graus (EPSG errado)
+        const foraDaFaixa = camadas.filter((c) => c.extensao && !extensaoValida(c.extensao)).map((c) => c.nome)
+        if (foraDaFaixa.length > 0)
+          throw new Error(
+            `Não foi possível posicionar a(s) camada(s) ${foraDaFaixa.join(', ')}: o sistema de coordenadas não foi reconhecido. Informe o EPSG de origem na Configuração de mapa.`,
+          )
         const extensao = unirExtensoes(camadas.map((c) => c.extensao))
         setExibido({ tipo: 'shape', camadas, cfg: cfgShape, extensao })
         aplicarExtensao(extensao)
