@@ -94,9 +94,14 @@ export function detectarEpsgPrj(wkt: string | null | undefined): number | null {
 
 export async function baixarArquivo(caminho: string): Promise<ArrayBuffer> {
   const limpo = caminho.replace(/^dados_brutos\//, '').replace(/^\/+/, '')
-  const { data, error } = await supabase.storage.from('dados_brutos').download(limpo)
-  if (error || !data) throw new Error(`Não foi possível baixar o arquivo ${limpo}.`)
-  return data.arrayBuffer()
+  // URL assinada + cache: 'no-store': um arquivo substituído no storage com o
+  // mesmo nome não pode vir da cache do navegador com o conteúdo antigo.
+  const { data, error } = await supabase.storage.from('dados_brutos').createSignedUrl(limpo, 300)
+  if (error || !data?.signedUrl) throw new Error(`Não foi possível acessar o arquivo ${limpo}.`)
+  const sep = data.signedUrl.includes('?') ? '&' : '?'
+  const resp = await fetch(`${data.signedUrl}${sep}t=${Date.now()}`, { cache: 'no-store' })
+  if (!resp.ok) throw new Error(`Não foi possível baixar o arquivo ${limpo} (${resp.status}).`)
+  return resp.arrayBuffer()
 }
 
 // ---------------------------------------------------------------------------

@@ -176,9 +176,20 @@ export function ExibicaoMapa({ selecoes }: { selecoes: Selecao[] }) {
   const temRaster = !!modelo?.arq_raster
 
   // Ao trocar de modelo: escolhe o tipo de mapa e carrega a configuração salva
-  const escolherModelo = (id: number) => {
-    const m = modelos.find((x) => x.id_mod === id)
+  const escolherModelo = async (id: number) => {
+    // Relê o modelo do banco: os mapas podem ter sido trocados em
+    // Configurações depois que esta tela foi aberta.
+    const { data } = await supabase
+      .from('modelos')
+      .select('id_mod, id_fonte, cenario, estrategia, arq_shape, desc_shape, arq_raster, desc_raster, config_mapa')
+      .eq('id_mod', id)
+      .maybeSingle()
+    const m = (data as ModeloMapa | null) || modelos.find((x) => x.id_mod === id)
     if (!m) return
+    if (data) setModelos((prev) => prev.map((x) => (x.id_mod === id ? (data as ModeloMapa) : x)))
+    buffers.current = {}
+    setShapes(null)
+    setRaster(null)
     setIdMod(id)
     setTipo(m.arq_shape ? 'shape' : m.arq_raster ? 'raster' : null)
     setCfgShape(normalizarConfigShape(m.config_mapa?.shape))
@@ -222,7 +233,7 @@ export function ExibicaoMapa({ selecoes }: { selecoes: Selecao[] }) {
     return () => {
       ativo = false
     }
-  }, [modelo?.id_mod, tipo, tipo === 'shape' ? cfgShape.dbf_encoding : ''])
+  }, [modelo?.id_mod, modelo?.arq_shape, modelo?.arq_raster, tipo, tipo === 'shape' ? cfgShape.dbf_encoding : ''])
 
   const nodataEfetivo = cfgRaster.nodata ?? raster?.nodataArquivo ?? null
   const bandaEfetiva = raster ? Math.min(cfgRaster.banda, raster.bandas - 1) : 0
@@ -392,6 +403,8 @@ export function ExibicaoMapa({ selecoes }: { selecoes: Selecao[] }) {
           <RadioGroup
             value={tipo || ''}
             onValueChange={(v) => {
+              setShapes(null)
+              setRaster(null)
               setTipo(v as TipoMapa)
               setExibido(null)
             }}
