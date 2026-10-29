@@ -19,7 +19,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { Trash2, Folder, File as FileIcon, ChevronLeft, Pencil, Check, X } from 'lucide-react'
+import {
+  Trash2,
+  Folder,
+  File as FileIcon,
+  ChevronLeft,
+  Pencil,
+  Check,
+  X,
+  Map as MapIcon,
+} from 'lucide-react'
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 const formatData = (data: any): string => {
@@ -43,11 +52,15 @@ function FileSelectDialog({
   value,
   onChange,
   bucket = 'dados_brutos',
+  compact = false,
 }: {
   label: string
   value: string
   onChange: (v: string) => void
   bucket?: string
+  /** Versão reduzida para a edição na tabela de modelos: sem rótulo, campo
+   * editável (permite apagar/colar o caminho) e botão "…" para buscar. */
+  compact?: boolean
 }) {
   const [open, setOpen] = useState(false)
   const [path, setPath] = useState<string[]>([])
@@ -67,15 +80,25 @@ function FileSelectDialog({
   }, [open, path, bucket])
 
   return (
-    <div className="flex flex-col space-y-1">
-      <label className="text-xs font-semibold">{label}</label>
-      <div className="flex gap-2">
-        <Input
-          value={value || ''}
-          readOnly
-          placeholder="Nenhum arquivo"
-          className="flex-1 text-xs"
-        />
+    <div className={compact ? 'flex' : 'flex flex-col space-y-1'}>
+      {!compact && <label className="text-xs font-semibold">{label}</label>}
+      <div className={compact ? 'flex gap-1 w-full' : 'flex gap-2'}>
+        {compact ? (
+          <Input
+            value={value || ''}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder="—"
+            className="h-6 text-[11px] px-1.5 min-w-[110px] flex-1"
+            title={value || ''}
+          />
+        ) : (
+          <Input
+            value={value || ''}
+            readOnly
+            placeholder="Nenhum arquivo"
+            className="flex-1 text-xs"
+          />
+        )}
         <Dialog
           open={open}
           onOpenChange={(o) => {
@@ -84,9 +107,21 @@ function FileSelectDialog({
           }}
         >
           <DialogTrigger asChild>
-            <Button variant="outline" type="button" size="sm">
-              Buscar
-            </Button>
+            {compact ? (
+              <Button
+                variant="outline"
+                type="button"
+                size="sm"
+                className="h-6 px-1.5 text-[11px]"
+                title={`Buscar: ${label}`}
+              >
+                …
+              </Button>
+            ) : (
+              <Button variant="outline" type="button" size="sm">
+                Buscar
+              </Button>
+            )}
           </DialogTrigger>
           <DialogContent className="max-w-4xl">
             <DialogHeader>
@@ -170,6 +205,7 @@ type ModeloRow = {
   desc_shape: string | null
   arq_raster: string | null // GeoTIFF do mapa do modelo
   desc_raster: string | null
+  config_mapa?: any
   fonte_agua?: { nome_fonte: string }
 }
 
@@ -189,10 +225,6 @@ type EditingModelo = {
   arq_capex_estrategias: string
   arq_capex_perdas: string
   arq_opex: string
-  arq_shape: string
-  desc_shape: string
-  arq_raster: string
-  desc_raster: string
   /** Cópia editável do JSONB de indicadores, serializado como string JSON para o Input */
   arq_indicador_raw: string
 }
@@ -410,16 +442,63 @@ export function Importacao() {
       arq_capex_estrategias: m.arq_capex_estrategias || '',
       arq_capex_perdas: m.arq_capex_perdas || '',
       arq_opex: m.arq_opex || '',
-      arq_shape: m.arq_shape || '',
-      desc_shape: m.desc_shape || '',
-      arq_raster: m.arq_raster || '',
-      desc_raster: m.desc_raster || '',
       // Exibe o JSONB serializado para edição direta
       arq_indicador_raw: m.arq_indicador ? JSON.stringify(m.arq_indicador, null, 2) : '',
     })
   }
 
   const cancelEdit = () => setEditingModelo(null)
+
+  // ── Mapas de um modelo já cadastrado (janela "Mapas") ───────────────────────
+  const [mapasEdit, setMapasEdit] = useState<{
+    id_mod: number
+    titulo: string
+    arq_shape: string
+    desc_shape: string
+    arq_raster: string
+    desc_raster: string
+  } | null>(null)
+  const [salvandoMapas, setSalvandoMapas] = useState(false)
+
+  const abrirMapas = (m: ModeloRow) =>
+    setMapasEdit({
+      id_mod: m.id_mod,
+      titulo: `${formatData(m.fonte_agua?.nome_fonte) || `Fonte ${m.id_fonte}`} (modelo ${m.id_mod})`,
+      arq_shape: m.arq_shape || '',
+      desc_shape: m.desc_shape || '',
+      arq_raster: m.arq_raster || '',
+      desc_raster: m.desc_raster || '',
+    })
+
+  const salvarMapas = async () => {
+    if (!mapasEdit) return
+    const atual = modelos.find((m) => m.id_mod === mapasEdit.id_mod)
+    if (!atual) return
+    setSalvandoMapas(true)
+    const arqShape = mapasEdit.arq_shape.trim() || null
+    const arqRaster = mapasEdit.arq_raster.trim() || null
+    // Se o arquivo de um mapa foi trocado ou removido, a configuração de
+    // exibição salva para ele (camadas, classes, cores) deixa de valer.
+    const config = { ...(atual.config_mapa || {}) }
+    if (arqShape !== (atual.arq_shape || null)) delete config.shape
+    if (arqRaster !== (atual.arq_raster || null)) delete config.raster
+    const update = {
+      arq_shape: arqShape,
+      desc_shape: arqShape ? mapasEdit.desc_shape.trim() || null : null,
+      arq_raster: arqRaster,
+      desc_raster: arqRaster ? mapasEdit.desc_raster.trim() || null : null,
+      config_mapa: config,
+    }
+    const { error } = await supabase.from('modelos').update(update).eq('id_mod', mapasEdit.id_mod)
+    if (error) {
+      toast.error(`Erro ao salvar mapas: ${error.message}`)
+    } else {
+      setModelos((prev) => prev.map((m) => (m.id_mod === mapasEdit.id_mod ? { ...m, ...update } : m)))
+      toast.success('Mapas do modelo atualizados')
+      setMapasEdit(null)
+    }
+    setSalvandoMapas(false)
+  }
 
   const saveEdit = async () => {
     if (!editingModelo) return
@@ -784,10 +863,6 @@ export function Importacao() {
     { key: 'arq_capex_estrategias', label: 'CAPEX Est.' },
     { key: 'arq_capex_perdas', label: 'CAPEX Per.' },
     { key: 'arq_opex', label: 'OPEX' },
-    { key: 'arq_shape', label: 'Shape' },
-    { key: 'desc_shape', label: 'Desc. Shape' },
-    { key: 'arq_raster', label: 'Raster' },
-    { key: 'desc_raster', label: 'Desc. Raster' },
   ]
 
   // ── Render ───────────────────────────────────────────────────────────────────
@@ -1175,6 +1250,9 @@ export function Importacao() {
                     {col.label}
                   </th>
                 ))}
+                <th className="px-3 py-2.5 text-left font-semibold text-slate-600 whitespace-nowrap">
+                  Mapas
+                </th>
                 {/* Coluna especial: indicadores JSONB */}
                 <th className="px-3 py-2.5 text-left font-semibold text-slate-600 whitespace-nowrap">
                   Indicadores
@@ -1190,7 +1268,7 @@ export function Importacao() {
               {modelos.length === 0 && (
                 <tr>
                   <td
-                    colSpan={FILE_COLS.length + 6}
+                    colSpan={FILE_COLS.length + 7}
                     className="px-4 py-8 text-center text-slate-400"
                   >
                     Nenhum modelo cadastrado.
@@ -1259,13 +1337,12 @@ export function Importacao() {
                     {FILE_COLS.map((col) => (
                       <td key={col.key} className="px-2 py-2 max-w-[140px]">
                         {isEditing ? (
-                          <Input
-                            className="h-6 text-[11px] px-1.5 min-w-[120px]"
+                          <FileSelectDialog
+                            compact
+                            label={col.label}
                             value={editingModelo[col.key]}
-                            onChange={(e) =>
-                              setEditingModelo((p) =>
-                                p ? { ...p, [col.key]: e.target.value } : null,
-                              )
+                            onChange={(v) =>
+                              setEditingModelo((p) => (p ? { ...p, [col.key]: v } : null))
                             }
                           />
                         ) : (
@@ -1282,6 +1359,23 @@ export function Importacao() {
                         )}
                       </td>
                     ))}
+
+                    {/* Mapas (shape/raster) — editados na janela "Mapas" */}
+                    <td className="px-2 py-2 whitespace-nowrap">
+                      <button
+                        type="button"
+                        onClick={() => abrirMapas(m)}
+                        title="Incluir ou alterar os mapas deste modelo"
+                        className="inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] hover:bg-slate-100"
+                      >
+                        <MapIcon className="w-3 h-3 text-primary" />
+                        {m.arq_shape || m.arq_raster ? (
+                          [m.arq_shape && 'Shape', m.arq_raster && 'Raster'].filter(Boolean).join(' + ')
+                        ) : (
+                          <span className="text-slate-400">Incluir</span>
+                        )}
+                      </button>
+                    </td>
 
                     {/* Indicadores JSONB */}
                     <td className="px-2 py-2 max-w-[220px]">
@@ -1387,6 +1481,72 @@ export function Importacao() {
           </table>
         </div>
       </div>
+
+      {/* ── Janela: mapas de um modelo já cadastrado ── */}
+      <Dialog open={!!mapasEdit} onOpenChange={(o) => !o && setMapasEdit(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Mapas do modelo — {mapasEdit?.titulo}</DialogTitle>
+          </DialogHeader>
+          {mapasEdit && (
+            <div className="space-y-5">
+              <p className="text-xs text-muted-foreground">
+                Mapas exibidos na aba Mapa da Simulação. Envie os arquivos pelo bloco de upload, nas
+                pastas mapas_shape (.zip) e mapas_raster (.tif). Ao trocar ou remover um arquivo, a
+                configuração de exibição salva para ele é descartada.
+              </p>
+              {(
+                [
+                  ['shape', 'Arquivo Shape (.zip)', 'Descrição do mapa (shape)'],
+                  ['raster', 'Arquivo Raster (GeoTIFF)', 'Descrição do mapa (raster)'],
+                ] as const
+              ).map(([t, rotulo, placeholder]) => {
+                const arq = t === 'shape' ? 'arq_shape' : 'arq_raster'
+                const desc = t === 'shape' ? 'desc_shape' : 'desc_raster'
+                return (
+                  <div key={t} className="space-y-2 rounded-md border p-3">
+                    <FileSelectDialog
+                      label={rotulo}
+                      value={mapasEdit[arq]}
+                      onChange={(v) => setMapasEdit((p) => (p ? { ...p, [arq]: v } : p))}
+                    />
+                    <div className="flex gap-2">
+                      <Input
+                        value={mapasEdit[desc]}
+                        onChange={(e) =>
+                          setMapasEdit((p) => (p ? { ...p, [desc]: e.target.value } : p))
+                        }
+                        placeholder={placeholder}
+                        className="flex-1 text-xs"
+                      />
+                      {mapasEdit[arq] && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          type="button"
+                          onClick={() =>
+                            setMapasEdit((p) => (p ? { ...p, [arq]: '', [desc]: '' } : p))
+                          }
+                        >
+                          Remover
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+              <div className="flex justify-end gap-2 pt-2 border-t">
+                <Button variant="outline" type="button" onClick={() => setMapasEdit(null)}>
+                  Cancelar
+                </Button>
+                <Button type="button" onClick={salvarMapas} disabled={salvandoMapas}>
+                  {salvandoMapas ? 'Salvando...' : 'Salvar mapas'}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* ── Botão Importar com barra de progresso ── */}
       <div className="flex justify-end">
