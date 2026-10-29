@@ -97,7 +97,10 @@ export async function baixarArquivo(caminho: string): Promise<ArrayBuffer> {
   // URL assinada + cache: 'no-store': um arquivo substituído no storage com o
   // mesmo nome não pode vir da cache do navegador com o conteúdo antigo.
   const { data, error } = await supabase.storage.from('dados_brutos').createSignedUrl(limpo, 300)
-  if (error || !data?.signedUrl) throw new Error(`Não foi possível acessar o arquivo ${limpo}.`)
+  if (error || !data?.signedUrl)
+    throw new Error(
+      `O arquivo ${limpo}, indicado neste modelo, não foi encontrado no storage. Escolha o arquivo atual em Configurações → Construção de modelos para simulação → coluna Mapas do modelo.`,
+    )
   const sep = data.signedUrl.includes('?') ? '&' : '?'
   const resp = await fetch(`${data.signedUrl}${sep}t=${Date.now()}`, { cache: 'no-store' })
   if (!resp.ok) throw new Error(`Não foi possível baixar o arquivo ${limpo} (${resp.status}).`)
