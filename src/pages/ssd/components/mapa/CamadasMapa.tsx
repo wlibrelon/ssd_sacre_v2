@@ -51,6 +51,10 @@ export function CliqueNoMapa({ onClick }: { onClick: (lon: number, lat: number, 
     const handler = (e: MouseEvent) => {
       const c = ctxRef.current
       if (!c || c.dragMovedRef.current) return
+      // Clique numa feição vetorial (elemento dentro de um SVG): é tratado
+      // pelo próprio GeoJSONLayer, não como clique no fundo do mapa.
+      const alvo = e.target as Element | null
+      if (alvo instanceof SVGElement && alvo.tagName.toLowerCase() !== 'svg') return
       const rect = container.getBoundingClientRect()
       const x = e.clientX - rect.left
       const y = e.clientY - rect.top

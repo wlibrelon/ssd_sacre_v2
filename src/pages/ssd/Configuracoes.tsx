@@ -4,6 +4,7 @@ import { Grupo2 } from './components/Grupo2'
 import { Grupo4 } from './components/Grupo4'
 import { GrupoUpload } from './components/GrupoUpload'
 import { Importacao } from './components/Importacao'
+import { GrupoMapas } from './components/mapa/GrupoMapas'
 import {
   Accordion,
   AccordionItem,
@@ -88,6 +89,17 @@ export default function Configuracoes() {
           <AccordionContent className="pt-2 pb-6">
             <ErrorBoundary>
               <GrupoUpload />
+            </ErrorBoundary>
+          </AccordionContent>
+        </AccordionItem>
+
+        <AccordionItem value="mapas" className="border rounded-lg px-4 bg-white shadow-sm">
+          <AccordionTrigger className="text-xl font-bold hover:no-underline text-left">
+            Mapas para simulação
+          </AccordionTrigger>
+          <AccordionContent className="pt-2 pb-6">
+            <ErrorBoundary>
+              <GrupoMapas />
             </ErrorBoundary>
           </AccordionContent>
         </AccordionItem>

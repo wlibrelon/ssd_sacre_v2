@@ -47,7 +47,7 @@ const formatData = (data: any): string => {
 }
 
 // ── FileSelectDialog ───────────────────────────────────────────────────────────
-function FileSelectDialog({
+export function FileSelectDialog({
   label,
   value,
   onChange,
@@ -201,11 +201,7 @@ type ModeloRow = {
   arq_capex_perdas: string | null
   arq_opex: string | null
   arq_indicador: ArqIndicadorMap | null // JSONB { id_indicador: path }
-  arq_shape: string | null // .zip com o shapefile do mapa do modelo
-  desc_shape: string | null
-  arq_raster: string | null // GeoTIFF do mapa do modelo
-  desc_raster: string | null
-  config_mapa?: any
+  modelo_mapas?: { id_mapa: number }[] // mapas associados (biblioteca de mapas)
   fonte_agua?: { nome_fonte: string }
 }
 
@@ -275,10 +271,6 @@ export function Importacao() {
     arq_capex_estrategias: '',
     arq_capex_perdas: '',
     arq_opex: '',
-    arq_shape: '',
-    desc_shape: '',
-    arq_raster: '',
-    desc_raster: '',
   })
 
   // Edição inline da tabela modelos
@@ -291,7 +283,7 @@ export function Importacao() {
     const fetchData = async () => {
       try {
         const [modRes, indRes, refRes] = await Promise.all([
-          supabase.from('modelos').select('*, fonte_agua(nome_fonte)'),
+          supabase.from('modelos').select('*, fonte_agua(nome_fonte), modelo_mapas(id_mapa)'),
           supabase
             .from('indicadores')
             .select('id_indicador, descricao, campo_extra, id_fonte')
@@ -402,10 +394,6 @@ export function Importacao() {
         arq_capex_perdas: files.arq_capex_perdas || null,
         arq_opex: files.arq_opex || null,
         arq_indicador: arqIndicadorJsonb,
-        arq_shape: files.arq_shape || null,
-        desc_shape: files.arq_shape ? files.desc_shape.trim() || null : null,
-        arq_raster: files.arq_raster || null,
-        desc_raster: files.arq_raster ? files.desc_raster.trim() || null : null,
       })
       .select('*, fonte_agua(nome_fonte)')
       .single()
@@ -425,10 +413,6 @@ export function Importacao() {
       arq_capex_estrategias: '',
       arq_capex_perdas: '',
       arq_opex: '',
-      arq_shape: '',
-      desc_shape: '',
-      arq_raster: '',
-      desc_raster: '',
     })
   }
 
@@ -449,55 +433,80 @@ export function Importacao() {
 
   const cancelEdit = () => setEditingModelo(null)
 
-  // ── Mapas de um modelo já cadastrado (janela "Mapas") ───────────────────────
-  const [mapasEdit, setMapasEdit] = useState<{
-    id_mod: number
-    titulo: string
-    arq_shape: string
-    desc_shape: string
-    arq_raster: string
-    desc_raster: string
-  } | null>(null)
+  // ── Mapas associados a um modelo (janela "Mapas") ──────────────────────────
+  // Os mapas vêm da biblioteca (bloco "Mapas para simulação"); aqui só se
+  // escolhe quais o modelo usa, em que ordem e quais aparecem ligados.
+  type MapaBiblioteca = { id_mapa: number; tipo: string; arquivo: string; descricao: string | null }
+  type Associacao = { id_mapa: number; visivel_padrao: boolean }
+  const [mapasEdit, setMapasEdit] = useState<{ id_mod: number; titulo: string; lista: Associacao[] } | null>(null)
+  const [biblioteca, setBiblioteca] = useState<MapaBiblioteca[]>([])
+  const [mapaParaAdicionar, setMapaParaAdicionar] = useState('')
   const [salvandoMapas, setSalvandoMapas] = useState(false)
 
-  const abrirMapas = (m: ModeloRow) =>
+  const nomeMapa = (id: number) => {
+    const m = biblioteca.find((x) => x.id_mapa === id)
+    return m ? m.descricao || m.arquivo.split('/').pop() || m.arquivo : `Mapa ${id}`
+  }
+
+  const abrirMapas = async (m: ModeloRow) => {
+    const [{ data: bib, error: e1 }, { data: assoc, error: e2 }] = await Promise.all([
+      supabase.from('mapas').select('id_mapa, tipo, arquivo, descricao').order('descricao'),
+      supabase.from('modelo_mapas').select('id_mapa, ordem, visivel_padrao').eq('id_mod', m.id_mod).order('ordem'),
+    ])
+    if (e1 || e2) return toast.error(`Erro ao carregar mapas: ${(e1 || e2)?.message}`)
+    setBiblioteca((bib as MapaBiblioteca[]) || [])
+    setMapaParaAdicionar('')
     setMapasEdit({
       id_mod: m.id_mod,
       titulo: `${formatData(m.fonte_agua?.nome_fonte) || `Fonte ${m.id_fonte}`} (modelo ${m.id_mod})`,
-      arq_shape: m.arq_shape || '',
-      desc_shape: m.desc_shape || '',
-      arq_raster: m.arq_raster || '',
-      desc_raster: m.desc_raster || '',
+      lista: ((assoc as any[]) || []).map((a) => ({ id_mapa: a.id_mapa, visivel_padrao: a.visivel_padrao })),
+    })
+  }
+
+  const moverMapa = (idx: number, delta: number) =>
+    setMapasEdit((p) => {
+      if (!p) return p
+      const lista = [...p.lista]
+      const j = idx + delta
+      if (j < 0 || j >= lista.length) return p
+      ;[lista[idx], lista[j]] = [lista[j], lista[idx]]
+      return { ...p, lista }
     })
 
   const salvarMapas = async () => {
     if (!mapasEdit) return
-    const atual = modelos.find((m) => m.id_mod === mapasEdit.id_mod)
-    if (!atual) return
     setSalvandoMapas(true)
-    const arqShape = mapasEdit.arq_shape.trim() || null
-    const arqRaster = mapasEdit.arq_raster.trim() || null
-    // Se o arquivo de um mapa foi trocado ou removido, a configuração de
-    // exibição salva para ele (camadas, classes, cores) deixa de valer.
-    const config = { ...(atual.config_mapa || {}) }
-    if (arqShape !== (atual.arq_shape || null)) delete config.shape
-    if (arqRaster !== (atual.arq_raster || null)) delete config.raster
-    const update = {
-      arq_shape: arqShape,
-      desc_shape: arqShape ? mapasEdit.desc_shape.trim() || null : null,
-      arq_raster: arqRaster,
-      desc_raster: arqRaster ? mapasEdit.desc_raster.trim() || null : null,
-      config_mapa: config,
+    const { id_mod, lista } = mapasEdit
+    // Grava a lista atual (upsert) e só depois remove as associações retiradas
+    // — assim uma falha no meio do caminho não apaga os mapas do modelo.
+    let erro: string | undefined
+    let gravados = 0
+    if (lista.length > 0) {
+      const { data, error } = await supabase
+        .from('modelo_mapas')
+        .upsert(
+          lista.map((a, i) => ({ id_mod, id_mapa: a.id_mapa, ordem: i, visivel_padrao: a.visivel_padrao })),
+          { onConflict: 'id_mod,id_mapa' },
+        )
+        .select('id_mapa')
+      erro = error?.message
+      gravados = data?.length || 0
     }
-    const { error } = await supabase.from('modelos').update(update).eq('id_mod', mapasEdit.id_mod)
-    if (error) {
-      toast.error(`Erro ao salvar mapas: ${error.message}`)
-    } else {
-      setModelos((prev) => prev.map((m) => (m.id_mod === mapasEdit.id_mod ? { ...m, ...update } : m)))
-      toast.success('Mapas do modelo atualizados')
-      setMapasEdit(null)
+    if (!erro) {
+      let q = supabase.from('modelo_mapas').delete().eq('id_mod', id_mod)
+      if (lista.length > 0) q = q.not('id_mapa', 'in', `(${lista.map((a) => a.id_mapa).join(',')})`)
+      const { error } = await q
+      erro = error?.message
     }
     setSalvandoMapas(false)
+    if (erro) return toast.error(`Erro ao salvar mapas: ${erro}`)
+    if (lista.length > 0 && gravados === 0)
+      return toast.error('Os mapas não foram gravados: sem permissão para alterar este modelo.')
+    setModelos((prev) =>
+      prev.map((m) => (m.id_mod === id_mod ? { ...m, modelo_mapas: lista.map((a) => ({ id_mapa: a.id_mapa })) } : m)),
+    )
+    toast.success('Mapas do modelo atualizados')
+    setMapasEdit(null)
   }
 
   const saveEdit = async () => {
@@ -1157,66 +1166,6 @@ export function Importacao() {
             onChange={(v) => setFiles((p) => ({ ...p, arq_opex: v }))}
           />
 
-          {/* Mapas do modelo (opcionais) — exibidos na aba "Mapa" da Simulação
-              como informação complementar para interpretar os resultados. */}
-          <div className="col-span-full border-t pt-4 mt-1">
-            <p className="text-xs font-semibold text-slate-700">Mapas do modelo (opcional)</p>
-            <p className="text-xs text-muted-foreground">
-              Mapas exibidos na aba Mapa da Simulação para ajudar na interpretação dos
-              resultados. Envie os arquivos pelo bloco de upload, nas pastas mapas_shape (.zip
-              com .shp, .shx, .dbf e .prj) e mapas_raster (GeoTIFF .tif).
-            </p>
-          </div>
-          <div className="space-y-2">
-            <FileSelectDialog
-              label="Arquivo Shape (.zip)"
-              value={files.arq_shape}
-              onChange={(v) => setFiles((p) => ({ ...p, arq_shape: v }))}
-            />
-            <div className="flex gap-2">
-              <Input
-                value={files.desc_shape}
-                onChange={(e) => setFiles((p) => ({ ...p, desc_shape: e.target.value }))}
-                placeholder="Descrição do mapa (shape)"
-                className="flex-1 text-xs"
-              />
-              {files.arq_shape && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  type="button"
-                  onClick={() => setFiles((p) => ({ ...p, arq_shape: '', desc_shape: '' }))}
-                >
-                  Remover
-                </Button>
-              )}
-            </div>
-          </div>
-          <div className="space-y-2">
-            <FileSelectDialog
-              label="Arquivo Raster (GeoTIFF)"
-              value={files.arq_raster}
-              onChange={(v) => setFiles((p) => ({ ...p, arq_raster: v }))}
-            />
-            <div className="flex gap-2">
-              <Input
-                value={files.desc_raster}
-                onChange={(e) => setFiles((p) => ({ ...p, desc_raster: e.target.value }))}
-                placeholder="Descrição do mapa (raster)"
-                className="flex-1 text-xs"
-              />
-              {files.arq_raster && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  type="button"
-                  onClick={() => setFiles((p) => ({ ...p, arq_raster: '', desc_raster: '' }))}
-                >
-                  Remover
-                </Button>
-              )}
-            </div>
-          </div>
           <div className="col-span-full mt-2">
             <Button onClick={handleSaveModel}>Salvar Configuração</Button>
           </div>
@@ -1360,7 +1309,7 @@ export function Importacao() {
                       </td>
                     ))}
 
-                    {/* Mapas (shape/raster) — editados na janela "Mapas" */}
+                    {/* Mapas associados — editados na janela "Mapas" */}
                     <td className="px-2 py-2 whitespace-nowrap">
                       <button
                         type="button"
@@ -1369,8 +1318,8 @@ export function Importacao() {
                         className="inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] hover:bg-slate-100"
                       >
                         <MapIcon className="w-3 h-3 text-primary" />
-                        {m.arq_shape || m.arq_raster ? (
-                          [m.arq_shape && 'Shape', m.arq_raster && 'Raster'].filter(Boolean).join(' + ')
+                        {m.modelo_mapas && m.modelo_mapas.length > 0 ? (
+                          `${m.modelo_mapas.length} ${m.modelo_mapas.length === 1 ? 'mapa' : 'mapas'}`
                         ) : (
                           <span className="text-slate-400">Incluir</span>
                         )}
@@ -1482,59 +1431,121 @@ export function Importacao() {
         </div>
       </div>
 
-      {/* ── Janela: mapas de um modelo já cadastrado ── */}
+      {/* ── Janela: mapas associados a um modelo ── */}
       <Dialog open={!!mapasEdit} onOpenChange={(o) => !o && setMapasEdit(null)}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Mapas do modelo — {mapasEdit?.titulo}</DialogTitle>
           </DialogHeader>
           {mapasEdit && (
-            <div className="space-y-5">
+            <div className="space-y-4">
               <p className="text-xs text-muted-foreground">
-                Mapas exibidos na aba Mapa da Simulação. Envie os arquivos pelo bloco de upload, nas
-                pastas mapas_shape (.zip) e mapas_raster (.tif). Ao trocar ou remover um arquivo, a
-                configuração de exibição salva para ele é descartada.
+                Escolha os mapas exibidos na aba Mapa da Simulação para este modelo. Os mapas são cadastrados e
+                configurados no bloco "Mapas para simulação". A ordem define o empilhamento (o primeiro fica por cima,
+                e os rasters ficam sempre abaixo dos shapes); "Ligado" define se o mapa aparece aceso ao exibir.
               </p>
-              {(
-                [
-                  ['shape', 'Arquivo Shape (.zip)', 'Descrição do mapa (shape)'],
-                  ['raster', 'Arquivo Raster (GeoTIFF)', 'Descrição do mapa (raster)'],
-                ] as const
-              ).map(([t, rotulo, placeholder]) => {
-                const arq = t === 'shape' ? 'arq_shape' : 'arq_raster'
-                const desc = t === 'shape' ? 'desc_shape' : 'desc_raster'
-                return (
-                  <div key={t} className="space-y-2 rounded-md border p-3">
-                    <FileSelectDialog
-                      label={rotulo}
-                      value={mapasEdit[arq]}
-                      onChange={(v) => setMapasEdit((p) => (p ? { ...p, [arq]: v } : p))}
-                    />
-                    <div className="flex gap-2">
-                      <Input
-                        value={mapasEdit[desc]}
-                        onChange={(e) =>
-                          setMapasEdit((p) => (p ? { ...p, [desc]: e.target.value } : p))
-                        }
-                        placeholder={placeholder}
-                        className="flex-1 text-xs"
-                      />
-                      {mapasEdit[arq] && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
+              <div className="border rounded-md divide-y">
+                {mapasEdit.lista.length === 0 && (
+                  <p className="text-xs text-muted-foreground p-3">Nenhum mapa associado.</p>
+                )}
+                {mapasEdit.lista.map((a, i) => {
+                  const bib = biblioteca.find((x) => x.id_mapa === a.id_mapa)
+                  return (
+                    <div key={a.id_mapa} className="flex items-center gap-3 p-2">
+                      <div className="flex flex-col">
+                        <button
                           type="button"
-                          onClick={() =>
-                            setMapasEdit((p) => (p ? { ...p, [arq]: '', [desc]: '' } : p))
-                          }
+                          className="text-slate-500 hover:text-slate-800 disabled:opacity-30 text-xs leading-none"
+                          disabled={i === 0}
+                          onClick={() => moverMapa(i, -1)}
+                          title="Subir"
                         >
-                          Remover
-                        </Button>
-                      )}
+                          ▲
+                        </button>
+                        <button
+                          type="button"
+                          className="text-slate-500 hover:text-slate-800 disabled:opacity-30 text-xs leading-none"
+                          disabled={i === mapasEdit.lista.length - 1}
+                          onClick={() => moverMapa(i, 1)}
+                          title="Descer"
+                        >
+                          ▼
+                        </button>
+                      </div>
+                      <span
+                        className={`rounded px-1.5 py-0.5 text-[10px] border ${
+                          bib?.tipo === 'raster'
+                            ? 'bg-amber-50 border-amber-200 text-amber-700'
+                            : 'bg-blue-50 border-blue-200 text-blue-700'
+                        }`}
+                      >
+                        {bib?.tipo === 'raster' ? 'Raster' : 'Shape'}
+                      </span>
+                      <span className="flex-1 text-sm">{nomeMapa(a.id_mapa)}</span>
+                      <label className="flex items-center gap-1.5 text-xs text-slate-600">
+                        <Checkbox
+                          checked={a.visivel_padrao}
+                          onCheckedChange={(c) =>
+                            setMapasEdit((p) =>
+                              p
+                                ? {
+                                    ...p,
+                                    lista: p.lista.map((x, k) => (k === i ? { ...x, visivel_padrao: !!c } : x)),
+                                  }
+                                : p,
+                            )
+                          }
+                        />
+                        Ligado
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setMapasEdit((p) => (p ? { ...p, lista: p.lista.filter((_, k) => k !== i) } : p))
+                        }
+                        title="Remover do modelo"
+                        className="p-1 rounded hover:bg-red-100 text-red-500"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
                     </div>
-                  </div>
-                )
-              })}
+                  )
+                })}
+              </div>
+              <div className="flex gap-2">
+                <Select value={mapaParaAdicionar} onValueChange={setMapaParaAdicionar}>
+                  <SelectTrigger className="flex-1 text-xs">
+                    <SelectValue placeholder="Escolha um mapa da biblioteca..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {biblioteca
+                      .filter((b) => !mapasEdit.lista.some((a) => a.id_mapa === b.id_mapa))
+                      .map((b) => (
+                        <SelectItem key={b.id_mapa} value={String(b.id_mapa)}>
+                          {(b.tipo === 'raster' ? 'Raster · ' : 'Shape · ') + (b.descricao || b.arquivo.split('/').pop())}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={!mapaParaAdicionar}
+                  onClick={() => {
+                    setMapasEdit((p) =>
+                      p ? { ...p, lista: [...p.lista, { id_mapa: Number(mapaParaAdicionar), visivel_padrao: true }] } : p,
+                    )
+                    setMapaParaAdicionar('')
+                  }}
+                >
+                  Adicionar
+                </Button>
+              </div>
+              {biblioteca.length === 0 && (
+                <p className="text-xs text-amber-600">
+                  Nenhum mapa cadastrado ainda. Cadastre os mapas no bloco "Mapas para simulação".
+                </p>
+              )}
               <div className="flex justify-end gap-2 pt-2 border-t">
                 <Button variant="outline" type="button" onClick={() => setMapasEdit(null)}>
                   Cancelar

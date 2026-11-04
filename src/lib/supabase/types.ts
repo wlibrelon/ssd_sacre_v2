@@ -966,6 +966,72 @@ export type Database = {
         }
         Relationships: []
       }
+      mapas: {
+        Row: {
+          arquivo: string
+          config: Json
+          criado_at: string | null
+          descricao: string | null
+          id_mapa: number
+          tipo: string
+        }
+        Insert: {
+          arquivo: string
+          config?: Json
+          criado_at?: string | null
+          descricao?: string | null
+          id_mapa?: number
+          tipo: string
+        }
+        Update: {
+          arquivo?: string
+          config?: Json
+          criado_at?: string | null
+          descricao?: string | null
+          id_mapa?: number
+          tipo?: string
+        }
+        Relationships: []
+      }
+      modelo_mapas: {
+        Row: {
+          id: number
+          id_mapa: number
+          id_mod: number
+          ordem: number
+          visivel_padrao: boolean
+        }
+        Insert: {
+          id?: number
+          id_mapa: number
+          id_mod: number
+          ordem?: number
+          visivel_padrao?: boolean
+        }
+        Update: {
+          id?: number
+          id_mapa?: number
+          id_mod?: number
+          ordem?: number
+          visivel_padrao?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'modelo_mapas_id_mapa_fkey'
+            columns: ['id_mapa']
+            isOneToOne: false
+            referencedRelation: 'mapas'
+            referencedColumns: ['id_mapa']
+          },
+          {
+            foreignKeyName: 'modelo_mapas_id_mod_fkey'
+            columns: ['id_mod']
+            isOneToOne: false
+            referencedRelation: 'modelos'
+            referencedColumns: ['id_mod']
+          },
+        ]
+      }
       modelos: {
         Row: {
           arq_capex_estrategias: string | null
@@ -975,12 +1041,7 @@ export type Database = {
           arq_mod: string | null
           arq_opex: string | null
           arq_perdas: string | null
-          arq_raster: string | null
-          arq_shape: string | null
           cenario: Json | null
-          config_mapa: Json | null
-          desc_raster: string | null
-          desc_shape: string | null
           estrategia: Json | null
           id_fonte: number | null
           id_mod: number
@@ -993,12 +1054,7 @@ export type Database = {
           arq_mod?: string | null
           arq_opex?: string | null
           arq_perdas?: string | null
-          arq_raster?: string | null
-          arq_shape?: string | null
           cenario?: Json | null
-          config_mapa?: Json | null
-          desc_raster?: string | null
-          desc_shape?: string | null
           estrategia?: Json | null
           id_fonte?: number | null
           id_mod?: number
@@ -1011,12 +1067,7 @@ export type Database = {
           arq_mod?: string | null
           arq_opex?: string | null
           arq_perdas?: string | null
-          arq_raster?: string | null
-          arq_shape?: string | null
           cenario?: Json | null
-          config_mapa?: Json | null
-          desc_raster?: string | null
-          desc_shape?: string | null
           estrategia?: Json | null
           id_fonte?: number | null
           id_mod?: number

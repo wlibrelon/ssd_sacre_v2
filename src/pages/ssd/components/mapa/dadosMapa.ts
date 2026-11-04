@@ -668,3 +668,62 @@ export function colorirRaster(
   ctx.putImageData(img, 0, 0)
   return canvas.toDataURL('image/png')
 }
+
+// ---------------------------------------------------------------------------
+// Validação de extensão e cache de arquivos carregados
+// ---------------------------------------------------------------------------
+
+/** Extensão válida em graus (lon/lat)? Coordenadas fora disso indicam, em
+ * geral, um EPSG de origem errado (ex.: dados em UTM lidos como graus). */
+export function extensaoValida(e: Extensao | null | undefined): e is Extensao {
+  if (!e || e.some((v) => !Number.isFinite(v))) return false
+  const [x0, y0, x1, y1] = e
+  return x0 >= -180 && x1 <= 180 && y0 >= -85 && y1 <= 85 && x0 <= x1 && y0 <= y1
+}
+
+// Cache por sessão de tela: evita baixar e ler o mesmo arquivo várias vezes
+// (formulário de configuração + mapa). Limpo ao abrir a tela de mapas, para
+// que um arquivo substituído no storage seja sempre lido de novo.
+const cacheBuffers = new Map<string, Promise<ArrayBuffer>>()
+const cacheShapes = new Map<string, Promise<ShapeBruto[]>>()
+const cacheRasters = new Map<string, Promise<RasterCarregado>>()
+const cacheBandas = new Map<string, Promise<RasterBanda>>()
+
+export function limparCacheMapas() {
+  cacheBuffers.clear()
+  cacheShapes.clear()
+  cacheRasters.clear()
+  cacheBandas.clear()
+}
+
+function emCache<T>(cache: Map<string, Promise<T>>, chave: string, criar: () => Promise<T>): Promise<T> {
+  let p = cache.get(chave)
+  if (!p) {
+    p = criar()
+    cache.set(chave, p)
+    // Falhas não ficam em cache: permitem tentar de novo
+    p.catch(() => cache.delete(chave))
+  }
+  return p
+}
+
+const obterBuffer = (arquivo: string) => emCache(cacheBuffers, arquivo, () => baixarArquivo(arquivo))
+
+export const carregarShapes = (arquivo: string, encoding: string) =>
+  emCache(cacheShapes, `${arquivo}|${encoding}`, async () => lerShapesDoZip(await obterBuffer(arquivo), encoding))
+
+export const carregarRaster = (arquivo: string) =>
+  emCache(cacheRasters, arquivo, async () => lerRaster(await obterBuffer(arquivo)))
+
+export const carregarBanda = (arquivo: string, r: RasterCarregado, banda: number, nodata: number | null) =>
+  emCache(cacheBandas, `${arquivo}|${banda}|${nodata}`, () => lerBandaRaster(r, banda, nodata))
+
+/** Tipo do mapa pela extensão do arquivo (null = não suportado). */
+export function tipoPeloArquivo(arquivo: string): 'shape' | 'raster' | null {
+  const a = arquivo.toLowerCase()
+  if (a.endsWith('.zip')) return 'shape'
+  if (a.endsWith('.tif') || a.endsWith('.tiff')) return 'raster'
+  return null
+}
+
+export const nomeDoArquivo = (arquivo: string) => arquivo.split('/').pop() || arquivo
