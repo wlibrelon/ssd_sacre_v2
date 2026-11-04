@@ -7,7 +7,8 @@ import Layout from './components/Layout'
 import Index from './pages/Index'
 import AuthPage from './pages/auth/AuthPage'
 import Dashboard from './pages/restrito/Dashboard'
-import TesteApiHidro from './pages/restrito/TesteApiHidro'
+// Desativado temporariamente (ver AppSidebar.tsx) — módulo mantido no código.
+// import TesteApiHidro from './pages/restrito/TesteApiHidro'
 import ResetPassword from './pages/auth/ResetPassword'
 import AreaEstudoDocumentos from './pages/area-estudo/Documentos'
 import Camadas from './pages/area-estudo/Camadas'
@@ -58,7 +59,7 @@ const App = () => (
             <Route path="/restrito" element={<Dashboard />} />
             <Route path="/restrito/projetos" element={<GestaoProjetos />} />
             <Route path="/restrito/camadas" element={<GestaoCamadas />} />
-            <Route path="/restrito/api-hidro" element={<TesteApiHidro />} />
+            {/* <Route path="/restrito/api-hidro" element={<TesteApiHidro />} /> */}
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>

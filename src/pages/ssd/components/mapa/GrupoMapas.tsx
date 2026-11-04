@@ -30,8 +30,17 @@ export type MapaRow = {
   arquivo: string
   descricao: string | null
   config: any
-  modelo_mapas?: { id_mod: number }[]
+  modelo_mapas?: {
+    id_mod: number
+    modelos: { id_mod: number; cenario: any; estrategia: any; fonte_agua?: { nome_fonte: string } | null } | null
+  }[]
 }
+
+// Mapas com os modelos que os usam (fonte, cenários e estratégias de cada um)
+const SELECT_MAPAS =
+  '*, modelo_mapas(id_mod, modelos(id_mod, cenario, estrategia, fonte_agua(nome_fonte)))'
+
+const lista = (v: any): string[] => (Array.isArray(v) ? v.map(String) : [])
 
 export function GrupoMapas() {
   const [mapas, setMapas] = useState<MapaRow[]>([])
@@ -42,7 +51,7 @@ export function GrupoMapas() {
 
   const carregar = async () => {
     setCarregando(true)
-    const { data, error } = await supabase.from('mapas').select('*, modelo_mapas(id_mod)').order('id_mapa')
+    const { data, error } = await supabase.from('mapas').select(SELECT_MAPAS).order('id_mapa')
     if (error) toast.error(`Erro ao carregar mapas: ${error.message}`)
     setMapas((data as any) || [])
     setCarregando(false)
@@ -59,7 +68,7 @@ export function GrupoMapas() {
     const { data, error } = await supabase
       .from('mapas')
       .insert({ tipo, arquivo: novoArquivo, descricao: novaDescricao.trim() || null, config: {} })
-      .select('*, modelo_mapas(id_mod)')
+      .select(SELECT_MAPAS)
       .single()
     if (error) return toast.error(`Erro ao cadastrar: ${error.message}`)
     setMapas((p) => [...p, data as any])
@@ -108,7 +117,7 @@ export function GrupoMapas() {
               <th className="px-3 py-2 text-left font-semibold w-20">Tipo</th>
               <th className="px-3 py-2 text-left font-semibold">Descrição</th>
               <th className="px-3 py-2 text-left font-semibold">Arquivo</th>
-              <th className="px-3 py-2 text-center font-semibold w-24">Modelos</th>
+              <th className="px-3 py-2 text-left font-semibold">Modelos associados</th>
               <th className="px-3 py-2 text-center font-semibold w-24">Ações</th>
             </tr>
           </thead>
@@ -142,7 +151,38 @@ export function GrupoMapas() {
                 <td className="px-3 py-2 font-mono text-xs text-slate-500" title={m.arquivo}>
                   {nomeDoArquivo(m.arquivo)}
                 </td>
-                <td className="px-3 py-2 text-center">{m.modelo_mapas?.length || 0}</td>
+                <td className="px-3 py-2">
+                  {!m.modelo_mapas || m.modelo_mapas.length === 0 ? (
+                    <span className="text-xs text-muted-foreground">Nenhum modelo</span>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {[...m.modelo_mapas]
+                        .sort((a, b) =>
+                          (a.modelos?.fonte_agua?.nome_fonte || '').localeCompare(b.modelos?.fonte_agua?.nome_fonte || ''),
+                        )
+                        .map((a) => (
+                          <div key={a.id_mod} className="flex flex-wrap items-center gap-1">
+                            <span className="text-xs font-medium mr-1">
+                              {a.modelos?.fonte_agua?.nome_fonte || `Modelo ${a.id_mod}`}
+                            </span>
+                            {lista(a.modelos?.cenario).map((c) => (
+                              <span key={c} className="bg-blue-50 border border-blue-200 text-blue-700 rounded px-1 py-0.5 text-[10px]">
+                                {c}
+                              </span>
+                            ))}
+                            {lista(a.modelos?.estrategia).map((e) => (
+                              <span
+                                key={e}
+                                className="bg-emerald-50 border border-emerald-200 text-emerald-700 rounded px-1 py-0.5 text-[10px]"
+                              >
+                                {e}
+                              </span>
+                            ))}
+                          </div>
+                        ))}
+                    </div>
+                  )}
+                </td>
                 <td className="px-3 py-2 text-center">
                   <div className="flex justify-center gap-1">
                     <button

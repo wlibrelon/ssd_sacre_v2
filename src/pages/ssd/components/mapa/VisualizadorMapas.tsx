@@ -8,8 +8,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { supabase } from '@/lib/supabase/client'
 import { Checkbox } from '@/components/ui/checkbox'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { AlertTriangle, ChevronDown, ChevronUp, Info, Layers, Loader2, Maximize2, X } from 'lucide-react'
+import { AlertTriangle, ChevronDown, ChevronUp, Info, Layers, Loader2, LocateFixed, Maximize, Minimize, X } from 'lucide-react'
 import { SimpleMap } from '@/components/map/SimpleMap'
 import { TileLayer } from '@/components/map/TileLayer'
 import { GeoJSONLayer } from '@/components/map/GeoJSONLayer'
@@ -480,8 +479,28 @@ export function VisualizadorMapas({
 
   const [painelAberto, setPainelAberto] = useState(true)
 
+  // ── Tela cheia (Fullscreen API do navegador; sai com Esc ou pelo botão) ───
+  const [telaCheia, setTelaCheia] = useState(false)
+  useEffect(() => {
+    const aoMudar = () => setTelaCheia(document.fullscreenElement === containerRef.current)
+    document.addEventListener('fullscreenchange', aoMudar)
+    return () => document.removeEventListener('fullscreenchange', aoMudar)
+  }, [])
+  const alternarTelaCheia = async () => {
+    try {
+      if (document.fullscreenElement) await document.exitFullscreen()
+      else await containerRef.current?.requestFullscreen()
+    } catch {
+      // Navegador sem suporte ou recusou — o mapa continua no tamanho normal
+    }
+  }
+
   return (
-    <div ref={containerRef} className="relative w-full rounded-lg border overflow-hidden" style={{ height: altura }}>
+    <div
+      ref={containerRef}
+      className={`relative w-full overflow-hidden bg-white ${telaCheia ? '' : 'rounded-lg border'}`}
+      style={{ height: telaCheia ? '100vh' : altura }}
+    >
       <SimpleMap key={chaveMapa} defaultCenter={[-49.06, -22.31]} defaultZoom={10} bounds={boundsAlvo} onBoundsChange={aoMudarLimites}>
         <TileLayer urlTemplate="https://tile.openstreetmap.org/{z}/{x}/{y}.png" />
         {camadasAEAtivas
@@ -505,14 +524,24 @@ export function VisualizadorMapas({
         <CliqueNoMapa onClick={cliqueFundo} />
       </SimpleMap>
 
-      <button
-        type="button"
-        onClick={enquadrar}
-        className="absolute top-3 right-3 z-30 bg-background/95 rounded-md shadow border p-2 hover:bg-muted"
-        title="Enquadrar nos mapas ligados"
-      >
-        <Maximize2 className="h-4 w-4 text-primary" />
-      </button>
+      <div className="absolute top-3 right-3 z-30 flex gap-2">
+        <button
+          type="button"
+          onClick={enquadrar}
+          className="bg-background/95 rounded-md shadow border p-2 hover:bg-muted"
+          title="Enquadrar nos mapas ligados"
+        >
+          <LocateFixed className="h-4 w-4 text-primary" />
+        </button>
+        <button
+          type="button"
+          onClick={alternarTelaCheia}
+          className="bg-background/95 rounded-md shadow border p-2 hover:bg-muted"
+          title={telaCheia ? 'Sair da tela cheia (Esc)' : 'Tela cheia'}
+        >
+          {telaCheia ? <Minimize className="h-4 w-4 text-primary" /> : <Maximize className="h-4 w-4 text-primary" />}
+        </button>
+      </div>
 
       {painelAberto ? (
         <div className="absolute top-3 left-3 z-30 w-72 max-h-[calc(100%-1.5rem)] bg-background/95 rounded-xl shadow-lg border flex flex-col overflow-hidden">
@@ -597,26 +626,30 @@ export function VisualizadorMapas({
         </div>
       )}
 
-      <Dialog open={!!feicao} onOpenChange={(v) => !v && setFeicao(null)}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>{feicao?.titulo}</DialogTitle>
-          </DialogHeader>
-          <ScrollArea className="max-h-[60vh] pr-4">
+      {/* Atributos da feição — painel dentro do mapa, para funcionar também em tela cheia */}
+      {feicao && (
+        <div className="absolute top-14 right-3 z-40 w-80 max-h-[calc(100%-5rem)] bg-background rounded-xl shadow-lg border flex flex-col overflow-hidden">
+          <div className="px-3 py-2 border-b bg-card flex items-start justify-between gap-2">
+            <span className="font-semibold text-sm break-words">{feicao.titulo}</span>
+            <button onClick={() => setFeicao(null)} className="p-1 rounded hover:bg-muted text-muted-foreground shrink-0" title="Fechar">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="overflow-y-auto px-3">
             <dl className="divide-y">
-              {feicao?.entradas.map(([k, v], i) => (
+              {feicao.entradas.map(([k, v], i) => (
                 <div key={`${k}-${i}`} className="grid grid-cols-2 gap-2 py-2 text-sm">
                   <dt className="font-medium text-muted-foreground break-words">{k}</dt>
                   <dd className="break-words">{v === null || v === undefined || v === '' ? '—' : String(v)}</dd>
                 </div>
               ))}
-              {feicao && feicao.entradas.length === 0 && (
+              {feicao.entradas.length === 0 && (
                 <p className="text-sm text-muted-foreground py-2">Esta feição não possui atributos.</p>
               )}
             </dl>
-          </ScrollArea>
-        </DialogContent>
-      </Dialog>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
