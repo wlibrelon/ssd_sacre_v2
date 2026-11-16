@@ -43,6 +43,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { ConstrutorConsulta } from './components/ConstrutorConsulta'
+import { CitacaoResultado, montarCitacao } from './components/CitacaoResultado'
 import { doiParaUrl, urlArquivoReferencia } from '@/components/gestao-projetos/ReferenciasPanel'
 
 export default function Resultados() {
@@ -144,6 +145,15 @@ export default function Resultados() {
     return <FileBox className="h-8 w-8 text-muted-foreground" />
   }
 
+  const citacaoDe = (citacaoItem: string | null | undefined, tituloResultado: string, data?: string) =>
+    montarCitacao({
+      citacaoItem,
+      citacaoProjeto: projetoSelecionado?.citacao_padrao,
+      tituloResultado,
+      tituloProjeto: projetoSelecionado?.titulo,
+      data,
+    })
+
   const renderTabelas = (tipo: 'bruto' | 'tratado') => {
     const lista = tabelasDados.filter((t) => (t.tipo ?? 'tratado') === tipo)
     const rotulo = tipo === 'bruto' ? 'dados brutos' : 'dados tratados'
@@ -180,11 +190,12 @@ export default function Resultados() {
                     <p className="text-xs text-primary mt-2">{t.origem_pesquisa}</p>
                   )}
                 </div>
-                <div className="mt-auto">
+                <div className="mt-auto space-y-3">
                   <Button size="sm" onClick={() => setTabelaAberta(t)}>
                     <BarChart3 className="w-4 h-4 mr-2" />
                     Analisar dados
                   </Button>
+                  <CitacaoResultado citacao={citacaoDe(t.citacao, t.titulo, t.criado_em)} />
                 </div>
               </div>
             </CardContent>
@@ -365,7 +376,7 @@ export default function Resultados() {
                                 </p>
                               )}
                             </div>
-                            <div className="mt-auto">
+                            <div className="mt-auto space-y-3">
                               <Button
                                 variant="secondary"
                                 size="sm"
@@ -376,6 +387,12 @@ export default function Resultados() {
                                 <Eye className="w-4 h-4 mr-2" />
                                 Exibir Resultado
                               </Button>
+                              <CitacaoResultado
+                                citacao={citacaoDe(
+                                  resultado.citacao,
+                                  resultado.descricao || 'Documento de Resultado',
+                                )}
+                              />
                             </div>
                           </div>
                         </CardContent>
@@ -499,6 +516,14 @@ export default function Resultados() {
                     </p>
                   </div>
                 ))}
+                <CitacaoResultado
+                  className="bg-background"
+                  citacao={citacaoDe(
+                    tabelaAberta.citacao,
+                    tabelaAberta.titulo,
+                    tabelaAberta.criado_em,
+                  )}
+                />
               </div>
             )}
             <p className="text-xs text-muted-foreground/70">

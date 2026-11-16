@@ -84,6 +84,7 @@ export function TabelasDadosPanel({ idProjeto, tituloProjeto, tipo }: TabelasDad
     objetivo_resultado: '',
     origem_pesquisa: '',
     metodologia: '',
+    citacao: '',
   })
   const [publicarAgora, setPublicarAgora] = useState(true)
   const [salvando, setSalvando] = useState(false)
@@ -99,6 +100,7 @@ export function TabelasDadosPanel({ idProjeto, tituloProjeto, tipo }: TabelasDad
     objetivo_resultado: '',
     origem_pesquisa: '',
     metodologia: '',
+    citacao: '',
   })
   const [editColunas, setEditColunas] = useState<(ColunaDicionario & { id?: string })[]>([])
   const [colunaParaAdicionar, setColunaParaAdicionar] = useState<string>('')
@@ -134,6 +136,7 @@ export function TabelasDadosPanel({ idProjeto, tituloProjeto, tipo }: TabelasDad
       objetivo_resultado: '',
       origem_pesquisa: '',
       metodologia: '',
+      citacao: '',
     })
     setPublicarAgora(true)
   }
@@ -215,6 +218,7 @@ export function TabelasDadosPanel({ idProjeto, tituloProjeto, tipo }: TabelasDad
           objetivo_resultado: doc.objetivo_resultado.trim(),
           origem_pesquisa: doc.origem_pesquisa.trim() || null,
           metodologia: doc.metodologia.trim() || null,
+          citacao: doc.citacao.trim() || null,
           arquivo_original: uploadData.path,
           status: publicarAgora ? 'publicado' : 'rascunho',
         })
@@ -282,6 +286,7 @@ export function TabelasDadosPanel({ idProjeto, tituloProjeto, tipo }: TabelasDad
       objetivo_resultado: tabela.objetivo_resultado || '',
       origem_pesquisa: tabela.origem_pesquisa || '',
       metodologia: tabela.metodologia || '',
+      citacao: tabela.citacao || '',
     })
     setOpenEdit(true)
 
@@ -378,6 +383,7 @@ export function TabelasDadosPanel({ idProjeto, tituloProjeto, tipo }: TabelasDad
           objetivo_resultado: editDoc.objetivo_resultado.trim(),
           origem_pesquisa: editDoc.origem_pesquisa.trim() || null,
           metodologia: editDoc.metodologia.trim() || null,
+          citacao: editDoc.citacao.trim() || null,
         })
         .eq('id', editingTabela.id)
       if (error) throw error
@@ -698,6 +704,16 @@ export function TabelasDadosPanel({ idProjeto, tituloProjeto, tipo }: TabelasDad
                     onChange={(e) => setDoc({ ...doc, metodologia: e.target.value })}
                   />
                 </div>
+                <div className="space-y-2">
+                  <Label>Citação (opcional)</Label>
+                  <Textarea
+                    rows={3}
+                    placeholder="Como o usuário deve citar esta tabela"
+                    value={doc.citacao}
+                    onChange={(e) => setDoc({ ...doc, citacao: e.target.value })}
+                  />
+                  <p className="text-xs text-muted-foreground">Deixe em branco para usar a citação padrão do projeto.</p>
+                </div>
                 <div className="flex items-center gap-2">
                   <input
                     type="checkbox"
@@ -867,6 +883,16 @@ export function TabelasDadosPanel({ idProjeto, tituloProjeto, tipo }: TabelasDad
                     value={editDoc.metodologia}
                     onChange={(e) => setEditDoc({ ...editDoc, metodologia: e.target.value })}
                   />
+                </div>
+                <div className="space-y-2">
+                  <Label>Citação (opcional)</Label>
+                  <Textarea
+                    rows={3}
+                    placeholder="Como o usuário deve citar esta tabela"
+                    value={editDoc.citacao}
+                    onChange={(e) => setEditDoc({ ...editDoc, citacao: e.target.value })}
+                  />
+                  <p className="text-xs text-muted-foreground">Deixe em branco para usar a citação padrão do projeto.</p>
                 </div>
               </div>
             </TabsContent>

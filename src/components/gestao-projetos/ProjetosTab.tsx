@@ -37,6 +37,7 @@ type ArqResultado = {
   id_projeto: number
   descricao: string
   nome_arq: string
+  citacao: string | null
 }
 
 export function ProjetosTab() {
@@ -54,6 +55,7 @@ export function ProjetosTab() {
   const [resultados, setResultados] = useState<ArqResultado[]>([])
   const [loadingResultados, setLoadingResultados] = useState(false)
   const [resDescricao, setResDescricao] = useState('')
+  const [resCitacao, setResCitacao] = useState('')
   const [resFile, setResFile] = useState<File | null>(null)
   const [savingRes, setSavingRes] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -65,6 +67,7 @@ export function ProjetosTab() {
   const [openEditResultado, setOpenEditResultado] = useState(false)
   const [editingResultado, setEditingResultado] = useState<ArqResultado | null>(null)
   const [editResDescricao, setEditResDescricao] = useState('')
+  const [editResCitacao, setEditResCitacao] = useState('')
   const [editResFile, setEditResFile] = useState<File | null>(null)
   const [savingEditRes, setSavingEditRes] = useState(false)
   const editFileInputRef = useRef<HTMLInputElement>(null)
@@ -93,6 +96,7 @@ export function ProjetosTab() {
       titulo: formData.titulo,
       resumo: formData.resumo,
       objetivos: formData.objetivos,
+      citacao_padrao: formData.citacao_padrao?.trim() || null,
       id_wp: formData.id_wp ? parseInt(formData.id_wp) : null,
     }
 
@@ -164,12 +168,14 @@ export function ProjetosTab() {
         id_projeto: projetoSelecionado.id_projeto,
         descricao: resDescricao.trim(),
         nome_arq: uploadData.path,
+        citacao: resCitacao.trim() || null,
       })
 
       if (insertError) throw insertError
 
       toast({ title: 'Arquivo salvo com sucesso' })
       setResDescricao('')
+      setResCitacao('')
       setResFile(null)
       setOpenResultados(false)
       loadResultados(projetoSelecionado.id_projeto)
@@ -183,6 +189,7 @@ export function ProjetosTab() {
   const handleAbrirEdicaoResultado = (res: ArqResultado) => {
     setEditingResultado(res)
     setEditResDescricao(res.descricao)
+    setEditResCitacao(res.citacao || '')
     setEditResFile(null)
     setOpenEditResultado(true)
   }
@@ -210,7 +217,11 @@ export function ProjetosTab() {
 
       const { error } = await supabase
         .from('arq_resultados')
-        .update({ descricao: editResDescricao.trim(), nome_arq: nomeArq })
+        .update({
+          descricao: editResDescricao.trim(),
+          nome_arq: nomeArq,
+          citacao: editResCitacao.trim() || null,
+        })
         .eq('id_arq_res', editingResultado.id_arq_res)
       if (error) throw error
 
@@ -324,6 +335,15 @@ export function ProjetosTab() {
                   rows={3}
                 />
               </div>
+              <div className="space-y-2">
+                <Label>Citação padrão (opcional)</Label>
+                <Textarea
+                  value={formData.citacao_padrao || ''}
+                  onChange={(e) => setFormData({ ...formData, citacao_padrao: e.target.value })}
+                  rows={3}
+                  placeholder="Usada nos resultados deste projeto que não tiverem citação própria"
+                />
+              </div>
             </div>
             <Button onClick={handleSave} className="w-full">
               Salvar
@@ -432,6 +452,7 @@ export function ProjetosTab() {
                 setOpenResultados(o)
                 if (!o) {
                   setResDescricao('')
+                  setResCitacao('')
                   setResFile(null)
                 }
               }}
@@ -457,6 +478,16 @@ export function ProjetosTab() {
                       value={resDescricao}
                       onChange={(e) => setResDescricao(e.target.value)}
                     />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Citação (opcional)</Label>
+                    <Textarea
+                      rows={3}
+                      placeholder="Como o usuário deve citar este arquivo"
+                      value={resCitacao}
+                      onChange={(e) => setResCitacao(e.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground">Deixe em branco para usar a citação padrão do projeto.</p>
                   </div>
                   <div className="space-y-2">
                     <Label>Arquivo</Label>
@@ -573,6 +604,7 @@ export function ProjetosTab() {
               if (!o) {
                 setEditingResultado(null)
                 setEditResDescricao('')
+                setEditResCitacao('')
                 setEditResFile(null)
               }
             }}
@@ -589,6 +621,16 @@ export function ProjetosTab() {
                     value={editResDescricao}
                     onChange={(e) => setEditResDescricao(e.target.value)}
                   />
+                </div>
+                <div className="space-y-2">
+                  <Label>Citação (opcional)</Label>
+                  <Textarea
+                    rows={3}
+                    placeholder="Como o usuário deve citar este arquivo"
+                    value={editResCitacao}
+                    onChange={(e) => setEditResCitacao(e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">Deixe em branco para usar a citação padrão do projeto.</p>
                 </div>
                 <div className="space-y-2">
                   <Label>Arquivo</Label>
