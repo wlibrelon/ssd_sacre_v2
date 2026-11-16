@@ -89,6 +89,16 @@ export const AppSidebar = ({ onOpenSobre }: { onOpenSobre: () => void }) => {
       ],
     },
     {
+      title: 'Divulgação',
+      icon: Megaphone,
+      items: [
+        { title: 'Publicações', url: '/divulgacao/publicacoes' },
+        { title: 'Mídia', url: '/divulgacao/midia' },
+        { title: 'Congressos', url: '/divulgacao/congressos' },
+        { title: 'Atividades Sociais', url: '/divulgacao/atividades-sociais' },
+      ],
+    },
+    {
       title: 'Projetos',
       icon: FolderKanban,
       items: [
@@ -102,16 +112,6 @@ export const AppSidebar = ({ onOpenSobre }: { onOpenSobre: () => void }) => {
       items: [
         { title: 'Simulação', url: '/ssd/cenarios' },
         { title: 'Configurações', url: '/ssd/configuracoes' },
-      ],
-    },
-    {
-      title: 'Divulgação',
-      icon: Megaphone,
-      items: [
-        { title: 'Publicações', url: '/divulgacao/publicacoes' },
-        { title: 'Mídia', url: '/divulgacao/midia' },
-        { title: 'Congressos', url: '/divulgacao/congressos' },
-        { title: 'Atividades Sociais', url: '/divulgacao/atividades-sociais' },
       ],
     },
     {

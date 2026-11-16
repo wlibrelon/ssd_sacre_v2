@@ -62,10 +62,13 @@ const AGREGACOES_POR_PAPEL: Record<PapelColuna, ColunaDicionario['agregacoes_per
 interface TabelasDadosPanelProps {
   idProjeto: number
   tituloProjeto: string
+  /** 'bruto' = aba Dados Brutos | 'tratado' = aba Dados Tratados */
+  tipo: 'bruto' | 'tratado'
 }
 
-export function TabelasDadosPanel({ idProjeto, tituloProjeto }: TabelasDadosPanelProps) {
+export function TabelasDadosPanel({ idProjeto, tituloProjeto, tipo }: TabelasDadosPanelProps) {
   const { toast } = useToast()
+  const rotuloTipo = tipo === 'bruto' ? 'Dados Brutos' : 'Dados Tratados'
 
   const [tabelas, setTabelas] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
@@ -106,7 +109,7 @@ export function TabelasDadosPanel({ idProjeto, tituloProjeto }: TabelasDadosPane
 
   useEffect(() => {
     loadTabelas()
-  }, [idProjeto])
+  }, [idProjeto, tipo])
 
   const loadTabelas = async () => {
     setLoading(true)
@@ -114,6 +117,7 @@ export function TabelasDadosPanel({ idProjeto, tituloProjeto }: TabelasDadosPane
       .from('resultado_tabela')
       .select('*')
       .eq('id_projeto', idProjeto)
+      .eq('tipo', tipo)
       .order('criado_em', { ascending: false })
     if (!error && data) setTabelas(data)
     setLoading(false)
@@ -205,6 +209,7 @@ export function TabelasDadosPanel({ idProjeto, tituloProjeto }: TabelasDadosPane
         .from('resultado_tabela')
         .insert({
           id_projeto: idProjeto,
+          tipo,
           titulo: doc.titulo.trim(),
           descricao_resumida: doc.descricao_resumida.trim(),
           objetivo_resultado: doc.objetivo_resultado.trim(),
@@ -258,7 +263,7 @@ export function TabelasDadosPanel({ idProjeto, tituloProjeto }: TabelasDadosPane
         .update({ total_linhas: linhasConvertidas.length })
         .eq('id', idTabela)
 
-      toast({ title: 'Tabela de dados salva com sucesso' })
+      toast({ title: `Tabela de ${rotuloTipo} salva com sucesso` })
       setOpen(false)
       resetWizard()
       loadTabelas()
@@ -451,7 +456,7 @@ export function TabelasDadosPanel({ idProjeto, tituloProjeto }: TabelasDadosPane
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-xs text-slate-500">
-          Tabelas de dados vinculadas a <span className="font-medium">{tituloProjeto}</span>
+          Tabelas de {rotuloTipo} vinculadas a <span className="font-medium">{tituloProjeto}</span>
         </p>
 
         <Dialog
@@ -463,14 +468,14 @@ export function TabelasDadosPanel({ idProjeto, tituloProjeto }: TabelasDadosPane
         >
           <DialogTrigger asChild>
             <Button size="sm">
-              <Plus className="w-4 h-4 mr-2" /> Nova Tabela de Dados
+              <Plus className="w-4 h-4 mr-2" /> Nova Tabela de {rotuloTipo}
             </Button>
           </DialogTrigger>
           <DialogContent
             className="w-[92vw] max-w-[1400px] min-w-[600px] max-h-[85vh] overflow-y-auto resize"
           >
             <DialogHeader>
-              <DialogTitle>Nova Tabela de Dados — Passo {step} de 3</DialogTitle>
+              <DialogTitle>Nova Tabela de {rotuloTipo} — Passo {step} de 3</DialogTitle>
               <p className="text-xs text-muted-foreground/70">
                 Arraste o canto inferior direito da janela para redimensionar.
               </p>
@@ -714,7 +719,7 @@ export function TabelasDadosPanel({ idProjeto, tituloProjeto }: TabelasDadosPane
                       'Salvando...'
                     ) : (
                       <>
-                        <Check className="w-4 h-4 mr-2" /> Salvar Tabela de Dados
+                        <Check className="w-4 h-4 mr-2" /> Salvar Tabela de {rotuloTipo}
                       </>
                     )}
                   </Button>
@@ -746,7 +751,7 @@ export function TabelasDadosPanel({ idProjeto, tituloProjeto }: TabelasDadosPane
             ) : tabelas.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={4} className="text-center py-6 text-slate-400">
-                  Nenhuma tabela de dados cadastrada para este projeto.
+                  Nenhuma tabela de {rotuloTipo} cadastrada para este projeto.
                 </TableCell>
               </TableRow>
             ) : (
@@ -810,7 +815,7 @@ export function TabelasDadosPanel({ idProjeto, tituloProjeto }: TabelasDadosPane
       >
         <DialogContent className="max-w-6xl w-[95vw] max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Editar Tabela de Dados</DialogTitle>
+            <DialogTitle>Editar Tabela de {rotuloTipo}</DialogTitle>
           </DialogHeader>
 
           <Tabs defaultValue="documentacao" className="w-full min-w-0">

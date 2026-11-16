@@ -12,6 +12,8 @@ import {
   TableIcon,
   BarChart3,
   ArrowLeft,
+  ExternalLink,
+  BookOpen,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -32,7 +34,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { ConstrutorConsulta } from './components/ConstrutorConsulta'
+import { doiParaUrl, urlArquivoReferencia } from '@/components/gestao-projetos/ReferenciasPanel'
 
 export default function Resultados() {
   const [wps, setWps] = useState<any[]>([])
@@ -45,6 +56,7 @@ export default function Resultados() {
 
   const [results, setResults] = useState<any[]>([])
   const [tabelasDados, setTabelasDados] = useState<any[]>([])
+  const [referencias, setReferencias] = useState<any[]>([])
   const [loadingProjeto, setLoadingProjeto] = useState(false)
 
   const [tabelaAberta, setTabelaAberta] = useState<any>(null)
@@ -66,6 +78,7 @@ export default function Resultados() {
     setProjetoSelecionado(null)
     setResults([])
     setTabelasDados([])
+    setReferencias([])
 
     if (!selectedWpId) {
       setProjetos([])
@@ -89,7 +102,7 @@ export default function Resultados() {
 
     const fetchProjetoData = async () => {
       setLoadingProjeto(true)
-      const [{ data: resData }, { data: tabelasData }] = await Promise.all([
+      const [{ data: resData }, { data: tabelasData }, { data: refsData }] = await Promise.all([
         supabase
           .from('arq_resultados')
           .select('*')
@@ -100,9 +113,15 @@ export default function Resultados() {
           .eq('id_projeto', projetoSelecionado.id_projeto)
           .eq('status', 'publicado')
           .order('criado_em', { ascending: false }),
+        supabase
+          .from('projeto_referencia')
+          .select('*')
+          .eq('id_projeto', projetoSelecionado.id_projeto)
+          .order('criado_em', { ascending: false }),
       ])
       setResults(resData || [])
       setTabelasDados(tabelasData || [])
+      setReferencias(refsData || [])
       setLoadingProjeto(false)
     }
     fetchProjetoData()
@@ -125,13 +144,63 @@ export default function Resultados() {
     return <FileBox className="h-8 w-8 text-muted-foreground" />
   }
 
+  const renderTabelas = (tipo: 'bruto' | 'tratado') => {
+    const lista = tabelasDados.filter((t) => (t.tipo ?? 'tratado') === tipo)
+    const rotulo = tipo === 'bruto' ? 'dados brutos' : 'dados tratados'
+    if (lista.length === 0) {
+      return (
+        <Card className="border-dashed bg-muted/20">
+          <CardContent className="flex flex-col items-center justify-center h-48 text-center">
+            <TableIcon className="h-12 w-12 text-muted-foreground/50 mb-4" />
+            <p className="text-lg font-medium text-foreground">
+              Nenhuma tabela de {rotulo} publicada
+            </p>
+            <p className="text-muted-foreground mt-1 max-w-sm">
+              Este projeto ainda não possui tabelas de {rotulo} publicadas.
+            </p>
+          </CardContent>
+        </Card>
+      )
+    }
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {lista.map((t) => (
+          <Card key={t.id} className="hover:shadow-md transition-shadow">
+            <CardContent className="p-6 flex items-start gap-4">
+              <div className="flex-shrink-0 mt-1 bg-muted p-3 rounded-xl">
+                <TableIcon className="h-8 w-8 text-primary" />
+              </div>
+              <div className="flex-1 min-w-0 flex flex-col h-full">
+                <div className="mb-4">
+                  <h3 className="font-medium text-lg leading-tight mb-1">{t.titulo}</h3>
+                  <p className="text-sm text-muted-foreground line-clamp-2">
+                    {t.descricao_resumida}
+                  </p>
+                  {t.origem_pesquisa && (
+                    <p className="text-xs text-primary mt-2">{t.origem_pesquisa}</p>
+                  )}
+                </div>
+                <div className="mt-auto">
+                  <Button size="sm" onClick={() => setTabelaAberta(t)}>
+                    <BarChart3 className="w-4 h-4 mr-2" />
+                    Analisar dados
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    )
+  }
+
   return (
     <div className="container max-w-6xl mx-auto py-8 space-y-8 animate-fade-in">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Resultados dos Projetos</h1>
         <p className="text-muted-foreground mt-2">
-          Selecione um Work Package (WP), depois um projeto, para ver documentos, imagens e
-          tabelas de dados vinculados a ele.
+          Selecione um Work Package (WP), depois um projeto, para ver documentos, imagens,
+          dados brutos, dados tratados e referências vinculados a ele.
         </p>
       </div>
 
@@ -265,7 +334,9 @@ export default function Resultados() {
             <Tabs defaultValue="documentos" className="w-full">
               <TabsList>
                 <TabsTrigger value="documentos">Documentos e Imagens</TabsTrigger>
-                <TabsTrigger value="dados">Tabelas de Dados</TabsTrigger>
+                <TabsTrigger value="brutos">Dados Brutos</TabsTrigger>
+                <TabsTrigger value="tratados">Dados Tratados</TabsTrigger>
+                <TabsTrigger value="referencias">Referências</TabsTrigger>
               </TabsList>
 
               <TabsContent value="documentos" className="mt-4">
@@ -326,45 +397,72 @@ export default function Resultados() {
                 )}
               </TabsContent>
 
-              <TabsContent value="dados" className="mt-4">
-                {tabelasDados.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {tabelasDados.map((t) => (
-                      <Card key={t.id} className="hover:shadow-md transition-shadow">
-                        <CardContent className="p-6 flex items-start gap-4">
-                          <div className="flex-shrink-0 mt-1 bg-muted p-3 rounded-xl">
-                            <TableIcon className="h-8 w-8 text-primary" />
-                          </div>
-                          <div className="flex-1 min-w-0 flex flex-col h-full">
-                            <div className="mb-4">
-                              <h3 className="font-medium text-lg leading-tight mb-1">{t.titulo}</h3>
-                              <p className="text-sm text-muted-foreground line-clamp-2">
-                                {t.descricao_resumida}
-                              </p>
-                              {t.origem_pesquisa && (
-                                <p className="text-xs text-primary mt-2">{t.origem_pesquisa}</p>
+              <TabsContent value="brutos" className="mt-4">
+                {renderTabelas('bruto')}
+              </TabsContent>
+
+              <TabsContent value="tratados" className="mt-4">
+                {renderTabelas('tratado')}
+              </TabsContent>
+
+              <TabsContent value="referencias" className="mt-4">
+                {referencias.length > 0 ? (
+                  <Card>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Descrição</TableHead>
+                          <TableHead>DOI</TableHead>
+                          <TableHead>Arquivo</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {referencias.map((ref) => (
+                          <TableRow key={ref.id}>
+                            <TableCell className="font-medium">{ref.descricao}</TableCell>
+                            <TableCell>
+                              {ref.doi ? (
+                                <a
+                                  href={doiParaUrl(ref.doi)}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1.5 text-primary hover:underline text-sm"
+                                >
+                                  <ExternalLink className="w-4 h-4 shrink-0" />
+                                  <span className="break-all">{ref.doi}</span>
+                                </a>
+                              ) : (
+                                <span className="text-muted-foreground">-</span>
                               )}
-                            </div>
-                            <div className="mt-auto">
-                              <Button size="sm" onClick={() => setTabelaAberta(t)}>
-                                <BarChart3 className="w-4 h-4 mr-2" />
-                                Analisar dados
-                              </Button>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
+                            </TableCell>
+                            <TableCell>
+                              {ref.arquivo ? (
+                                <a
+                                  href={urlArquivoReferencia(ref.arquivo)}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1.5 text-primary hover:underline text-sm"
+                                >
+                                  <FileIcon className="w-4 h-4 shrink-0 text-red-500" /> Abrir PDF
+                                </a>
+                              ) : (
+                                <span className="text-muted-foreground">-</span>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </Card>
                 ) : (
                   <Card className="border-dashed bg-muted/20">
                     <CardContent className="flex flex-col items-center justify-center h-48 text-center">
-                      <TableIcon className="h-12 w-12 text-muted-foreground/50 mb-4" />
+                      <BookOpen className="h-12 w-12 text-muted-foreground/50 mb-4" />
                       <p className="text-lg font-medium text-foreground">
-                        Nenhuma tabela de dados publicada
+                        Nenhuma referência cadastrada
                       </p>
                       <p className="text-muted-foreground mt-1 max-w-sm">
-                        Este projeto ainda não possui tabelas de dados publicadas.
+                        Este projeto ainda não possui referências.
                       </p>
                     </CardContent>
                   </Card>
@@ -383,8 +481,25 @@ export default function Resultados() {
         <DialogContent className="w-[92vw] max-w-[1400px] min-w-[600px] max-h-[85vh] overflow-y-auto resize">
           <DialogHeader>
             <DialogTitle>{tabelaAberta?.titulo}</DialogTitle>
-            {tabelaAberta?.objetivo_resultado && (
-              <p className="text-sm text-muted-foreground">{tabelaAberta.objetivo_resultado}</p>
+            {tabelaAberta && (
+              <div className="rounded-md border bg-muted/30 p-4 grid gap-3 text-sm text-left">
+                {[
+                  { rotulo: 'Título', valor: tabelaAberta.titulo },
+                  { rotulo: 'Descrição', valor: tabelaAberta.descricao_resumida },
+                  { rotulo: 'Objetivo', valor: tabelaAberta.objetivo_resultado },
+                  { rotulo: 'Origem', valor: tabelaAberta.origem_pesquisa },
+                  { rotulo: 'Metodologia', valor: tabelaAberta.metodologia },
+                ].map((campo) => (
+                  <div key={campo.rotulo}>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      {campo.rotulo}
+                    </p>
+                    <p className="whitespace-pre-line text-foreground">
+                      {campo.valor?.toString().trim() || 'Não informado.'}
+                    </p>
+                  </div>
+                ))}
+              </div>
             )}
             <p className="text-xs text-muted-foreground/70">
               Arraste o canto inferior direito da janela para redimensionar.

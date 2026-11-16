@@ -30,6 +30,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useToast } from '@/hooks/use-toast'
 import { Pencil, Trash2, Plus, Upload, FileText } from 'lucide-react'
 import { TabelasDadosPanel } from './TabelasDadosPanel'
+import { ReferenciasPanel } from './ReferenciasPanel'
 
 type ArqResultado = {
   id_arq_res: number
@@ -415,7 +416,9 @@ export function ProjetosTab() {
             <div className="px-4 pt-3 bg-slate-50">
               <TabsList>
                 <TabsTrigger value="arquivos">Arquivos de Resultados</TabsTrigger>
-                <TabsTrigger value="dados">Tabelas de Dados</TabsTrigger>
+                <TabsTrigger value="brutos">Dados Brutos</TabsTrigger>
+                <TabsTrigger value="tratados">Dados Tratados</TabsTrigger>
+                <TabsTrigger value="referencias">Referências</TabsTrigger>
               </TabsList>
             </div>
 
@@ -628,9 +631,29 @@ export function ProjetosTab() {
               </div>
             </TabsContent>
 
-            <TabsContent value="dados" className="mt-0">
+            <TabsContent value="brutos" className="mt-0">
               <div className="p-4">
                 <TabelasDadosPanel
+                  idProjeto={projetoSelecionado.id_projeto}
+                  tituloProjeto={projetoSelecionado.titulo}
+                  tipo="bruto"
+                />
+              </div>
+            </TabsContent>
+
+            <TabsContent value="tratados" className="mt-0">
+              <div className="p-4">
+                <TabelasDadosPanel
+                  idProjeto={projetoSelecionado.id_projeto}
+                  tituloProjeto={projetoSelecionado.titulo}
+                  tipo="tratado"
+                />
+              </div>
+            </TabsContent>
+
+            <TabsContent value="referencias" className="mt-0">
+              <div className="p-4">
+                <ReferenciasPanel
                   idProjeto={projetoSelecionado.id_projeto}
                   tituloProjeto={projetoSelecionado.titulo}
                 />
