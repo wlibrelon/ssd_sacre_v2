@@ -46,6 +46,13 @@ import { ConstrutorConsulta } from './components/ConstrutorConsulta'
 import { CitacaoResultado, montarCitacao } from './components/CitacaoResultado'
 import { doiParaUrl, urlArquivoReferencia } from '@/components/gestao-projetos/ReferenciasPanel'
 
+/** 'AAAA-MM-DD' → 'DD/MM/AAAA' (sem conversão de fuso, para não mudar o dia). */
+const formatarData = (valor?: string | null) => {
+  if (!valor) return null
+  const [ano, mes, dia] = valor.slice(0, 10).split('-')
+  return ano && mes && dia ? `${dia}/${mes}/${ano}` : valor
+}
+
 export default function Resultados() {
   const [wps, setWps] = useState<any[]>([])
   const [selectedWpId, setSelectedWpId] = useState<number | null>(null)
@@ -188,6 +195,13 @@ export default function Resultados() {
                   </p>
                   {t.origem_pesquisa && (
                     <p className="text-xs text-primary mt-2">{t.origem_pesquisa}</p>
+                  )}
+                  {(t.data_resultado || t.data_upload) && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {t.data_resultado && <>Resultado: {formatarData(t.data_resultado)}</>}
+                      {t.data_resultado && t.data_upload && ' · '}
+                      {t.data_upload && <>Upload: {formatarData(t.data_upload)}</>}
+                    </p>
                   )}
                 </div>
                 <div className="mt-auto space-y-3">
@@ -506,6 +520,8 @@ export default function Resultados() {
                   { rotulo: 'Objetivo', valor: tabelaAberta.objetivo_resultado },
                   { rotulo: 'Origem', valor: tabelaAberta.origem_pesquisa },
                   { rotulo: 'Metodologia', valor: tabelaAberta.metodologia },
+                  { rotulo: 'Data de Upload', valor: formatarData(tabelaAberta.data_upload) },
+                  { rotulo: 'Data do Resultado', valor: formatarData(tabelaAberta.data_resultado) },
                 ].map((campo) => (
                   <div key={campo.rotulo}>
                     <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">

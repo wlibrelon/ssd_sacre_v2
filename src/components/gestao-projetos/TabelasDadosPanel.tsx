@@ -59,6 +59,9 @@ const AGREGACOES_POR_PAPEL: Record<PapelColuna, ColunaDicionario['agregacoes_per
   ignorar: [],
 }
 
+/** Data de hoje no fuso local, no formato aceito por <input type="date"> (AAAA-MM-DD). */
+const hojeISO = () => new Date().toLocaleDateString('sv-SE')
+
 interface TabelasDadosPanelProps {
   idProjeto: number
   tituloProjeto: string
@@ -85,6 +88,8 @@ export function TabelasDadosPanel({ idProjeto, tituloProjeto, tipo }: TabelasDad
     origem_pesquisa: '',
     metodologia: '',
     citacao: '',
+    data_upload: hojeISO(),
+    data_resultado: '',
   })
   const [publicarAgora, setPublicarAgora] = useState(true)
   const [salvando, setSalvando] = useState(false)
@@ -101,6 +106,8 @@ export function TabelasDadosPanel({ idProjeto, tituloProjeto, tipo }: TabelasDad
     origem_pesquisa: '',
     metodologia: '',
     citacao: '',
+    data_upload: hojeISO(),
+    data_resultado: '',
   })
   const [editColunas, setEditColunas] = useState<(ColunaDicionario & { id?: string })[]>([])
   const [colunaParaAdicionar, setColunaParaAdicionar] = useState<string>('')
@@ -137,6 +144,8 @@ export function TabelasDadosPanel({ idProjeto, tituloProjeto, tipo }: TabelasDad
       origem_pesquisa: '',
       metodologia: '',
       citacao: '',
+      data_upload: hojeISO(),
+      data_resultado: '',
     })
     setPublicarAgora(true)
   }
@@ -219,6 +228,8 @@ export function TabelasDadosPanel({ idProjeto, tituloProjeto, tipo }: TabelasDad
           origem_pesquisa: doc.origem_pesquisa.trim() || null,
           metodologia: doc.metodologia.trim() || null,
           citacao: doc.citacao.trim() || null,
+          data_upload: doc.data_upload || hojeISO(),
+          data_resultado: doc.data_resultado || null,
           arquivo_original: uploadData.path,
           status: publicarAgora ? 'publicado' : 'rascunho',
         })
@@ -287,6 +298,8 @@ export function TabelasDadosPanel({ idProjeto, tituloProjeto, tipo }: TabelasDad
       origem_pesquisa: tabela.origem_pesquisa || '',
       metodologia: tabela.metodologia || '',
       citacao: tabela.citacao || '',
+      data_upload: tabela.data_upload || '',
+      data_resultado: tabela.data_resultado || '',
     })
     setOpenEdit(true)
 
@@ -384,6 +397,8 @@ export function TabelasDadosPanel({ idProjeto, tituloProjeto, tipo }: TabelasDad
           origem_pesquisa: editDoc.origem_pesquisa.trim() || null,
           metodologia: editDoc.metodologia.trim() || null,
           citacao: editDoc.citacao.trim() || null,
+          data_upload: editDoc.data_upload || null,
+          data_resultado: editDoc.data_resultado || null,
         })
         .eq('id', editingTabela.id)
       if (error) throw error
@@ -696,6 +711,24 @@ export function TabelasDadosPanel({ idProjeto, tituloProjeto, tipo }: TabelasDad
                     onChange={(e) => setDoc({ ...doc, origem_pesquisa: e.target.value })}
                   />
                 </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Data de Upload</Label>
+                    <Input
+                      type="date"
+                      value={doc.data_upload}
+                      onChange={(e) => setDoc({ ...doc, data_upload: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Data do Resultado</Label>
+                    <Input
+                      type="date"
+                      value={doc.data_resultado}
+                      onChange={(e) => setDoc({ ...doc, data_resultado: e.target.value })}
+                    />
+                  </div>
+                </div>
                 <div className="space-y-2">
                   <Label>Metodologia (opcional)</Label>
                   <Textarea
@@ -875,6 +908,24 @@ export function TabelasDadosPanel({ idProjeto, tituloProjeto, tipo }: TabelasDad
                     value={editDoc.origem_pesquisa}
                     onChange={(e) => setEditDoc({ ...editDoc, origem_pesquisa: e.target.value })}
                   />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Data de Upload</Label>
+                    <Input
+                      type="date"
+                      value={editDoc.data_upload}
+                      onChange={(e) => setEditDoc({ ...editDoc, data_upload: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Data do Resultado</Label>
+                    <Input
+                      type="date"
+                      value={editDoc.data_resultado}
+                      onChange={(e) => setEditDoc({ ...editDoc, data_resultado: e.target.value })}
+                    />
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label>Metodologia (opcional)</Label>

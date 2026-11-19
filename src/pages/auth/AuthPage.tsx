@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/hooks/use-auth'
 // import { useAuth } from '@/contexts/AuthContext'
@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useToast } from '@/hooks/use-toast'
+import { supabase } from '@/lib/supabase/client'
 
 export default function AuthPage() {
   const { signIn, signUp, resetPassword, isPending } = useAuth()
@@ -23,6 +24,19 @@ export default function AuthPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [isRecovering, setIsRecovering] = useState(false)
   const [role, setRole] = useState('')
+  const [grupos, setGrupos] = useState<{ id_ga: number; nome_grupo: string }[]>([])
+
+  // Grupos de acesso vêm do banco, para que o grupo escolhido no cadastro
+  // seja o mesmo usado na aprovação (Painel Administrativo > Usuários).
+  useEffect(() => {
+    supabase
+      .from('grupo_acesso')
+      .select('id_ga, nome_grupo')
+      .order('id_ga')
+      .then(({ data }) => {
+        if (data) setGrupos(data)
+      })
+  }, [])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -58,10 +72,17 @@ export default function AuthPage() {
     const email = (document.getElementById('reg-email') as HTMLInputElement).value
     const pass = (document.getElementById('reg-pass') as HTMLInputElement).value
 
+    if (!role) {
+      setIsLoading(false)
+      toast({ title: 'Selecione o grupo de acesso desejado', variant: 'destructive' })
+      return
+    }
+    const nomeGrupo = grupos.find((g) => g.id_ga.toString() === role)?.nome_grupo
+
     const { error } = await signUp(email, pass, {
       nome: name,
       organizacao: org,
-      nivel_acesso: role,
+      id_ga_solicitado: role,
     })
     setIsLoading(false)
 
@@ -70,7 +91,7 @@ export default function AuthPage() {
     } else {
       toast({
         title: 'Cadastro solicitado',
-        description: `Sua solicitação para nível "${role || 'Não definido'}" foi enviada para warlenlibrelon@ipt.br.`,
+        description: `Sua solicitação para o grupo "${nomeGrupo || 'Não definido'}" foi enviada para warlenlibrelon@ipt.br.`,
       })
     }
   }
@@ -182,15 +203,17 @@ export default function AuthPage() {
                   <Input id="reg-org" required />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="reg-level">Nível de Acesso Desejado</Label>
-                  <Select required onValueChange={setRole}>
+                  <Label htmlFor="reg-level">Grupo de Acesso Desejado</Label>
+                  <Select required value={role} onValueChange={setRole}>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione..." />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="viewer">Pesquisador</SelectItem>
-                      <SelectItem value="editor">Gestor Público</SelectItem>
-                      <SelectItem value="admin">Administrador APP</SelectItem>
+                      {grupos.map((g) => (
+                        <SelectItem key={g.id_ga} value={g.id_ga.toString()}>
+                          {g.nome_grupo}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>

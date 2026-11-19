@@ -130,16 +130,25 @@ export function WPsTab() {
 
   const handleAddColab = async () => {
     if (!addColabId || !selectedWp) return
+    const idColaborador = parseInt(addColabId)
+
+    // O mesmo colaborador pode estar em vários WPs, mas só uma vez em cada WP.
+    if (listaColab.some((lc) => lc.id_colaborador === idColaborador)) {
+      toast({ title: 'Este colaborador já faz parte deste WP' })
+      return
+    }
+
     const { error } = await supabase.from('lista_colab').insert({
       id_wp: selectedWp.id_wp,
-      id_colaborador: parseInt(addColabId),
+      id_colaborador: idColaborador,
     })
     if (error) {
       toast({
         title: 'Erro ao adicionar colaborador',
-        description: error.message,
+        description: 'Não foi possível adicionar o colaborador ao WP. Tente novamente.',
         variant: 'destructive',
       })
+      console.error('Erro ao adicionar colaborador ao WP:', error)
       return
     }
     toast({ title: 'Colaborador adicionado' })
