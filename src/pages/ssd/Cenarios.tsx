@@ -1400,7 +1400,11 @@ export default function Cenarios() {
       if (simObj) {
         const g: any = s.parametros?.globais || {}
         const norm = (v: any) => (v === null || v === undefined ? '' : String(v))
-        const mudou = PARAMETROS_GERAIS.filter((p) => norm(g[p.campo]) !== norm(simObj[p.campo])).map((p) => p.nome)
+        // A taxa de desconto não entra no aviso: nas comparações o VPL é
+        // recalculado com uma taxa única para todas as simulações.
+        const mudou = PARAMETROS_GERAIS.filter(
+          (p) => p.campo !== 'taxa_desconto' && norm(g[p.campo]) !== norm(simObj[p.campo]),
+        ).map((p) => p.nome)
         if (mudou.length > 0)
           a.push(
             `Parâmetros gerais alterados desde a gravação: ${mudou.join(', ')}. Executar de novo dará resultados diferentes dos gravados.`,
@@ -2780,7 +2784,7 @@ export default function Cenarios() {
               </span>
             </AccordionTrigger>
             <AccordionContent className="px-5 pb-5">
-              <ComparacoesSimulacoes simulacoes={simulacoesComparar} />
+              <ComparacoesSimulacoes simulacoes={simulacoesComparar} taxaAtual={simObj?.taxa_desconto} />
             </AccordionContent>
           </AccordionItem>
         )}

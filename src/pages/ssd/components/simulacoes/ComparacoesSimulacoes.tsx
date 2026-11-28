@@ -11,7 +11,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { AlertTriangle, Trophy } from 'lucide-react'
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { DESCRITIVOS, INDICADORES, formatar, type DefIndicador } from '../../resultadosSimulacao'
+import { DESCRITIVOS, INDICADORES, formatar, valorPresente, type DefIndicador } from '../../resultadosSimulacao'
 import { dataHora, type SimulacaoGravada } from './tipos'
 
 type ConfigIndicador = { indicador: string; incluir: boolean; sentido: 'maior' | 'menor'; peso: number }
@@ -64,7 +64,50 @@ function rankear(valores: (number | null)[], sentido: 'maior' | 'menor'): number
   })
 }
 
-export function ComparacoesSimulacoes({ simulacoes }: { simulacoes: SimulacaoGravada[] }) {
+export function ComparacoesSimulacoes({
+  simulacoes,
+  taxaAtual,
+}: {
+  simulacoes: SimulacaoGravada[]
+  /** Taxa de desconto geral atual (% a.a.), dos Parâmetros da simulação */
+  taxaAtual: number | null | undefined
+}) {
+  // ── Taxa usada no VPL das comparações ─────────────────────────────────────
+  // O VPL é recalculado aqui, a partir da série mensal gravada de CAPEX e OPEX,
+  // com uma única taxa para todas as simulações (comparáveis entre si). Começa
+  // na taxa geral atual e pode ser alterada para análise de sensibilidade —
+  // nada é gravado.
+  const taxaGeral = Number(taxaAtual ?? 0)
+  const [taxaTexto, setTaxaTexto] = useState(String(taxaGeral))
+  const [taxaEditada, setTaxaEditada] = useState(false)
+  useEffect(() => {
+    if (!taxaEditada) setTaxaTexto(String(taxaGeral))
+  }, [taxaGeral, taxaEditada])
+  const taxaVpl = Number.isFinite(Number(taxaTexto)) && taxaTexto.trim() !== '' ? Math.max(0, Number(taxaTexto)) : taxaGeral
+  const taxaFmt = taxaVpl.toLocaleString('pt-BR', { maximumFractionDigits: 2 })
+
+  const vplPorSimulacao = useMemo(() => {
+    const m = new Map<number, number | null>()
+    simulacoes.forEach((s) => {
+      const serie = Array.isArray(s.serie_mensal) ? s.serie_mensal : []
+      m.set(
+        s.id_simulacao,
+        serie.length > 0
+          ? valorPresente(
+              serie.map((x: any) => Number(x.capex || 0) + Number(x.opex || 0)),
+              taxaVpl,
+            )
+          : null,
+      )
+    })
+    return m
+  }, [simulacoes, taxaVpl])
+
+  /** Valor de um indicador; o VPL usa a taxa escolhida acima. */
+  const valor = (s: SimulacaoGravada, indicador: string) =>
+    indicador === 'vpl_custos' ? (vplPorSimulacao.get(s.id_simulacao) ?? null) : valorDe(s, indicador)
+  const nomeIndicador = (d: DefIndicador) => (d.codigo === 'vpl_custos' ? `${d.nome} — ${taxaFmt} % a.a.` : d.nome)
+
   // ── Configuração geral da matriz de decisão ───────────────────────────────
   const [config, setConfig] = useState<Record<string, ConfigIndicador>>({})
   const [configSalva, setConfigSalva] = useState<Record<string, ConfigIndicador>>({})
@@ -117,7 +160,7 @@ export function ComparacoesSimulacoes({ simulacoes }: { simulacoes: SimulacaoGra
   const matriz = useMemo(() => {
     const incluidos = INDICADORES.filter((d) => d.naMatriz && config[d.codigo]?.incluir)
     const linhas = incluidos.map((d) => {
-      const valores = simulacoes.map((s) => valorDe(s, d.codigo))
+      const valores = simulacoes.map((s) => valor(s, d.codigo))
       return { def: d, valores, ranks: rankear(valores, config[d.codigo].sentido), peso: config[d.codigo].peso }
     })
     const somaPesos = linhas.reduce((s, l) => s + l.peso, 0)
@@ -126,7 +169,7 @@ export function ComparacoesSimulacoes({ simulacoes }: { simulacoes: SimulacaoGra
     )
     const classificacao = rankear(pontuacao, 'menor')
     return { linhas, pontuacao, classificacao, somaPesos }
-  }, [simulacoes, config])
+  }, [simulacoes, config, vplPorSimulacao])
 
   const serieIndice = useMemo(() => {
     const porTempo: Record<string, any> = {}
@@ -215,6 +258,46 @@ export function ComparacoesSimulacoes({ simulacoes }: { simulacoes: SimulacaoGra
   const fmtNum = (v: any, d = 2) => (v === null || v === undefined ? '—' : Number(v).toLocaleString('pt-BR', { maximumFractionDigits: d }))
 
   return (
+    <div className="space-y-4">
+    <div className="flex flex-col sm:flex-row sm:items-center gap-2 rounded-md border bg-slate-50 px-3 py-2 text-xs">
+      <label className="font-semibold text-slate-700" htmlFor="taxa-vpl-comparacao">
+        Taxa de desconto para o VPL:
+      </label>
+      <div className="flex items-center gap-2">
+        <Input
+          id="taxa-vpl-comparacao"
+          type="number"
+          min={0}
+          step={0.1}
+          className="h-7 w-24 text-xs bg-white"
+          value={taxaTexto}
+          onChange={(e) => {
+            setTaxaTexto(e.target.value)
+            setTaxaEditada(true)
+          }}
+        />
+        <span>% a.a.</span>
+        {taxaVpl !== taxaGeral ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 text-xs"
+            onClick={() => {
+              setTaxaTexto(String(taxaGeral))
+              setTaxaEditada(false)
+            }}
+          >
+            Voltar à taxa geral ({taxaGeral.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} % a.a.)
+          </Button>
+        ) : (
+          <span className="text-muted-foreground">(taxa geral atual)</span>
+        )}
+      </div>
+      <span className="text-muted-foreground sm:ml-auto max-w-md">
+        O VPL de todas as simulações é recalculado com esta taxa, a partir da série mensal gravada. Altere para testar a
+        sensibilidade do ranking; nada é gravado.
+      </span>
+    </div>
     <Tabs defaultValue="parametros" className="w-full">
       <TabsList className="flex-wrap h-auto">
         <TabsTrigger value="parametros">Parâmetros</TabsTrigger>
@@ -301,7 +384,7 @@ export function ComparacoesSimulacoes({ simulacoes }: { simulacoes: SimulacaoGra
               return g ? `${fmtNum(g.limiar_alerta)} / ${fmtNum(g.limiar_crise)} / ${fmtNum(g.limiar_colapso)}` : '—'
             })}
           />
-          <Linha rotulo="Taxa de desconto" celulas={simulacoes.map((s) => `${fmtNum(s.parametros?.globais?.taxa_desconto ?? 0)} % a.a.`)} />
+          <Linha rotulo="Taxa de desconto (na gravação)" celulas={simulacoes.map((s) => `${fmtNum(s.parametros?.globais?.taxa_desconto ?? 0)} % a.a.`)} />
         </Tabela>
       </TabsContent>
 
@@ -309,7 +392,7 @@ export function ComparacoesSimulacoes({ simulacoes }: { simulacoes: SimulacaoGra
       <TabsContent value="resultados" className="pt-4 space-y-2">
         <Tabela>
           {INDICADORES.map((d) => (
-            <Linha key={d.codigo} rotulo={d.nome} celulas={destaque(d, simulacoes.map((s) => valorDe(s, d.codigo)))} />
+            <Linha key={d.codigo} rotulo={nomeIndicador(d)} celulas={destaque(d, simulacoes.map((s) => valor(s, d.codigo)))} />
           ))}
           <Linha secao rotulo="Participação de cada fonte na captação (último mês)" />
           {fontes.map(([id, nome]) => (
@@ -346,7 +429,7 @@ export function ComparacoesSimulacoes({ simulacoes }: { simulacoes: SimulacaoGra
                   key={l.def.codigo}
                   rotulo={
                     <span>
-                      {l.def.nome}
+                      {nomeIndicador(l.def)}
                       <span className="block text-[10px] font-normal text-muted-foreground">
                         {config[l.def.codigo].sentido === 'maior' ? 'maior é melhor' : 'menor é melhor'} · peso {fmtNum(l.peso)}
                       </span>
@@ -428,7 +511,7 @@ export function ComparacoesSimulacoes({ simulacoes }: { simulacoes: SimulacaoGra
                       <td className="px-3 py-1.5 text-center">
                         <Checkbox checked={c.incluir} onCheckedChange={(v) => setItem(d.codigo, { incluir: !!v })} />
                       </td>
-                      <td className="px-3 py-1.5">{d.nome}</td>
+                      <td className="px-3 py-1.5">{nomeIndicador(d)}</td>
                       <td className="px-3 py-1.5">
                         <select
                           className="border rounded px-2 py-1 text-xs bg-white"
@@ -485,5 +568,6 @@ export function ComparacoesSimulacoes({ simulacoes }: { simulacoes: SimulacaoGra
         </div>
       </TabsContent>
     </Tabs>
+    </div>
   )
 }
