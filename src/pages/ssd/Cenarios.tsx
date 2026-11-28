@@ -957,33 +957,23 @@ export default function Cenarios() {
       }
     })
 
-    const updates: any[] = []
+    // CAPEX/OPEX: o valor importado do CSV do modelo é o padrão; as tabelas de
+    // referência (capex_acao/acoes_fonte, capex_perdas, opex) só o substituem
+    // nos meses em que têm valor. O resultado é usado apenas nesta execução —
+    // nada é regravado em dados_simulacao (antes, meses sem referência eram
+    // gravados como 0, apagando o CAPEX/OPEX importado).
+    const temValor = (mapa: Record<string, number>, chave: string) =>
+      Object.prototype.hasOwnProperty.call(mapa, chave)
     const dsUpdated = allRows.map((row) => {
       const tNorm = row.tempo ? row.tempo.replace(/\//g, '-') : ''
-      const newCapexEst = capexAcaoMap[`${tNorm}_${row.id_fonte}`] || 0
-      const newCapexPer = capexPerdasMap[tNorm] || 0
-      const newOpex = opexMap[tNorm] || 0
-      if (
-        row.capex_estrategia !== newCapexEst ||
-        row.capex_perdas !== newCapexPer ||
-        row.opex !== newOpex
-      ) {
-        const updated = {
-          ...row,
-          capex_estrategia: newCapexEst,
-          capex_perdas: newCapexPer,
-          opex: newOpex,
-        }
-        updates.push(updated)
-        return updated
+      const chaveAcao = `${tNorm}_${row.id_fonte}`
+      return {
+        ...row,
+        capex_estrategia: temValor(capexAcaoMap, chaveAcao) ? capexAcaoMap[chaveAcao] : row.capex_estrategia,
+        capex_perdas: temValor(capexPerdasMap, tNorm) ? capexPerdasMap[tNorm] : row.capex_perdas,
+        opex: temValor(opexMap, tNorm) ? opexMap[tNorm] : row.opex,
       }
-      return row
     })
-
-    if (updates.length > 0) {
-      for (let i = 0; i < updates.length; i += 1000)
-        await supabase.from('dados_simulacao').upsert(updates.slice(i, i + 1000))
-    }
 
     return dsUpdated
   }
