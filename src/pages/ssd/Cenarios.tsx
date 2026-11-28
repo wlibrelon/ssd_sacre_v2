@@ -600,6 +600,9 @@ export default function Cenarios() {
     supabase
       .from('simulacao_ssd')
       .select('*')
+      // Sempre o mesmo registro (o de menor id): sem ordem, o banco pode
+      // devolver outro registro depois de cada gravação dos parâmetros.
+      .order('id_s')
       .limit(1)
       .single()
       .then(({ data: row }) => {

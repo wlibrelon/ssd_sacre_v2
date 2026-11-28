@@ -763,6 +763,10 @@ export function Importacao() {
         const { data: simRow } = await supabase
           .from('simulacao_ssd')
           .select('id_s')
+          // Mesmo registro usado pela tela de simulação (menor id) — sem ordem,
+          // importações diferentes podiam gravar com id_s diferentes e
+          // duplicar os dados do modelo.
+          .order('id_s')
           .limit(1)
           .single()
         const id_s = simRow?.id_s ?? 1
