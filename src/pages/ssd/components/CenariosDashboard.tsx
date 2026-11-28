@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { agregarPorTempo, valorPresente } from '../resultadosSimulacao'
 import {
   LineChart,
   Line,
@@ -58,7 +59,14 @@ export const formatBRL = (v: number) =>
   }).format(v)
 
 export const formatVol = (v: number) =>
-  new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 }).format(v) + ' m³'
+  new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 }).format(v) + ' m³/mês'
+
+// Rótulo e marcas do eixo Y de volume mensal (valores grandes em forma compacta)
+const eixoVolume = {
+  tickFormatter: (v: number) => new Intl.NumberFormat('pt-BR', { notation: 'compact' }).format(v),
+  label: { value: 'm³/mês', angle: -90, position: 'insideLeft', style: { fontSize: 12 } } as any,
+  tick: { fontSize: 11 },
+}
 
 // ── ChartWrapper (compartilhado entre todas as abas) ───────────────────────────
 export const ChartWrapper = ({ title, data, children }: any) => {
@@ -226,7 +234,7 @@ export const DeficitHeatmap = ({
                         <td
                           key={m}
                           className="px-1 py-1 text-center"
-                          title={`${key}: ${val?.toLocaleString('pt-BR', { maximumFractionDigits: 0 })} m³`}
+                          title={`${key}: ${val?.toLocaleString('pt-BR', { maximumFractionDigits: 0 })} m³/mês`}
                         >
                           <div
                             className="w-8 h-7 mx-auto rounded-sm border border-red-400 flex items-center justify-center cursor-default"
@@ -283,54 +291,32 @@ export const DeficitHeatmap = ({
 // sem recalcular nada duas vezes.
 export function useDashboardData(data: any[], fontesMap: any) {
   return useMemo(() => {
-    const timeMap: any = {}
-    let totalCapex = 0
-    let totalOpex = 0
+    // Mesmo cálculo usado na gravação das simulações (resultadosSimulacao.ts)
+    const meses = agregarPorTempo(data)
     let monthsWithDeficit = 0
     let monthsWithExcedent = 0
+    const totalCapex = meses.reduce((s, m) => s + m.capex, 0)
+    const totalOpex = meses.reduce((s, m) => s + m.opex, 0)
 
-    data.forEach((row: any) => {
-      const vd = row.volume_captado * (1 - (row.perdas || 0) / 100)
-      if (!timeMap[row.tempo]) {
-        timeMap[row.tempo] = {
-          tempo: row.tempo,
-          distribuicao_total: 0,
-          demanda: row.demanda || 0,
-          captacao_total: 0,
-          capex: 0,
-          opex: 0,
-        }
+    const chartData = meses.map((m) => {
+      const t: any = {
+        tempo: m.tempo,
+        distribuicao_total: m.distribuido,
+        demanda: m.demanda,
+        captacao_total: m.captado,
+        capex: m.capex,
+        opex: m.opex,
+        deficit: m.saldo,
       }
-      timeMap[row.tempo].distribuicao_total += vd
-      timeMap[row.tempo].captacao_total += row.volume_captado || 0
-      timeMap[row.tempo].capex += row.capex || 0
-      timeMap[row.tempo].opex += row.opex || 0
-      totalCapex += row.capex || 0
-      totalOpex += row.opex || 0
-
-      const fName = fontesMap[row.id_fonte] || `Fonte_${row.id_fonte}`
-      timeMap[row.tempo][`${fName}_cap`] =
-        (timeMap[row.tempo][`${fName}_cap`] || 0) + row.volume_captado
-    })
-
-    const chartData = Object.values(timeMap)
-      .map((t: any) => {
-        const deficit = t.distribuicao_total - t.demanda
-        if (deficit < 0) monthsWithDeficit++
-        else monthsWithExcedent++
-
-        Object.keys(fontesMap).forEach((k) => {
-          const fName = fontesMap[k]
-          if (t[`${fName}_cap`]) {
-            t[`${fName}_pct`] = Math.min(
-              100,
-              Math.floor((t[`${fName}_cap`] / t.captacao_total) * 100),
-            )
-          }
-        })
-        return { ...t, deficit }
+      if (m.saldo < 0) monthsWithDeficit++
+      else monthsWithExcedent++
+      Object.entries(m.captadoPorFonte).forEach(([idFonte, vol]) => {
+        const fName = fontesMap[idFonte] || `Fonte_${idFonte}`
+        t[`${fName}_cap`] = vol
+        if (m.captado > 0) t[`${fName}_pct`] = Math.min(100, Math.floor((vol / m.captado) * 100))
       })
-      .sort((a: any, b: any) => a.tempo.localeCompare(b.tempo))
+      return t
+    })
 
     const avgDist =
       chartData.reduce((acc: any, curr: any) => acc + curr.distribuicao_total, 0) /
@@ -386,7 +372,7 @@ export function DadosGeraisTab({ data, fontesMap }: any) {
     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm text-muted-foreground">Média Distribuída</CardTitle>
+          <CardTitle className="text-sm text-muted-foreground">Vazão média distribuída (mensal)</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="text-xl font-bold">{formatVol(avgDist)}</div>
@@ -394,7 +380,7 @@ export function DadosGeraisTab({ data, fontesMap }: any) {
       </Card>
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm text-muted-foreground">Média Demanda</CardTitle>
+          <CardTitle className="text-sm text-muted-foreground">Demanda média (mensal)</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="text-xl font-bold text-blue-600">{formatVol(avgDem)}</div>
@@ -448,7 +434,7 @@ export function DadosPorFonteTab({ data, fontesMap }: any) {
           <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" opacity={0.4} />
             <XAxis dataKey="tempo" />
-            <YAxis />
+            <YAxis {...eixoVolume} />
             <Tooltip formatter={(value: number) => formatVol(value)} />
             <Legend />
             {fontesKeys.map((fk, i) => (
@@ -471,7 +457,7 @@ export function DadosPorFonteTab({ data, fontesMap }: any) {
           <BarChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" opacity={0.4} />
             <XAxis dataKey="tempo" />
-            <YAxis domain={[0, 100]} />
+            <YAxis domain={[0, 100]} label={{ value: '%', angle: -90, position: 'insideLeft', style: { fontSize: 12 } }} />
             <Tooltip formatter={(value: number) => `${value.toFixed(1)}%`} />
             <Legend />
             {fontesKeys.map((fk, i) => (
@@ -509,7 +495,7 @@ export function CaptacaoDistribuicaoTab({ data, fontesMap }: any) {
             <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" opacity={0.4} />
               <XAxis dataKey="tempo" />
-              <YAxis />
+              <YAxis {...eixoVolume} />
               <Tooltip formatter={(value: number) => formatVol(value)} />
               <Legend />
               <Line
@@ -537,7 +523,7 @@ export function CaptacaoDistribuicaoTab({ data, fontesMap }: any) {
             <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" opacity={0.4} />
               <XAxis dataKey="tempo" />
-              <YAxis />
+              <YAxis {...eixoVolume} />
               <Tooltip formatter={(value: number) => formatVol(value)} />
               <Legend />
               <ReferenceLine y={0} stroke="#ef4444" strokeWidth={2} strokeDasharray="3 3" />
@@ -575,17 +561,22 @@ export function CaptacaoDistribuicaoTab({ data, fontesMap }: any) {
 
 // ── ABA: Financeiro ──────────────────────────────────────────────────────────────
 // Série histórica de CAPEX e OPEX + totalizadores abaixo do gráfico
-export function FinanceiroTab({ data, fontesMap }: any) {
+export function FinanceiroTab({ data, fontesMap, taxaDesconto }: any) {
   const { chartData, totalCapex, totalOpex } = useDashboardData(data, fontesMap)
+  // Valor presente dos custos: taxa anual convertida na taxa mensal equivalente,
+  // sem desconto no primeiro mês do período (ver resultadosSimulacao.ts)
+  const vpCapex = valorPresente(chartData.map((m: any) => m.capex), taxaDesconto)
+  const vpOpex = valorPresente(chartData.map((m: any) => m.opex), taxaDesconto)
+  const taxaTxt = `${Number(taxaDesconto || 0).toLocaleString('pt-BR', { maximumFractionDigits: 2 })} % a.a.`
 
   return (
     <div className="space-y-6">
-      <ChartWrapper title="Série Histórica – CAPEX e OPEX" data={chartData}>
+      <ChartWrapper title="Evolução temporal de CAPEX e OPEX" data={chartData}>
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" opacity={0.4} />
             <XAxis dataKey="tempo" />
-            <YAxis />
+            <YAxis tick={{ fontSize: 11 }} tickFormatter={(v: number) => new Intl.NumberFormat('pt-BR', { notation: 'compact' }).format(v)} label={{ value: 'R$/mês', angle: -90, position: 'insideLeft', style: { fontSize: 12 } }} />
             <Tooltip formatter={(value: number) => formatBRL(value)} />
             <Legend />
             <Line
@@ -608,7 +599,7 @@ export function FinanceiroTab({ data, fontesMap }: any) {
         </ResponsiveContainer>
       </ChartWrapper>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm text-muted-foreground">Total CAPEX</CardTitle>
@@ -625,7 +616,44 @@ export function FinanceiroTab({ data, fontesMap }: any) {
             <div className="text-2xl font-bold text-red-600">{formatBRL(totalOpex)}</div>
           </CardContent>
         </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm text-muted-foreground">Total CAPEX + OPEX</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{formatBRL(totalCapex + totalOpex)}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm text-muted-foreground">Valor presente do CAPEX</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-orange-600">{formatBRL(vpCapex)}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm text-muted-foreground">Valor presente do OPEX</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-red-600">{formatBRL(vpOpex)}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm text-muted-foreground">VPL dos custos (CAPEX + OPEX)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{formatBRL(vpCapex + vpOpex)}</div>
+          </CardContent>
+        </Card>
       </div>
+      <p className="text-xs text-muted-foreground">
+        Valor presente calculado com a taxa de desconto de {taxaTxt} (Parâmetros da simulação), convertida na
+        taxa mensal equivalente e aplicada a partir do primeiro mês do período. Como o modelo não considera
+        receitas, o VPL representa o valor presente dos custos: quanto menor, melhor.
+      </p>
     </div>
   )
 }

@@ -791,6 +791,10 @@ export function Importacao() {
           if (error) throw error
         }
 
+        // Registra a data da importação: simulações gravadas antes dela
+        // passam a avisar que o modelo foi reimportado.
+        await supabase.from('modelos').update({ importado_em: new Date().toISOString() }).eq('id_mod', mod.id_mod)
+
         // ── Etapas 3+: Indicadores ─────────────────────────────────────────
         const arqIndMap = mod.arq_indicador // { "id_indicador": "path" } | null
         if (arqIndMap && typeof arqIndMap === 'object' && Object.keys(arqIndMap).length > 0) {

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useSsdData } from '@/hooks/use-ssd-data'
 import { NativeSelect } from './components/NativeSelect'
 import { Button } from '@/components/ui/button'
@@ -12,6 +12,14 @@ import {
 } from './components/CenariosDashboard'
 import { ProjecaoPopulacional } from './ProjecaoPopulacional'
 import { ExibicaoMapa } from './components/mapa/ExibicaoMapa'
+import {
+  QuadroSimulacoes,
+  GravarSimulacaoDialog,
+  type SimulacaoCarregada,
+} from './components/simulacoes/QuadroSimulacoes'
+import { ComparacoesSimulacoes } from './components/simulacoes/ComparacoesSimulacoes'
+import { PARAMETROS_GERAIS, conjunto, type SimulacaoGravada } from './components/simulacoes/tipos'
+import { agregarPorTempo, calcularIndicadores, serieParaGravar } from './resultadosSimulacao'
 import { Checkbox } from '@/components/ui/checkbox'
 import { toast } from 'sonner'
 import { Trash2, Plus } from 'lucide-react'
@@ -64,13 +72,13 @@ const LINE_COLORS = ['#2563eb', '#16a34a', '#dc2626', '#d97706', '#7c3aed', '#08
 
 // ── Textos explicativos exibidos abaixo do título de cada aba de configuração ──
 const TEXTO_SELECAO_SIMULACAO =
-  'Selecione as fontes de água que farão parte da simulação, combinando cenários climáticos ou de demanda com estratégias de intervenção. Cada combinação corresponde a um conjunto de dados previamente importado na base — só é possível adicionar combinações que já possuam dados de simulação disponíveis.'
+  'Selecione as fontes de água que farão parte da simulação, combinando cenários (climáticos, ocupação da terra e outros) ou de demanda com estratégias de intervenção. (quebra de linha) Cada combinação corresponde a um conjunto de dados previamente importado na base. Só é possível adicionar combinações que já possuam dados de simulação disponíveis.'
 
 const TEXTO_PARAMETROS_SISTEMA =
   'Defina os limiares que classificam a segurança hídrica da região e escolha se a demanda e as perdas serão calculadas pelo sistema ou lidas dos dados importados.'
 
 const TEXTO_INDICE_SEGURANCA =
-  'O Índice de Segurança Hídrica é a razão entre o volume distribuído e a demanda, de 0 a 1 (1 = demanda totalmente atendida). Os limiares definem as faixas que classificam cada mês da simulação. Devem obedecer à ordem Alerta > Crise > Colapso.'
+  'O Índice de Segurança Hídrica é a razão entre o volume distribuído e a demanda, de 0 a 1 (1 = demanda totalmente atendida). (quebra de linha) Esse índice auxilia a avaliar o desempenho do sistema de abastecimento de água. (quebra de linha) Os limiares definem as faixas que classificam cada mês da simulação. Devem obedecer à ordem Alerta > Crise > Colapso.'
 
 const TEXTO_DEMANDA_AUTOMATICA =
   'A demanda de cada mês é calculada pelo sistema: a população inicial cresce a cada ano conforme o cenário de demanda e é multiplicada pelo consumo per capita do cenário de consumo. Desmarcada, são usados os valores de demanda importados.'
@@ -84,6 +92,8 @@ const AJUDA_INICIO_PERDAS =
   'Mês em que começa a redução (AAAA/MM). Antes dele, as perdas ficam no percentual inicial.'
 const AJUDA_LIMIAR_ALERTA = 'Abaixo deste valor: Alerta. Igual ou acima: Seguro.'
 const AJUDA_LIMIAR_CRISE = 'Abaixo deste valor: Crise.'
+const AJUDA_TAXA_DESCONTO =
+  'Taxa anual usada para trazer CAPEX e OPEX a valor presente (VPL dos custos), convertida na taxa mensal equivalente.'
 const AJUDA_LIMIAR_COLAPSO = 'Abaixo deste valor: Colapso.'
 
 type StatusSeg = 'seguro' | 'alerta' | 'crise' | 'colapso'
@@ -504,6 +514,26 @@ export default function Cenarios() {
   // sem necessidade de seleção manual pelo usuário.
   const [indicadores, setIndicadores] = useState<any[]>([])
 
+  // ── Escolhas próprias do usuário: cenários de demanda, consumo e perdas e o
+  // período. Ficam em simulacao_usuario e não alteram a configuração geral.
+  const [usuarioId, setUsuarioId] = useState<string | null>(null)
+  const [escolhas, setEscolhas] = useState<{ id_cd: number | null; id_cc: number | null; id_cp: number | null }>({
+    id_cd: null,
+    id_cc: null,
+    id_cp: null,
+  })
+  const [escolhasCarregadas, setEscolhasCarregadas] = useState(false)
+
+  // ── Simulações gravadas ─────────────────────────────────────────────────────
+  const [simulacoes, setSimulacoes] = useState<SimulacaoGravada[]>([])
+  const [simulacoesLoading, setSimulacoesLoading] = useState(true)
+  const [importacaoModelos, setImportacaoModelos] = useState<Record<number, string | null>>({})
+  const [carregada, setCarregada] = useState<SimulacaoCarregada | null>(null)
+  // Fotografia da última execução (modelos, parâmetros, série e indicadores),
+  // pronta para ser gravada; `assinatura` detecta mudanças depois da execução.
+  const [ultimaExecucao, setUltimaExecucao] = useState<any | null>(null)
+  const [gravarAberto, setGravarAberto] = useState(false)
+
   const fetchSelecoes = useCallback(async () => {
     setSelecaoLoading(true)
     const {
@@ -532,6 +562,38 @@ export default function Cenarios() {
     setSelecoes((rows ?? []).map((r: any) => ({ ...r, _userLabel: userLabel })))
     setSelecaoLoading(false)
   }, [])
+
+  const fetchSimulacoes = useCallback(async () => {
+    setSimulacoesLoading(true)
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) {
+      setSimulacoesLoading(false)
+      return
+    }
+    const { data: rows, error } = await supabase
+      .from('simulacoes')
+      .select('*, simulacao_modelos(*), simulacao_resultados(indicador, id_fonte, valor)')
+      .eq('id_usuario', user.id)
+      .order('gravado_em', { ascending: false })
+    if (error) toast.error(`Erro ao carregar simulações gravadas: ${error.message}`)
+    const sims = ((rows as any[]) || []) as SimulacaoGravada[]
+    setSimulacoes(sims)
+    // Data da última importação de cada modelo, para avisar reimportações
+    const ids = Array.from(
+      new Set(sims.flatMap((s) => (s.simulacao_modelos || []).map((m) => m.id_mod).filter((x): x is number => !!x))),
+    )
+    if (ids.length > 0) {
+      const { data: mods } = await supabase.from('modelos').select('id_mod, importado_em').in('id_mod', ids)
+      setImportacaoModelos(Object.fromEntries(((mods as any[]) || []).map((m) => [m.id_mod, m.importado_em])))
+    }
+    setSimulacoesLoading(false)
+  }, [])
+
+  useEffect(() => {
+    fetchSimulacoes()
+  }, [fetchSimulacoes])
 
   useEffect(() => {
     fetchSelecoes()
@@ -566,6 +628,51 @@ export default function Cenarios() {
       }),
     )
   }, [fetchSelecoes])
+
+  // Escolhas do usuário: carrega uma vez (na primeira vez, parte dos valores da
+  // configuração geral) e grava automaticamente a cada alteração.
+  useEffect(() => {
+    if (!simObj || escolhasCarregadas) return
+    ;(async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user) return
+      setUsuarioId(user.id)
+      const { data: row } = await supabase
+        .from('simulacao_usuario')
+        .select('*')
+        .eq('id_usuario', user.id)
+        .maybeSingle()
+      setEscolhas({
+        id_cd: row ? row.id_cd : (simObj.id_cd ?? null),
+        id_cc: row ? row.id_cc : (simObj.id_cc ?? null),
+        id_cp: row ? row.id_cp : (simObj.id_cp ?? null),
+      })
+      if (row && (row.ano_inicio || row.ano_fim))
+        setFilters((f: any) => ({ ...f, ano_inicio: row.ano_inicio ?? undefined, ano_fim: row.ano_fim ?? undefined }))
+      setEscolhasCarregadas(true)
+    })()
+  }, [simObj, escolhasCarregadas])
+
+  useEffect(() => {
+    if (!escolhasCarregadas || !usuarioId) return
+    const t = setTimeout(() => {
+      supabase
+        .from('simulacao_usuario')
+        .upsert({
+          id_usuario: usuarioId,
+          ...escolhas,
+          ano_inicio: filters.ano_inicio ? Number(filters.ano_inicio) : null,
+          ano_fim: filters.ano_fim ? Number(filters.ano_fim) : null,
+          atualizado_at: new Date().toISOString(),
+        })
+        .then(({ error }) => {
+          if (error) console.warn('[Cenarios] Não foi possível gravar as escolhas do usuário:', error.message)
+        })
+    }, 600)
+    return () => clearTimeout(t)
+  }, [escolhas, filters.ano_inicio, filters.ano_fim, escolhasCarregadas, usuarioId])
 
   // Carrega os indicadores aplicados à simulação — sem seleção manual,
   // todos os indicadores existentes serão exibidos automaticamente nos
@@ -887,7 +994,11 @@ export default function Cenarios() {
     if (!selecoes.some((s) => s.selecionado))
       return toast.error('Selecione ao menos uma configuração para simular')
 
+    if (erroEscolhas) return toast.error(erroEscolhas)
+
     setLoading(true)
+    setUltimaExecucao(null)
+    const assinaturaExecucao = assinaturaAtual
     let resData = await applyFinancialMetrics()
 
     if (resData.length === 0) {
@@ -901,9 +1012,9 @@ export default function Cenarios() {
     }
 
     if (simObj?.demanda_auto || simObj?.perdas_auto) {
-      const cd = cenario_demanda.find((c: any) => c.id_cd === simObj?.id_cd)
-      const cc = cenario_consumo.find((c: any) => c.id_cc === simObj?.id_cc)
-      const cp = cenario_perdas.find((c: any) => c.id_cp === simObj?.id_cp)
+      const cd = cenario_demanda.find((c: any) => c.id_cd === escolhas.id_cd)
+      const cc = cenario_consumo.find((c: any) => c.id_cc === escolhas.id_cc)
+      const cp = cenario_perdas.find((c: any) => c.id_cp === escolhas.id_cp)
       resData = aplicarCalculosModulares(resData, simObj, cd, cc, cp)
     }
 
@@ -994,6 +1105,59 @@ export default function Cenarios() {
       .filter((r) => r.status !== 'seguro')
 
     setSegurancaHidrica({ indicesMes, chartData: chartDataSeg, criticos })
+
+    // ── Fotografia desta execução, pronta para ser gravada ──
+    const meses = agregarPorTempo(processedData)
+    const modelosExec = new Map<number, any>()
+    processedData.forEach((r: any) => {
+      if (r.id_mod == null || modelosExec.has(r.id_mod)) return
+      modelosExec.set(r.id_mod, {
+        id_mod: r.id_mod,
+        id_fonte: r.id_fonte,
+        nome_fonte: fontesMap[r.id_fonte] || `Fonte ${r.id_fonte}`,
+        cenarios: Array.isArray(r.cenarios) ? r.cenarios : [],
+        estrategias: Array.isArray(r.estrategias) ? r.estrategias : [],
+      })
+    })
+    const cdSel: any = cenario_demanda.find((c: any) => c.id_cd === escolhas.id_cd)
+    const ccSel: any = cenario_consumo.find((c: any) => c.id_cc === escolhas.id_cc)
+    const cpSel: any = cenario_perdas.find((c: any) => c.id_cp === escolhas.id_cp)
+    const fontesExec = Array.from(new Set(processedData.map((r: any) => r.id_fonte)))
+    setUltimaExecucao({
+      assinatura: assinaturaExecucao,
+      gravadaComo: null,
+      parametros: {
+        globais: Object.fromEntries(PARAMETROS_GERAIS.map((p) => [p.campo, simObj?.[p.campo] ?? null])),
+        cenarios: {
+          id_cd: escolhas.id_cd,
+          nome_cd: cdSel?.nome_cenario_demanda ?? null,
+          percentual_cd: cdSel?.percentual ?? null,
+          id_cc: escolhas.id_cc,
+          nome_cc: ccSel?.nome_cenario_consumo ?? null,
+          vol_hab: ccSel?.vol_hab ?? null,
+          id_cp: escolhas.id_cp,
+          nome_cp: cpSel?.nome_cenario_perdas ?? null,
+          percentual_cp: cpSel?.percentual ?? null,
+        },
+        periodo: {
+          ano_inicio: filters.ano_inicio ? Number(filters.ano_inicio) : null,
+          ano_fim: filters.ano_fim ? Number(filters.ano_fim) : null,
+          primeiro: meses[0]?.tempo ?? null,
+          ultimo: meses[meses.length - 1]?.tempo ?? null,
+          meses: meses.length,
+        },
+        fontes: Object.fromEntries(fontesExec.map((f: any) => [String(f), fontesMap[f] || `Fonte ${f}`])),
+      },
+      serie: serieParaGravar(meses),
+      modelos: Array.from(modelosExec.values()),
+      resultados: calcularIndicadores(meses, {
+        limiarAlerta,
+        limiarCrise,
+        limiarColapso,
+        taxaDesconto: simObj?.taxa_desconto,
+      }),
+    })
+
     setData(processedData)
     setGroupedData(groupedArray)
     setRan(true)
@@ -1170,16 +1334,225 @@ export default function Cenarios() {
   const erroAuto = (() => {
     if (!simEdit) return null
     const vazio = (v: any) => v === '' || v === null || v === undefined
-    if (simEdit.demanda_auto && (vazio(simEdit.pop_inicial) || vazio(simEdit.id_cd) || vazio(simEdit.id_cc)))
-      return 'Demanda automática: informe a população inicial e escolha os cenários de crescimento e de consumo.'
-    if (
-      simEdit.perdas_auto &&
-      (vazio(simEdit.perc_inicial_perdas) || vazio(simEdit.inicio_perdas) || vazio(simEdit.id_cp))
-    )
-      return 'Perdas automáticas: informe o percentual inicial, o início da redução e o cenário de meta.'
+    if (simEdit.demanda_auto && vazio(simEdit.pop_inicial))
+      return 'Demanda automática: informe a população inicial.'
+    if (simEdit.perdas_auto && (vazio(simEdit.perc_inicial_perdas) || vazio(simEdit.inicio_perdas)))
+      return 'Perdas automáticas: informe o percentual inicial e o início da redução.'
     return null
   })()
   const erroParametros = erroLimiares || erroAuto
+
+  // Cenários de demanda/consumo/perdas são escolha de cada usuário (não fazem
+  // parte da configuração geral) — exigidos para executar quando o cálculo
+  // automático correspondente está ligado na configuração salva.
+  const erroEscolhas = (() => {
+    if (!simObj) return null
+    if (simObj.demanda_auto && (!escolhas.id_cd || !escolhas.id_cc))
+      return 'Demanda automática: escolha os cenários de crescimento populacional e de consumo na aba Parâmetros da simulação.'
+    if (simObj.perdas_auto && !escolhas.id_cp)
+      return 'Perdas automáticas: escolha o cenário de meta de perdas na aba Parâmetros da simulação.'
+    return null
+  })()
+
+  // ── Gravação de simulações ─────────────────────────────────────────────────
+  // Assinatura do que define uma execução: modelos marcados, escolhas do
+  // usuário, período e parâmetros gerais. Se mudar depois de executar, a
+  // execução fica desatualizada e não pode ser gravada.
+  const assinaturaAtual = JSON.stringify({
+    sel: selecoes
+      .filter((s) => s.selecionado)
+      .map((s) => s.id)
+      .sort(),
+    escolhas,
+    anos: [filters.ano_inicio ?? '', filters.ano_fim ?? ''],
+    gerais: PARAMETROS_GERAIS.map((p) => simObj?.[p.campo] ?? null),
+  })
+  const execucaoAtual = !!ultimaExecucao && ultimaExecucao.assinatura === assinaturaAtual && data.length > 0
+  const podeGravar = execucaoAtual && !ultimaExecucao?.gravadaComo
+  const motivoNaoGravar = !ultimaExecucao
+    ? 'Execute a simulação para poder gravá-la.'
+    : !execucaoAtual
+      ? 'A seleção de modelos, os cenários, o período ou os parâmetros mudaram desde a execução. Execute novamente para gravar.'
+      : ''
+
+  const avisosSimulacoes = useMemo(() => {
+    const r: Record<number, string[]> = {}
+    simulacoes.forEach((s) => {
+      const a: string[] = []
+      const mods = s.simulacao_modelos || []
+      const excluidos = mods.filter((m) => m.id_mod === null)
+      if (excluidos.length > 0)
+        a.push(
+          `Modelo(s) excluído(s) depois da gravação: ${excluidos
+            .map((m) => `${m.nome_fonte || 'fonte'} (modelo nº ${m.id_mod_original})`)
+            .join(', ')}. A simulação não pode mais ser carregada por completo.`,
+        )
+      const reimportados = mods.filter((m) => {
+        const imp = m.id_mod !== null ? importacaoModelos[m.id_mod] : null
+        return !!imp && !!s.gravado_em && new Date(imp) > new Date(s.gravado_em)
+      })
+      if (reimportados.length > 0)
+        a.push(
+          `Modelo(s) reimportado(s) depois da gravação: ${reimportados
+            .map((m) => `${m.nome_fonte || 'fonte'} (modelo nº ${m.id_mod})`)
+            .join(', ')}. Executar de novo pode dar resultados diferentes dos gravados.`,
+        )
+      if (simObj) {
+        const g: any = s.parametros?.globais || {}
+        const norm = (v: any) => (v === null || v === undefined ? '' : String(v))
+        const mudou = PARAMETROS_GERAIS.filter((p) => norm(g[p.campo]) !== norm(simObj[p.campo])).map((p) => p.nome)
+        if (mudou.length > 0)
+          a.push(
+            `Parâmetros gerais alterados desde a gravação: ${mudou.join(', ')}. Executar de novo dará resultados diferentes dos gravados.`,
+          )
+      }
+      r[s.id_simulacao] = a
+    })
+    return r
+  }, [simulacoes, importacaoModelos, simObj])
+
+  const simulacoesComparar = simulacoes
+    .filter((s) => s.comparar)
+    .sort((a, b) => (a.gravado_em || '').localeCompare(b.gravado_em || ''))
+
+  const gravarSimulacao = async ({
+    titulo,
+    descricao,
+    substituirId,
+  }: {
+    titulo: string
+    descricao: string
+    substituirId: number | null
+  }) => {
+    const ue = ultimaExecucao
+    if (!ue || !execucaoAtual) {
+      toast.error(motivoNaoGravar || 'Execute a simulação antes de gravar.')
+      return false
+    }
+    const { data: id, error } = await supabase.rpc('gravar_simulacao', {
+      p_id_simulacao: substituirId,
+      p_titulo: titulo.trim(),
+      p_descricao: descricao.trim() || null,
+      p_parametros: ue.parametros,
+      p_serie: ue.serie,
+      p_modelos: ue.modelos,
+      p_resultados: ue.resultados,
+    })
+    if (error) {
+      toast.error(`Erro ao gravar a simulação: ${error.message}`)
+      return false
+    }
+    setUltimaExecucao({ ...ue, gravadaComo: titulo.trim() })
+    setCarregada({
+      id_simulacao: Number(id),
+      titulo: titulo.trim(),
+      descricao: descricao.trim() || null,
+      gravado_em: new Date().toISOString(),
+    })
+    await fetchSimulacoes()
+    toast.success(substituirId ? 'Simulação substituída' : 'Simulação gravada')
+    return true
+  }
+
+  const carregarSimulacao = async (s: SimulacaoGravada) => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return toast.error('Usuário não autenticado')
+    // Marca na lista do usuário as combinações (fonte + cenários + estratégias)
+    // dos modelos da simulação; as que não estiverem na lista são adicionadas.
+    const lista: any[] = [...selecoes]
+    const alvo: string[] = []
+    let adicionadas = 0
+    for (const m of s.simulacao_modelos || []) {
+      if (m.id_fonte == null) continue
+      const existente = lista.find(
+        (x) =>
+          x.id_fonte === m.id_fonte &&
+          conjunto(x.cenarios) === conjunto(m.cenarios) &&
+          conjunto(x.estrategias) === conjunto(m.estrategias),
+      )
+      if (existente) {
+        if (!alvo.includes(existente.id)) alvo.push(existente.id)
+        continue
+      }
+      const { data: nova, error } = await supabase
+        .from('selecao_cenarios')
+        .insert({
+          id_fonte: m.id_fonte,
+          cenarios: m.cenarios,
+          estrategias: m.estrategias,
+          selecionado: true,
+          id_usuario: user.id,
+        })
+        .select('id')
+        .single()
+      if (error || !nova) {
+        toast.error(`Não foi possível adicionar a combinação de ${m.nome_fonte || 'uma fonte'}: ${error?.message}`)
+        continue
+      }
+      lista.push({ id: nova.id, id_fonte: m.id_fonte, cenarios: m.cenarios, estrategias: m.estrategias, selecionado: true })
+      alvo.push(nova.id)
+      adicionadas++
+    }
+    const desmarcar = lista.filter((x) => x.selecionado && !alvo.includes(x.id)).map((x) => x.id)
+    const marcar = alvo.filter((id) => !lista.find((x) => x.id === id)?.selecionado)
+    if (desmarcar.length > 0) await supabase.from('selecao_cenarios').update({ selecionado: false }).in('id', desmarcar)
+    if (marcar.length > 0) await supabase.from('selecao_cenarios').update({ selecionado: true }).in('id', marcar)
+
+    const c: any = s.parametros?.cenarios || {}
+    setEscolhas({ id_cd: c.id_cd ?? null, id_cc: c.id_cc ?? null, id_cp: c.id_cp ?? null })
+    const per: any = s.parametros?.periodo || {}
+    setFilters((f: any) => ({ ...f, ano_inicio: per.ano_inicio ?? undefined, ano_fim: per.ano_fim ?? undefined }))
+    setCarregada({ id_simulacao: s.id_simulacao, titulo: s.titulo, descricao: s.descricao, gravado_em: s.gravado_em })
+    await fetchSelecoes()
+    toast.success(
+      `Simulação "${s.titulo}" carregada${
+        adicionadas > 0 ? ` — ${adicionadas} combinação(ões) adicionada(s) à sua lista de modelos` : ''
+      }.`,
+    )
+    if ((avisosSimulacoes[s.id_simulacao] || []).length > 0)
+      toast.warning('Esta simulação tem avisos — veja o quadro Gravação de simulações.', { duration: 6000 })
+  }
+
+  const toggleComparar = async (s: SimulacaoGravada, v: boolean) => {
+    setSimulacoes((p) => p.map((x) => (x.id_simulacao === s.id_simulacao ? { ...x, comparar: v } : x)))
+    const { error } = await supabase.from('simulacoes').update({ comparar: v }).eq('id_simulacao', s.id_simulacao)
+    if (error) {
+      toast.error(`Erro ao atualizar: ${error.message}`)
+      fetchSimulacoes()
+    }
+  }
+
+  const editarSimulacao = async (id: number, titulo: string, descricao: string) => {
+    if (!titulo.trim()) {
+      toast.error('O título é obrigatório.')
+      return false
+    }
+    const upd = { titulo: titulo.trim(), descricao: descricao.trim() || null }
+    const { data: ok, error } = await supabase.from('simulacoes').update(upd).eq('id_simulacao', id).select('id_simulacao')
+    if (error || !ok || ok.length === 0) {
+      toast.error(`Erro ao salvar: ${error?.message || 'sem permissão'}`)
+      return false
+    }
+    setSimulacoes((p) => p.map((x) => (x.id_simulacao === id ? { ...x, ...upd } : x)))
+    if (carregada?.id_simulacao === id) setCarregada({ ...carregada, ...upd })
+    toast.success('Simulação atualizada')
+    return true
+  }
+
+  const excluirSimulacao = async (s: SimulacaoGravada) => {
+    if (!window.confirm(`Excluir a simulação "${s.titulo}"? Os resultados gravados serão perdidos.`)) return
+    const { data: ok, error } = await supabase
+      .from('simulacoes')
+      .delete()
+      .eq('id_simulacao', s.id_simulacao)
+      .select('id_simulacao')
+    if (error || !ok || ok.length === 0) return toast.error(`Erro ao excluir: ${error?.message || 'sem permissão'}`)
+    setSimulacoes((p) => p.filter((x) => x.id_simulacao !== s.id_simulacao))
+    if (carregada?.id_simulacao === s.id_simulacao) setCarregada(null)
+    toast.success('Simulação excluída')
+  }
 
   return (
     <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
@@ -1188,8 +1561,7 @@ export default function Cenarios() {
           Sistema de Suporte à Decisão para Abastecimento de Água
         </h1>
         <p className="text-muted-foreground">
-          Esse sistema permite avaliar estratégias de abastecimento de água a partir de diversas
-          fontes de água, intervenções e cenários de clima e demanda.
+          Esse sistema permite avaliar estratégias de abastecimento de água a partir de diversas fontes de água, intervenções e cenários de disponibilidade e demanda hídrica.
         </p>
       </div>
 
@@ -1217,161 +1589,6 @@ export default function Cenarios() {
                 <p className="text-xs text-muted-foreground -mt-1 mb-2">
                   {TEXTO_SELECAO_SIMULACAO}
                 </p>
-                {selecaoLoading && (
-                  <div className="flex items-center gap-2 py-4 text-sm text-muted-foreground">
-                    <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
-                    </svg>
-                    Carregando configurações…
-                  </div>
-                )}
-
-                {!selecaoLoading && selecoes.length === 0 && (
-                  <div className="text-center py-8 border border-dashed rounded-lg">
-                    <p className="text-sm text-muted-foreground font-medium">
-                      Nenhuma configuração salva ainda.
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Use o formulário abaixo para adicionar fontes à simulação.
-                    </p>
-                  </div>
-                )}
-
-                {!selecaoLoading && selecoes.length > 0 && (
-                  <div className="border rounded-lg overflow-hidden">
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-xs">
-                        <thead className="bg-slate-100 sticky top-0 z-10">
-                          <tr>
-                            <th className="px-3 py-2.5 text-center font-semibold text-slate-600 w-10">
-                              <Checkbox
-                                checked={
-                                  selecoes.length > 0 && selecoes.every((s) => s.selecionado)
-                                }
-                                onCheckedChange={(v) => {
-                                  if (v) {
-                                    const fontesUsadas = new Set<number>()
-                                    let puladas = 0
-                                    selecoes.forEach((s) => {
-                                      if (fontesUsadas.has(s.id_fonte)) {
-                                        if (!s.selecionado) puladas += 1
-                                        return
-                                      }
-                                      fontesUsadas.add(s.id_fonte)
-                                      if (!s.selecionado) handleToggleSelecao(s.id, true)
-                                    })
-                                    if (puladas > 0) {
-                                      toast.error(
-                                        `${puladas} configuração(ões) não foram marcadas porque já existe uma seleção ativa para a mesma fonte.`,
-                                      )
-                                    }
-                                  } else {
-                                    selecoes.forEach((s) => {
-                                      if (s.selecionado) handleToggleSelecao(s.id, false)
-                                    })
-                                  }
-                                }}
-                                title="Marcar / desmarcar todos"
-                              />
-                            </th>
-                            <th className="px-3 py-2.5 text-left font-semibold text-slate-600 whitespace-nowrap">
-                              Data
-                            </th>{' '}
-                            <th className="px-3 py-2.5 text-left font-semibold text-slate-600 whitespace-nowrap">
-                              Fonte
-                            </th>
-                            <th className="px-3 py-2.5 text-left font-semibold text-slate-600">
-                              Cenários
-                            </th>
-                            <th className="px-3 py-2.5 text-left font-semibold text-slate-600">
-                              Estratégias
-                            </th>
-                            <th className="px-3 py-2.5 w-10" />
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y">
-                          {selecoes.map((sel) => (
-                            <tr
-                              key={sel.id}
-                              className={`hover:bg-slate-50 transition-colors ${sel.selecionado ? 'bg-blue-50/40' : ''}`}
-                            >
-                              <td className="px-3 py-2.5 text-center">
-                                <Checkbox
-                                  checked={!!sel.selecionado}
-                                  onCheckedChange={(v) => handleToggleSelecao(sel.id, !!v)}
-                                />
-                              </td>
-                              <td className="px-3 py-2.5 text-slate-500 whitespace-nowrap">
-                                {sel.criado_at
-                                  ? new Date(sel.criado_at).toLocaleString('pt-BR', {
-                                      day: '2-digit',
-                                      month: '2-digit',
-                                      year: '2-digit',
-                                      hour: '2-digit',
-                                      minute: '2-digit',
-                                    })
-                                  : '-'}
-                              </td>
-                              <td className="px-3 py-2.5 font-medium text-slate-700 whitespace-nowrap">
-                                {sel.fonte_agua?.nome_fonte ?? `Fonte ${sel.id_fonte}`}
-                              </td>
-                              <td className="px-3 py-2.5 text-slate-600 max-w-[260px]">
-                                {Array.isArray(sel.cenarios) && sel.cenarios.length > 0 ? (
-                                  <div className="flex flex-wrap gap-1">
-                                    {sel.cenarios.map((c) => (
-                                      <span
-                                        key={c}
-                                        className="inline-block bg-blue-50 border border-blue-200 text-blue-700 rounded px-1.5 py-0.5 text-[11px]"
-                                      >
-                                        {c}
-                                      </span>
-                                    ))}
-                                  </div>
-                                ) : (
-                                  <span className="text-slate-400">-</span>
-                                )}
-                              </td>
-                              <td className="px-3 py-2.5 text-slate-600 max-w-[260px]">
-                                {Array.isArray(sel.estrategias) && sel.estrategias.length > 0 ? (
-                                  <div className="flex flex-wrap gap-1">
-                                    {sel.estrategias.map((e) => (
-                                      <span
-                                        key={e}
-                                        className="inline-block bg-emerald-50 border border-emerald-200 text-emerald-700 rounded px-1.5 py-0.5 text-[11px]"
-                                      >
-                                        {e}
-                                      </span>
-                                    ))}
-                                  </div>
-                                ) : (
-                                  <span className="text-slate-400">-</span>
-                                )}
-                              </td>
-                              <td className="px-3 py-2.5 text-center">
-                                <button
-                                  onClick={() => handleDeleteSelecao(sel.id)}
-                                  className="text-destructive hover:text-red-700 transition-colors"
-                                  title="Remover"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
-
                 <div className="space-y-4 border border-slate-200 rounded-lg p-4 bg-slate-50">
                   <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                     Adicionar nova fonte à simulação
@@ -1557,6 +1774,176 @@ export default function Cenarios() {
                     </Button>
                   </div>
                 </div>
+                {selecaoLoading && (
+                  <div className="flex items-center gap-2 py-4 text-sm text-muted-foreground">
+                    <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                    </svg>
+                    Carregando configurações…
+                  </div>
+                )}
+
+                {!selecaoLoading && selecoes.length === 0 && (
+                  <div className="text-center py-8 border border-dashed rounded-lg">
+                    <p className="text-sm text-muted-foreground font-medium">
+                      Nenhuma configuração salva ainda.
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Use o quadro acima para adicionar fontes à simulação.
+                    </p>
+                  </div>
+                )}
+
+                {!selecaoLoading && selecoes.length > 0 && (
+                  <div className="border rounded-lg overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-xs">
+                        <thead className="bg-slate-100 sticky top-0 z-10">
+                          <tr>
+                            <th className="px-3 py-2.5 text-center font-semibold text-slate-600 w-10">
+                              <Checkbox
+                                checked={
+                                  selecoes.length > 0 && selecoes.every((s) => s.selecionado)
+                                }
+                                onCheckedChange={(v) => {
+                                  if (v) {
+                                    const fontesUsadas = new Set<number>()
+                                    let puladas = 0
+                                    selecoes.forEach((s) => {
+                                      if (fontesUsadas.has(s.id_fonte)) {
+                                        if (!s.selecionado) puladas += 1
+                                        return
+                                      }
+                                      fontesUsadas.add(s.id_fonte)
+                                      if (!s.selecionado) handleToggleSelecao(s.id, true)
+                                    })
+                                    if (puladas > 0) {
+                                      toast.error(
+                                        `${puladas} configuração(ões) não foram marcadas porque já existe uma seleção ativa para a mesma fonte.`,
+                                      )
+                                    }
+                                  } else {
+                                    selecoes.forEach((s) => {
+                                      if (s.selecionado) handleToggleSelecao(s.id, false)
+                                    })
+                                  }
+                                }}
+                                title="Marcar / desmarcar todos"
+                              />
+                            </th>
+                            <th className="px-3 py-2.5 text-left font-semibold text-slate-600 whitespace-nowrap">
+                              Data
+                            </th>{' '}
+                            <th className="px-3 py-2.5 text-left font-semibold text-slate-600 whitespace-nowrap">
+                              Fonte
+                            </th>
+                            <th className="px-3 py-2.5 text-left font-semibold text-slate-600">
+                              Cenários
+                            </th>
+                            <th className="px-3 py-2.5 text-left font-semibold text-slate-600">
+                              Estratégias
+                            </th>
+                            <th className="px-3 py-2.5 w-10" />
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y">
+                          {selecoes.map((sel) => (
+                            <tr
+                              key={sel.id}
+                              className={`hover:bg-slate-50 transition-colors ${sel.selecionado ? 'bg-blue-50/40' : ''}`}
+                            >
+                              <td className="px-3 py-2.5 text-center">
+                                <Checkbox
+                                  checked={!!sel.selecionado}
+                                  onCheckedChange={(v) => handleToggleSelecao(sel.id, !!v)}
+                                />
+                              </td>
+                              <td className="px-3 py-2.5 text-slate-500 whitespace-nowrap">
+                                {sel.criado_at
+                                  ? new Date(sel.criado_at).toLocaleString('pt-BR', {
+                                      day: '2-digit',
+                                      month: '2-digit',
+                                      year: '2-digit',
+                                      hour: '2-digit',
+                                      minute: '2-digit',
+                                    })
+                                  : '-'}
+                              </td>
+                              <td className="px-3 py-2.5 font-medium text-slate-700 whitespace-nowrap">
+                                {sel.fonte_agua?.nome_fonte ?? `Fonte ${sel.id_fonte}`}
+                              </td>
+                              <td className="px-3 py-2.5 text-slate-600 max-w-[260px]">
+                                {Array.isArray(sel.cenarios) && sel.cenarios.length > 0 ? (
+                                  <div className="flex flex-wrap gap-1">
+                                    {sel.cenarios.map((c) => (
+                                      <span
+                                        key={c}
+                                        className="inline-block bg-blue-50 border border-blue-200 text-blue-700 rounded px-1.5 py-0.5 text-[11px]"
+                                      >
+                                        {c}
+                                      </span>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <span className="text-slate-400">-</span>
+                                )}
+                              </td>
+                              <td className="px-3 py-2.5 text-slate-600 max-w-[260px]">
+                                {Array.isArray(sel.estrategias) && sel.estrategias.length > 0 ? (
+                                  <div className="flex flex-wrap gap-1">
+                                    {sel.estrategias.map((e) => (
+                                      <span
+                                        key={e}
+                                        className="inline-block bg-emerald-50 border border-emerald-200 text-emerald-700 rounded px-1.5 py-0.5 text-[11px]"
+                                      >
+                                        {e}
+                                      </span>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <span className="text-slate-400">-</span>
+                                )}
+                              </td>
+                              <td className="px-3 py-2.5 text-center">
+                                <button
+                                  onClick={() => handleDeleteSelecao(sel.id)}
+                                  className="text-destructive hover:text-red-700 transition-colors"
+                                  title="Remover"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+
+                <QuadroSimulacoes
+                  simulacoes={simulacoes}
+                  carregando={simulacoesLoading}
+                  carregada={carregada}
+                  avisos={avisosSimulacoes}
+                  onCarregar={carregarSimulacao}
+                  onToggleComparar={toggleComparar}
+                  onEditar={editarSimulacao}
+                  onExcluir={excluirSimulacao}
+                  podeGravar={podeGravar}
+                  motivoNaoGravar={motivoNaoGravar}
+                  gravadaComo={execucaoAtual ? ultimaExecucao?.gravadaComo ?? null : null}
+                  onAbrirGravar={() => setGravarAberto(true)}
+                />
               </TabsContent>
 
               {/* ── TAB: Parâmetros da simulação ── */}
@@ -1643,6 +2030,7 @@ export default function Cenarios() {
                             <div className="space-y-1">
                               <label className="text-xs font-semibold text-muted-foreground">
                                 Cenário de crescimento populacional (% a.a.)
+                                <span className="ml-1 font-normal text-[10px] text-primary">· sua escolha</span>
                               </label>
                               <NativeSelect
                                 className="w-full"
@@ -1650,9 +2038,9 @@ export default function Cenarios() {
                                   value: o.id_cd,
                                   label: `${o.nome_cenario_demanda} (${fmtNum(o.percentual)} % a.a.)`,
                                 }))}
-                                value={simEdit.id_cd ?? ''}
+                                value={escolhas.id_cd ?? ''}
                                 onChange={(v: any) =>
-                                  setSimEdit((prev: any) => ({
+                                  setEscolhas((prev) => ({
                                     ...prev,
                                     id_cd: v === '' || v === null ? null : parseInt(v),
                                   }))
@@ -1661,13 +2049,14 @@ export default function Cenarios() {
                               />
                               <DescricaoCenario
                                 item={cenario_demanda.find(
-                                  (o: any) => String(o.id_cd) === String(simEdit.id_cd),
+                                  (o: any) => String(o.id_cd) === String(escolhas.id_cd),
                                 )}
                               />
                             </div>
                             <div className="space-y-1">
                               <label className="text-xs font-semibold text-muted-foreground">
                                 Cenário de consumo per capita (L/hab./dia)
+                                <span className="ml-1 font-normal text-[10px] text-primary">· sua escolha</span>
                               </label>
                               <NativeSelect
                                 className="w-full"
@@ -1675,9 +2064,9 @@ export default function Cenarios() {
                                   value: o.id_cc,
                                   label: `${o.nome_cenario_consumo} (${fmtNum(o.vol_hab)} L/hab./dia)`,
                                 }))}
-                                value={simEdit.id_cc ?? ''}
+                                value={escolhas.id_cc ?? ''}
                                 onChange={(v: any) =>
-                                  setSimEdit((prev: any) => ({
+                                  setEscolhas((prev) => ({
                                     ...prev,
                                     id_cc: v === '' || v === null ? null : parseInt(v),
                                   }))
@@ -1686,7 +2075,7 @@ export default function Cenarios() {
                               />
                               <DescricaoCenario
                                 item={cenario_consumo.find(
-                                  (o: any) => String(o.id_cc) === String(simEdit.id_cc),
+                                  (o: any) => String(o.id_cc) === String(escolhas.id_cc),
                                 )}
                               />
                             </div>
@@ -1725,6 +2114,7 @@ export default function Cenarios() {
                             <div className="space-y-1">
                               <label className="text-xs font-semibold text-muted-foreground">
                                 Cenário de meta de perdas (%)
+                                <span className="ml-1 font-normal text-[10px] text-primary">· sua escolha</span>
                               </label>
                               <NativeSelect
                                 className="w-full"
@@ -1732,9 +2122,9 @@ export default function Cenarios() {
                                   value: o.id_cp,
                                   label: `${o.nome_cenario_perdas} (${fmtNum(o.percentual)} %)`,
                                 }))}
-                                value={simEdit.id_cp ?? ''}
+                                value={escolhas.id_cp ?? ''}
                                 onChange={(v: any) =>
-                                  setSimEdit((prev: any) => ({
+                                  setEscolhas((prev) => ({
                                     ...prev,
                                     id_cp: v === '' || v === null ? null : parseInt(v),
                                   }))
@@ -1743,7 +2133,7 @@ export default function Cenarios() {
                               />
                               <DescricaoCenario
                                 item={cenario_perdas.find(
-                                  (o: any) => String(o.id_cp) === String(simEdit.id_cp),
+                                  (o: any) => String(o.id_cp) === String(escolhas.id_cp),
                                 )}
                               />
                             </div>
@@ -1751,6 +2141,27 @@ export default function Cenarios() {
                         )}
                       </div>
                     </div>
+
+                    {/* Quadro: parâmetros financeiros */}
+                    <div className="rounded-lg border p-4 space-y-3">
+                      <h3 className="text-sm font-semibold text-primary">Parâmetros financeiros</h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <SimField
+                          label="Taxa de desconto (% a.a.)"
+                          field="taxa_desconto"
+                          type="number"
+                          min={0}
+                          step={0.1}
+                          ajuda={AJUDA_TAXA_DESCONTO}
+                          simEdit={simEdit}
+                          setSimEdit={setSimEdit}
+                        />
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Os campos marcados como "sua escolha" (cenários de demanda, consumo e perdas) valem só para você e
+                      são gravados automaticamente. Os demais parâmetros são gerais e valem para todos os usuários.
+                    </p>
                   </div>
                 )}
               </TabsContent>
@@ -1875,11 +2286,14 @@ export default function Cenarios() {
               </div>
               <Button
                 onClick={handleSimulate}
-                disabled={loading || !simObj || selecoes.length === 0 || simAlterada}
+                disabled={loading || !simObj || selecoes.length === 0 || simAlterada || !!erroEscolhas}
                 className="w-full h-11 shadow-sm text-base disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? 'Processando...' : 'Executar Simulação'}
               </Button>
+              {erroEscolhas && !simAlterada && (
+                <p className="text-xs text-red-500 text-center font-medium mt-2">{erroEscolhas}</p>
+              )}
               {!selecaoLoading && selecoes.length === 0 && (
                 <p className="text-xs text-red-500 text-center font-medium mt-2">
                   Configure ao menos uma fonte para executar a simulação.
@@ -1903,6 +2317,28 @@ export default function Cenarios() {
               <span className="font-semibold text-primary text-base">Resultados</span>
             </AccordionTrigger>
             <AccordionContent className="px-5 pb-5">
+              {ultimaExecucao && (
+                <div
+                  className={`mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 rounded-md border px-3 py-2 text-xs ${
+                    ultimaExecucao.gravadaComo && execucaoAtual
+                      ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                      : 'border-amber-200 bg-amber-50 text-amber-800'
+                  }`}
+                >
+                  <span>
+                    {ultimaExecucao.gravadaComo && execucaoAtual
+                      ? `Execução gravada como "${ultimaExecucao.gravadaComo}".`
+                      : execucaoAtual
+                        ? 'Esta execução não foi gravada.'
+                        : 'A configuração mudou desde a execução: os resultados abaixo não correspondem mais à seleção atual.'}
+                  </span>
+                  {podeGravar && (
+                    <Button size="sm" variant="outline" onClick={() => setGravarAberto(true)}>
+                      Gravar simulação…
+                    </Button>
+                  )}
+                </div>
+              )}
               <Tabs defaultValue="dados_gerais" className="w-full">
                 <TabsList className="flex-wrap h-auto">
                   <TabsTrigger value="dados_gerais">Dados Gerais</TabsTrigger>
@@ -2292,19 +2728,20 @@ export default function Cenarios() {
 
                 {/* ── TAB: Financeiro ── */}
                 <TabsContent value="financeiro" className="pt-4">
-                  <FinanceiroTab data={data} fontesMap={fontesMap} />
+                  <FinanceiroTab
+                    data={data}
+                    fontesMap={fontesMap}
+                    taxaDesconto={ultimaExecucao?.parametros?.globais?.taxa_desconto ?? simObj?.taxa_desconto}
+                  />
                 </TabsContent>
 
                 {/* ── TAB: Projeção Populacional ── */}
                 <TabsContent value="projecao_populacional" className="pt-4">
                   {temAutomaticoSalvo ? (
                     (() => {
-                      const cdObj = cenario_demanda?.find(
-                        (c: any) => c.id_cd === simObj?.id_cd,
-                      )
-                      const ccObj = cenario_consumo?.find(
-                        (c: any) => c.id_cc === simObj?.id_cc,
-                      )
+                      const cenExec = ultimaExecucao?.parametros?.cenarios || escolhas
+                      const cdObj = cenario_demanda?.find((c: any) => c.id_cd === cenExec.id_cd)
+                      const ccObj = cenario_consumo?.find((c: any) => c.id_cc === cenExec.id_cc)
                       return (
                         <ProjecaoPopulacional
                           data={data}
@@ -2327,7 +2764,37 @@ export default function Cenarios() {
             </AccordionContent>
           </AccordionItem>
         )}
+
+        {/* ════════════════════════════════════════════════════════════════
+            ACCORDION: Comparações entre simulações (2+ simulações gravadas
+            marcadas em "Comparar")
+        ════════════════════════════════════════════════════════════════ */}
+        {simulacoesComparar.length >= 2 && (
+          <AccordionItem value="comparacoes" className="border rounded-xl bg-white shadow-sm">
+            <AccordionTrigger className="px-5 py-4 hover:no-underline">
+              <span className="font-semibold text-primary text-base">
+                Comparações entre simulações
+                <span className="ml-2 text-xs font-normal text-muted-foreground">
+                  ({simulacoesComparar.length} simulações)
+                </span>
+              </span>
+            </AccordionTrigger>
+            <AccordionContent className="px-5 pb-5">
+              <ComparacoesSimulacoes simulacoes={simulacoesComparar} />
+            </AccordionContent>
+          </AccordionItem>
+        )}
       </Accordion>
+
+      <GravarSimulacaoDialog
+        aberto={gravarAberto}
+        onFechar={() => setGravarAberto(false)}
+        carregada={carregada}
+        resumo={`Serão gravados os ${ultimaExecucao?.modelos?.length ?? 0} modelo(s) desta execução, os parâmetros usados, o período (${
+          ultimaExecucao?.parametros?.periodo?.primeiro ?? '—'
+        } a ${ultimaExecucao?.parametros?.periodo?.ultimo ?? '—'}) e os resultados calculados.`}
+        onGravar={gravarSimulacao}
+      />
 
       {ran && data.length === 0 && (
         <div className="text-center p-12 bg-white rounded-lg border border-dashed">

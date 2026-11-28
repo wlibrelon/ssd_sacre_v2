@@ -1034,6 +1034,7 @@ export type Database = {
       }
       modelos: {
         Row: {
+          importado_em: string | null
           arq_capex_estrategias: string | null
           arq_capex_perdas: string | null
           arq_demanda: string | null
@@ -1047,6 +1048,7 @@ export type Database = {
           id_mod: number
         }
         Insert: {
+          importado_em?: string | null
           arq_capex_estrategias?: string | null
           arq_capex_perdas?: string | null
           arq_demanda?: string | null
@@ -1060,6 +1062,7 @@ export type Database = {
           id_mod?: number
         }
         Update: {
+          importado_em?: string | null
           arq_capex_estrategias?: string | null
           arq_capex_perdas?: string | null
           arq_demanda?: string | null
@@ -1434,8 +1437,179 @@ export type Database = {
           },
         ]
       }
+      matriz_decisao_config: {
+        Row: {
+          atualizado_at: string | null
+          incluir: boolean
+          indicador: string
+          peso: number
+          sentido: string
+        }
+        Insert: {
+          atualizado_at?: string | null
+          incluir?: boolean
+          indicador: string
+          peso?: number
+          sentido: string
+        }
+        Update: {
+          atualizado_at?: string | null
+          incluir?: boolean
+          indicador?: string
+          peso?: number
+          sentido?: string
+        }
+        Relationships: []
+      }
+      simulacao_modelos: {
+        Row: {
+          cenarios: Json
+          estrategias: Json
+          id: number
+          id_fonte: number | null
+          id_mod: number | null
+          id_mod_original: number
+          id_simulacao: number
+          nome_fonte: string | null
+        }
+        Insert: {
+          cenarios?: Json
+          estrategias?: Json
+          id?: number
+          id_fonte?: number | null
+          id_mod?: number | null
+          id_mod_original: number
+          id_simulacao: number
+          nome_fonte?: string | null
+        }
+        Update: {
+          cenarios?: Json
+          estrategias?: Json
+          id?: number
+          id_fonte?: number | null
+          id_mod?: number | null
+          id_mod_original?: number
+          id_simulacao?: number
+          nome_fonte?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'simulacao_modelos_id_simulacao_fkey'
+            columns: ['id_simulacao']
+            isOneToOne: false
+            referencedRelation: 'simulacoes'
+            referencedColumns: ['id_simulacao']
+          },
+          {
+            foreignKeyName: 'simulacao_modelos_id_mod_fkey'
+            columns: ['id_mod']
+            isOneToOne: false
+            referencedRelation: 'modelos'
+            referencedColumns: ['id_mod']
+          },
+        ]
+      }
+      simulacao_resultados: {
+        Row: {
+          id: number
+          id_fonte: number | null
+          id_simulacao: number
+          indicador: string
+          valor: number | null
+        }
+        Insert: {
+          id?: number
+          id_fonte?: number | null
+          id_simulacao: number
+          indicador: string
+          valor?: number | null
+        }
+        Update: {
+          id?: number
+          id_fonte?: number | null
+          id_simulacao?: number
+          indicador?: string
+          valor?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'simulacao_resultados_id_simulacao_fkey'
+            columns: ['id_simulacao']
+            isOneToOne: false
+            referencedRelation: 'simulacoes'
+            referencedColumns: ['id_simulacao']
+          },
+        ]
+      }
+      simulacao_usuario: {
+        Row: {
+          ano_fim: number | null
+          ano_inicio: number | null
+          atualizado_at: string | null
+          id_cc: number | null
+          id_cd: number | null
+          id_cp: number | null
+          id_usuario: string
+        }
+        Insert: {
+          ano_fim?: number | null
+          ano_inicio?: number | null
+          atualizado_at?: string | null
+          id_cc?: number | null
+          id_cd?: number | null
+          id_cp?: number | null
+          id_usuario: string
+        }
+        Update: {
+          ano_fim?: number | null
+          ano_inicio?: number | null
+          atualizado_at?: string | null
+          id_cc?: number | null
+          id_cd?: number | null
+          id_cp?: number | null
+          id_usuario?: string
+        }
+        Relationships: []
+      }
+      simulacoes: {
+        Row: {
+          comparar: boolean
+          criado_at: string | null
+          descricao: string | null
+          gravado_em: string | null
+          id_simulacao: number
+          id_usuario: string
+          parametros: Json
+          serie_mensal: Json
+          titulo: string
+        }
+        Insert: {
+          comparar?: boolean
+          criado_at?: string | null
+          descricao?: string | null
+          gravado_em?: string | null
+          id_simulacao?: number
+          id_usuario?: string
+          parametros?: Json
+          serie_mensal?: Json
+          titulo: string
+        }
+        Update: {
+          comparar?: boolean
+          criado_at?: string | null
+          descricao?: string | null
+          gravado_em?: string | null
+          id_simulacao?: number
+          id_usuario?: string
+          parametros?: Json
+          serie_mensal?: Json
+          titulo?: string
+        }
+        Relationships: []
+      }
       simulacao_ssd: {
         Row: {
+          taxa_desconto: number | null
           demanda_auto: boolean | null
           descricao: string | null
           id_cc: number | null
@@ -1453,6 +1627,7 @@ export type Database = {
           total_capex: number | null
         }
         Insert: {
+          taxa_desconto?: number | null
           demanda_auto?: boolean | null
           descricao?: string | null
           id_cc?: number | null
@@ -1470,6 +1645,7 @@ export type Database = {
           total_capex?: number | null
         }
         Update: {
+          taxa_desconto?: number | null
           demanda_auto?: boolean | null
           descricao?: string | null
           id_cc?: number | null
@@ -1659,6 +1835,18 @@ export type Database = {
       }
     }
     Functions: {
+      gravar_simulacao: {
+        Args: {
+          p_descricao: string | null
+          p_id_simulacao: number | null
+          p_modelos: Json
+          p_parametros: Json
+          p_resultados: Json
+          p_serie: Json
+          p_titulo: string
+        }
+        Returns: number
+      }
       _postgis_deprecate: {
         Args: { newname: string; oldname: string; version: string }
         Returns: undefined

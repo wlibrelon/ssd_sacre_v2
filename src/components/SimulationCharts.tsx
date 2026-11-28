@@ -73,7 +73,7 @@ export function SimulationCharts({ results, timeData }: { results: any[]; timeDa
         </Card>
         <Card>
           <CardContent className="p-5">
-            <p className="text-xs text-muted-foreground uppercase font-semibold">Média Demanda</p>
+            <p className="text-xs text-muted-foreground uppercase font-semibold">Demanda Média anual</p>
             <p className="text-2xl font-bold text-primary mt-1">
               {avgDem.toFixed(0)}{' '}
               <span className="text-sm font-normal text-muted-foreground">m³/h</span>
