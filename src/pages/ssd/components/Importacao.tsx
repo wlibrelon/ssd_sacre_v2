@@ -46,6 +46,34 @@ const formatData = (data: any): string => {
   return String(data)
 }
 
+// ── Leitura de CSV ───────────────────────────────────────────────────────────
+/** Separador de colunas do CSV, detectado pelo cabeçalho (";" ou ","). */
+function separadorCSV(cabecalho: string): ';' | ',' {
+  const pv = (cabecalho.match(/;/g) || []).length
+  const v = (cabecalho.match(/,/g) || []).length
+  return pv >= v ? ';' : ','
+}
+
+/** Converte um número escrito em qualquer dos formatos usuais de CSV:
+ *  1234.56 · 1234,56 · 1.234.567,89 · 1,234,567.89 · 1.234.567 · 1,234,567.
+ *  Com ponto e vírgula juntos, o que aparece por último é o decimal; com um
+ *  único ponto (ou uma única vírgula), ele é o separador decimal. */
+export function lerNumero(bruto: string | null | undefined): number | null {
+  let t = (bruto ?? '').trim().replace(/^["']+|["']+$/g, '').replace(/\s/g, '')
+  if (!t) return null
+  const pontos = (t.match(/\./g) || []).length
+  const virgulas = (t.match(/,/g) || []).length
+  if (pontos > 0 && virgulas > 0) {
+    t = t.lastIndexOf(',') > t.lastIndexOf('.') ? t.replace(/\./g, '').replace(',', '.') : t.replace(/,/g, '')
+  } else if (virgulas > 0) {
+    t = virgulas > 1 ? t.replace(/,/g, '') : t.replace(',', '.')
+  } else if (pontos > 1) {
+    t = t.replace(/\./g, '')
+  }
+  const n = Number(t)
+  return Number.isFinite(n) ? n : null
+}
+
 // ── FileSelectDialog ───────────────────────────────────────────────────────────
 export function FileSelectDialog({
   label,
@@ -559,11 +587,18 @@ export function Importacao() {
     const { data, error } = await supabase.storage.from('dados_brutos').download(cleanPath)
     if (error || !data) return []
     const lines = (await data.text())
+      .replace(/^\uFEFF/, '')
       .split('\n')
       .map((l) => l.trim())
       .filter(Boolean)
     if (lines.length < 2) return []
-    const header = lines[0].toLowerCase().split(/[,;]/)
+    // Separador detectado pelo cabeçalho — antes as linhas eram quebradas em
+    // ";" e "," ao mesmo tempo, o que partia números com vírgula decimal.
+    const sep = separadorCSV(lines[0])
+    const header = lines[0]
+      .toLowerCase()
+      .split(sep)
+      .map((h) => h.trim().replace(/^["']+|["']+$/g, ''))
     const tIdx = header.findIndex((h) => h.includes('tempo'))
     const tIdxFinal = tIdx >= 0 ? tIdx : 0
     const vIdx = header.findIndex(
@@ -575,11 +610,12 @@ export function Importacao() {
     return lines
       .slice(1)
       .map((l) => {
-        const parts = l.split(/[,;]/)
+        const parts = l.split(sep)
         return {
-          tempo: (parts[tIdxFinal] || '').trim().replace(/-/g, '/'),
-          valor:
-            parseFloat((parts[vIdxFinal] || '0').trim().replace(/\./g, '').replace(',', '.')) || 0,
+          tempo: (parts[tIdxFinal] || '').trim().replace(/^["']+|["']+$/g, '').replace(/-/g, '/'),
+          // Antes todos os pontos eram removidos (milhar no formato brasileiro),
+          // o que transformava 2563985.31 em 256398531.
+          valor: lerNumero(parts[vIdxFinal]) ?? 0,
         }
       })
       .filter((d) => d.tempo)
@@ -660,9 +696,7 @@ export function Importacao() {
       if (!line.trim()) continue
       const vals = line.split(sep).map((v) => v.trim().replace(/^["'\r]+|["'\r]+$/g, ''))
       const tempo = (vals[tIdx] || '').replace(/-/g, '/')
-      const raw = vals[vIdx] ?? ''
-      const num = parseFloat(raw.replace(',', '.'))
-      valoresPorTempo[tempo] = isNaN(num) ? null : num
+      valoresPorTempo[tempo] = lerNumero(vals[vIdx])
     }
 
     const tempos = Object.keys(valoresPorTempo)
