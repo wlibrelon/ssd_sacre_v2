@@ -2,7 +2,7 @@
 // marcadas em "Comparar" — parâmetros, resultados, matriz de decisão (com
 // sentido e peso de cada indicador, configuração geral) e evolução do índice.
 // Usa apenas o que foi gravado; não depende de executar a simulação.
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -29,6 +29,28 @@ const valorDe = (s: SimulacaoGravada, indicador: string, idFonte: number | null 
     (x) => x.indicador === indicador && (idFonte === null ? x.id_fonte === null : x.id_fonte === idFonte),
   )
   return r?.valor ?? null
+}
+
+// Escala de cores da matriz: verde escuro (1º) → verde quase branco (último).
+// Escala de um só tom: lida também por quem tem daltonismo e não sugere que o
+// último colocado seja "ruim" em termos absolutos — só o menos bem colocado.
+const VERDE_ESCURO: [number, number, number] = [22, 101, 52] // green-800
+const VERDE_CLARO: [number, number, number] = [240, 253, 244] // green-50
+
+/** Cor de fundo e do texto da célula conforme a posição (1 = melhor) entre n simulações. */
+function corPosicao(posicao: number | null, n: number, semValor = false): CSSProperties {
+  if (semValor || posicao === null) return { backgroundColor: '#f1f5f9', color: '#64748b' }
+  const t = n > 1 ? Math.min(1, Math.max(0, (posicao - 1) / (n - 1))) : 0
+  const c = VERDE_ESCURO.map((v, i) => Math.round(v + (VERDE_CLARO[i] - v) * t))
+  // Texto branco ou verde muito escuro, o que tiver mais contraste com o fundo
+  const lin = (v: number) => {
+    const x = v / 255
+    return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4)
+  }
+  const lum = 0.2126 * lin(c[0]) + 0.7152 * lin(c[1]) + 0.0722 * lin(c[2])
+  const contrasteBranco = 1.05 / (lum + 0.05)
+  const contrasteEscuro = (lum + 0.05) / (0.0194 + 0.05) // #052e16 (green-950)
+  return { backgroundColor: `rgb(${c.join(',')})`, color: contrasteBranco >= contrasteEscuro ? '#ffffff' : '#052e16' }
 }
 
 /** Posição de cada simulação num indicador (1 = melhor; empates dividem a
@@ -134,7 +156,17 @@ export function ComparacoesSimulacoes({ simulacoes }: { simulacoes: SimulacaoGra
       </table>
     </div>
   )
-  const Linha = ({ rotulo, celulas, secao }: { rotulo: ReactNode; celulas?: ReactNode[]; secao?: boolean }) =>
+  const Linha = ({
+    rotulo,
+    celulas,
+    secao,
+    estilos,
+  }: {
+    rotulo: ReactNode
+    celulas?: ReactNode[]
+    secao?: boolean
+    estilos?: (CSSProperties | undefined)[]
+  }) =>
     secao ? (
       <tr className="bg-slate-50">
         <td colSpan={simulacoes.length + 1} className="px-3 py-1.5 font-semibold text-primary text-[11px] uppercase tracking-wide">
@@ -145,7 +177,7 @@ export function ComparacoesSimulacoes({ simulacoes }: { simulacoes: SimulacaoGra
       <tr>
         <td className="px-3 py-2 font-medium text-slate-600 sticky left-0 bg-white">{rotulo}</td>
         {celulas!.map((c, i) => (
-          <td key={i} className="px-3 py-2 align-top">
+          <td key={i} className="px-3 py-2 align-top" style={estilos?.[i]}>
             {c}
           </td>
         ))}
@@ -296,6 +328,18 @@ export function ComparacoesSimulacoes({ simulacoes }: { simulacoes: SimulacaoGra
           <p className="text-sm text-muted-foreground">Inclua ao menos um indicador na configuração abaixo.</p>
         ) : (
           <>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span>1º lugar</span>
+              <span
+                className="h-3 w-40 rounded border"
+                style={{
+                  background: `linear-gradient(to right, rgb(${VERDE_ESCURO.join(',')}), rgb(${VERDE_CLARO.join(',')}))`,
+                }}
+              />
+              <span>último lugar</span>
+              <span className="ml-3 inline-block h-3 w-5 rounded border" style={{ backgroundColor: '#f1f5f9' }} />
+              <span>sem valor</span>
+            </div>
             <Tabela>
               {matriz.linhas.map((l) => (
                 <Linha
@@ -308,10 +352,11 @@ export function ComparacoesSimulacoes({ simulacoes }: { simulacoes: SimulacaoGra
                       </span>
                     </span>
                   }
+                  estilos={l.ranks.map((r, j) => corPosicao(r, simulacoes.length, l.valores[j] === null))}
                   celulas={l.ranks.map((r, j) => (
                     <div>
-                      <span className={`font-semibold ${r === 1 ? 'text-emerald-700' : ''}`}>{r}º</span>
-                      <span className="block text-[10px] text-muted-foreground">{formatar(l.valores[j], l.def.formato)}</span>
+                      <span className="font-semibold">{l.valores[j] === null ? 'sem valor' : `${r}º`}</span>
+                      <span className="block text-[10px] opacity-80">{formatar(l.valores[j], l.def.formato)}</span>
                     </div>
                   ))}
                 />
@@ -330,8 +375,12 @@ export function ComparacoesSimulacoes({ simulacoes }: { simulacoes: SimulacaoGra
               <tr className="bg-slate-50">
                 <td className="px-3 py-2 font-semibold sticky left-0 bg-slate-50">Classificação final</td>
                 {matriz.classificacao.map((c, j) => (
-                  <td key={j} className="px-3 py-2">
-                    <span className={`inline-flex items-center gap-1 font-bold ${c === 1 ? 'text-emerald-700' : ''}`}>
+                  <td
+                    key={j}
+                    className="px-3 py-2"
+                    style={corPosicao(c, simulacoes.length, matriz.pontuacao[j] === null)}
+                  >
+                    <span className="inline-flex items-center gap-1 font-bold">
                       {c === 1 && <Trophy className="w-4 h-4" />}
                       {c}º
                     </span>
@@ -340,9 +389,10 @@ export function ComparacoesSimulacoes({ simulacoes }: { simulacoes: SimulacaoGra
               </tr>
             </Tabela>
             <p className="text-xs text-muted-foreground">
-              Cada célula mostra a posição da simulação no indicador (1º = melhor) e o valor. Empates dividem a posição;
-              simulações sem valor ficam na última posição. A classificação final ordena a média das posições ponderada
-              pelos pesos.
+              Cada célula mostra a posição da simulação no indicador (1º = melhor) e o valor; quanto mais escuro o verde,
+              melhor a posição. Simulações empatadas recebem a mesma posição e a mesma cor. Simulações sem valor (em cinza)
+              contam como última posição na pontuação. A classificação final ordena a média das posições ponderada pelos
+              pesos.
             </p>
           </>
         )}
